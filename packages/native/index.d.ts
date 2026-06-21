@@ -13,11 +13,15 @@ export interface ElementQuery {
 
 export declare function findElement(hwnd: number, query: ElementQuery, options?: UiaOptions | undefined | null): UiaNode | null
 
+export declare function forceStopAllRecordings(): void
+
 export declare function getDpiForMonitor(monitorIndex: number): number
 
 export declare function getElementValue(hwnd: number, query: ElementQuery): string
 
 export declare function getMonitorCount(): number
+
+export declare function getRecordingStatus(sessionId: string): RecordingStatus
 
 export declare function getSystemDpi(): number
 
@@ -27,7 +31,36 @@ export declare function invokeElement(hwnd: number, query: ElementQuery): void
 
 export declare function ping(): string
 
+export interface RecordConfig {
+  backend: string
+  targetHwnd?: number
+  fps?: number
+  outputDir: string
+}
+
+export interface RecordingStatus {
+  sessionId: string
+  isRecording: boolean
+  frameCount: number
+  elapsedMs: number
+}
+
+export interface RecordResult {
+  sessionId: string
+  backend: string
+  frameCount: number
+  durationMs: number
+  outputPath: string
+  droppedFrames: number
+}
+
 export declare function setElementValue(hwnd: number, query: ElementQuery, value: string): void
+
+export declare function startRecordingDxgi(config: RecordConfig): string
+
+export declare function startRecordingWgc(config: RecordConfig): string
+
+export declare function stopRecording(sessionId: string): RecordResult
 
 export interface UiaNode {
   name: string

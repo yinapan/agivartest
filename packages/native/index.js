@@ -588,11 +588,16 @@ if (!nativeBinding) {
 
 module.exports = nativeBinding
 module.exports.findElement = nativeBinding.findElement
+module.exports.forceStopAllRecordings = nativeBinding.forceStopAllRecordings
 module.exports.getDpiForMonitor = nativeBinding.getDpiForMonitor
 module.exports.getElementValue = nativeBinding.getElementValue
 module.exports.getMonitorCount = nativeBinding.getMonitorCount
+module.exports.getRecordingStatus = nativeBinding.getRecordingStatus
 module.exports.getSystemDpi = nativeBinding.getSystemDpi
 module.exports.getUiTree = nativeBinding.getUiTree
 module.exports.invokeElement = nativeBinding.invokeElement
 module.exports.ping = nativeBinding.ping
 module.exports.setElementValue = nativeBinding.setElementValue
+module.exports.startRecordingDxgi = nativeBinding.startRecordingDxgi
+module.exports.startRecordingWgc = nativeBinding.startRecordingWgc
+module.exports.stopRecording = nativeBinding.stopRecording

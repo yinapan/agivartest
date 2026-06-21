@@ -17,8 +17,20 @@ windows = { version = "0.58", features = [
   "Win32_UI_WindowsAndMessaging",
 ] }
 
+# Recorder module dependencies
+windows-capture = "2"
+win_desktop_duplication = { version = "0.10", optional = true }
+image = "0.25"
+uuid = { version = "1", features = ["v4"] }
+parking_lot = "0.12"
+lazy_static = "1"
+
 [build-dependencies]
 napi-build = "2"
+
+[features]
+default = ["dxgi"]
+dxgi = ["dep:win_desktop_duplication"]
 
 [profile.release]
 lto = true
