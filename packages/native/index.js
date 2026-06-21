@@ -587,4 +587,9 @@ if (!nativeBinding) {
 }
 
 module.exports = nativeBinding
+module.exports.findElement = nativeBinding.findElement
+module.exports.getElementValue = nativeBinding.getElementValue
+module.exports.getUiTree = nativeBinding.getUiTree
+module.exports.invokeElement = nativeBinding.invokeElement
 module.exports.ping = nativeBinding.ping
+module.exports.setElementValue = nativeBinding.setElementValue

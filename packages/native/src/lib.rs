@@ -1,5 +1,8 @@
 use napi_derive::napi;
 
+pub mod uia;
+pub mod dpi;
+
 #[napi]
 pub fn ping() -> String {
     format!(
