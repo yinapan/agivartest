@@ -11,11 +11,12 @@
   },
   "dependencies": {
     "@agivar/native": "workspace:*",
-    "node-screenshots": "^0.2.8",
     "@nut-tree-fork/nut-js": "^4.2.0",
+    "node-screenshots": "^0.2.8",
     "playwright": "^1.48.0"
   },
   "devDependencies": {
+    "@types/node": "^26.0.0",
     "typescript": "~5.7.0"
   }
 }
