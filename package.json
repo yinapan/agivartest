@@ -16,6 +16,7 @@
     "desktop:doctor-native": "electron packages/desktop/scripts/doctor-native.mjs"
   },
   "devDependencies": {
+    "@agivar/native": "workspace:*",
     "turbo": "^2.4.0",
     "tsx": "^4.19.0",
     "typescript": "~5.7.0"
