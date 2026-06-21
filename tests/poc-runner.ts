@@ -7,6 +7,7 @@ import { runPocInput } from './poc-input.js';
 import { runPocPlaywright } from './poc-playwright.js';
 import { runPocUia } from './poc-uia.js';
 import { runPocDpi } from './poc-dpi.js';
+import { runPocRecorder } from './poc-recorder.js';
 import { createOutputDir, writeReport } from './helpers/report.js';
 
 type RunMode = 'readonly' | 'interactive' | 'all' | 'clean';
@@ -52,19 +53,19 @@ async function main() {
   // 只读 PoC
   console.log('--- Running readonly PoCs ---');
 
-  console.log('[1/5] poc-screenshot...');
+  console.log('[1/6] poc-screenshot...');
   results.push(await runPocScreenshot(outputDir));
   console.log(`  -> ${results[results.length - 1].status}`);
 
-  console.log('[2/5] poc-playwright...');
+  console.log('[2/6] poc-playwright...');
   results.push(await runPocPlaywright(outputDir));
   console.log(`  -> ${results[results.length - 1].status}`);
 
-  console.log('[3/5] poc-uia...');
+  console.log('[3/6] poc-uia...');
   results.push(await runPocUia(outputDir));
   console.log(`  -> ${results[results.length - 1].status}`);
 
-  console.log('[4/5] poc-dpi...');
+  console.log('[4/6] poc-dpi...');
   results.push(await runPocDpi(outputDir));
   console.log(`  -> ${results[results.length - 1].status}`);
 
@@ -72,8 +73,12 @@ async function main() {
   if (mode === 'interactive' || mode === 'all') {
     console.log('\n--- Running interactive PoCs ---');
 
-    console.log('[5/5] poc-input...');
+    console.log('[5/6] poc-input...');
     results.push(await runPocInput(outputDir));
+    console.log(`  -> ${results[results.length - 1].status}`);
+
+    console.log('[6/6] poc-recorder...');
+    results.push(await runPocRecorder(outputDir));
     console.log(`  -> ${results[results.length - 1].status}`);
   }
 
