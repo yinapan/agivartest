@@ -5,6 +5,8 @@ import { runEnvChecks } from './poc-env.js';
 import { runPocScreenshot } from './poc-screenshot.js';
 import { runPocInput } from './poc-input.js';
 import { runPocPlaywright } from './poc-playwright.js';
+import { runPocUia } from './poc-uia.js';
+import { runPocDpi } from './poc-dpi.js';
 import { createOutputDir, writeReport } from './helpers/report.js';
 
 type RunMode = 'readonly' | 'interactive' | 'all' | 'clean';
@@ -50,24 +52,30 @@ async function main() {
   // 只读 PoC
   console.log('--- Running readonly PoCs ---');
 
-  console.log('[1/3] poc-screenshot...');
+  console.log('[1/5] poc-screenshot...');
   results.push(await runPocScreenshot(outputDir));
   console.log(`  -> ${results[results.length - 1].status}`);
 
-  console.log('[2/3] poc-playwright...');
+  console.log('[2/5] poc-playwright...');
   results.push(await runPocPlaywright(outputDir));
+  console.log(`  -> ${results[results.length - 1].status}`);
+
+  console.log('[3/5] poc-uia...');
+  results.push(await runPocUia(outputDir));
+  console.log(`  -> ${results[results.length - 1].status}`);
+
+  console.log('[4/5] poc-dpi...');
+  results.push(await runPocDpi(outputDir));
   console.log(`  -> ${results[results.length - 1].status}`);
 
   // 交互 PoC
   if (mode === 'interactive' || mode === 'all') {
     console.log('\n--- Running interactive PoCs ---');
 
-    console.log('[3/3] poc-input...');
+    console.log('[5/5] poc-input...');
     results.push(await runPocInput(outputDir));
     console.log(`  -> ${results[results.length - 1].status}`);
   }
-
-  // NOTE: poc-uia, poc-dpi, poc-recorder 在 Plan B/C 中添加
 
   // 生成报告
   const reportPath = writeReport(outputDir, envChecks, results);
