@@ -32,10 +32,9 @@ pub struct ElementQuery {
     pub name: Option<String>,
     pub control_type: Option<String>,
     pub class_name: Option<String>,
-    pub name_match: Option<String>, // "exact" | "contains" | "regex"
+    pub name_match: Option<String>, // "exact" | "contains"
     pub max_depth: Option<u32>,
     pub max_nodes: Option<u32>,
-    pub index: Option<u32>,
     pub include_offscreen: Option<bool>,
 }
 
@@ -212,7 +211,7 @@ pub fn get_element_value(hwnd: i64, query: ElementQuery) -> Result<String> {
     let found = find_element(hwnd, query, None)?;
     match found {
         Some(node) => Ok(node.value.unwrap_or_default()),
-        None => Err(Error::from_reason("UIA_PATTERN_UNSUPPORTED: element not found")),
+        None => Err(Error::from_reason("UIA_ELEMENT_NOT_FOUND: no element matching query")),
     }
 }
 
@@ -222,8 +221,11 @@ pub fn set_element_value(hwnd: i64, query: ElementQuery, value: String) -> Resul
         .map_err(|e| Error::from_reason(format!("UIA init failed: {}", e)))?;
 
     let hwnd_val = hwnd as isize;
-    let root = auto.element_from_handle(Handle::from(hwnd_val))
-        .map_err(|e| Error::from_reason(format!("element_from_handle: {}", e)))?;
+    let root = if hwnd_val == 0 {
+        auto.get_root_element()
+    } else {
+        auto.element_from_handle(Handle::from(hwnd_val))
+    }.map_err(|e| Error::from_reason(format!("element_from_handle: {}", e)))?;
 
     // Use ValuePattern to set value
     let condition = build_condition(&auto, &query)?;
@@ -242,8 +244,11 @@ pub fn invoke_element(hwnd: i64, query: ElementQuery) -> Result<()> {
         .map_err(|e| Error::from_reason(format!("UIA init failed: {}", e)))?;
 
     let hwnd_val = hwnd as isize;
-    let root = auto.element_from_handle(Handle::from(hwnd_val))
-        .map_err(|e| Error::from_reason(format!("element_from_handle: {}", e)))?;
+    let root = if hwnd_val == 0 {
+        auto.get_root_element()
+    } else {
+        auto.element_from_handle(Handle::from(hwnd_val))
+    }.map_err(|e| Error::from_reason(format!("element_from_handle: {}", e)))?;
 
     let condition = build_condition(&auto, &query)?;
     let target = root.find_first(TreeScope::Subtree, &condition)

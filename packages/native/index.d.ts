@@ -8,7 +8,6 @@ export interface ElementQuery {
   nameMatch?: string
   maxDepth?: number
   maxNodes?: number
-  index?: number
   includeOffscreen?: boolean
 }
 
