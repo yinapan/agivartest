@@ -588,7 +588,10 @@ if (!nativeBinding) {
 
 module.exports = nativeBinding
 module.exports.findElement = nativeBinding.findElement
+module.exports.getDpiForMonitor = nativeBinding.getDpiForMonitor
 module.exports.getElementValue = nativeBinding.getElementValue
+module.exports.getMonitorCount = nativeBinding.getMonitorCount
+module.exports.getSystemDpi = nativeBinding.getSystemDpi
 module.exports.getUiTree = nativeBinding.getUiTree
 module.exports.invokeElement = nativeBinding.invokeElement
 module.exports.ping = nativeBinding.ping

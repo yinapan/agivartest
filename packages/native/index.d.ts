@@ -13,7 +13,13 @@ export interface ElementQuery {
 
 export declare function findElement(hwnd: number, query: ElementQuery, options?: UiaOptions | undefined | null): UiaNode | null
 
+export declare function getDpiForMonitor(monitorIndex: number): number
+
 export declare function getElementValue(hwnd: number, query: ElementQuery): string
+
+export declare function getMonitorCount(): number
+
+export declare function getSystemDpi(): number
 
 export declare function getUiTree(hwnd: number, options?: UiaOptions | undefined | null): UiaNode
 
