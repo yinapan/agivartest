@@ -13,7 +13,7 @@
     "poc:all": "tsx tests/poc-runner.ts --mode all",
     "poc:clean": "tsx tests/poc-runner.ts --clean",
     "native:doctor": "node packages/native/scripts/doctor.mjs",
-    "desktop:doctor-native": "electron packages/desktop/scripts/doctor-native.mjs"
+    "desktop:doctor-native": "node packages/desktop/scripts/doctor-native-launcher.cjs"
   },
   "devDependencies": {
     "@agivar/native": "workspace:*",

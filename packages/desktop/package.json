@@ -8,10 +8,10 @@
     "dev": "electron-vite dev",
     "package:dir": "electron-builder --dir"
   },
-  "dependencies": {
-    "@agivar/core": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "@agivar/core": "workspace:*",
+    "@agivar/native": "workspace:*",
     "electron": "^33.0.0",
     "electron-vite": "^2.3.0",
     "electron-builder": "^25.1.0",
