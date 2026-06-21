@@ -1,0 +1,25 @@
+{
+  "name": "@agivar/desktop",
+  "version": "0.0.1",
+  "private": true,
+  "main": "dist/main/index.js",
+  "scripts": {
+    "build": "electron-vite build",
+    "dev": "electron-vite dev",
+    "package:dir": "electron-builder --dir"
+  },
+  "dependencies": {
+    "@agivar/core": "workspace:*"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-vite": "^2.3.0",
+    "electron-builder": "^25.1.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "~5.7.0"
+  }
+}

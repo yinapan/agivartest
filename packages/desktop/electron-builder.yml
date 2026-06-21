@@ -1,0 +1,11 @@
+appId: com.agivar.desktop
+productName: Agivar
+directories:
+  output: release
+files:
+  - dist/**/*
+  - "!node_modules/**/*"
+asarUnpack:
+  - "**/*.node"
+win:
+  target: dir
