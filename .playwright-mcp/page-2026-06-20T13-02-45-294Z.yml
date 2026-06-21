@@ -1,0 +1,441 @@
+- generic [ref=e2]:
+  - region "跳到主要内容":
+    - link "跳到主要内容" [ref=e3] [cursor=pointer]:
+      - /url: "#__docusaurus_skipToContent_fallback"
+  - navigation "主导航" [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "Agivar Agivar" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Agivar" [ref=e9]
+          - generic [ref=e10]: Agivar
+        - link "文档" [ref=e11] [cursor=pointer]:
+          - /url: /
+      - generic [ref=e12]:
+        - button "简体中文" [ref=e14] [cursor=pointer]:
+          - img [ref=e15]
+          - text: 简体中文
+        - button "切换浅色/暗黑模式（当前为system mode）" [ref=e18] [cursor=pointer]:
+          - img [ref=e19]
+  - generic [ref=e23]:
+    - complementary [ref=e24]:
+      - navigation "文档侧边栏" [ref=e27]:
+        - list [ref=e28]:
+          - listitem [ref=e29]:
+            - link "简介" [ref=e30] [cursor=pointer]:
+              - /url: /
+              - generic "简介" [ref=e31]
+          - listitem [ref=e32]:
+            - button "快速开始" [expanded] [ref=e34] [cursor=pointer]:
+              - generic "快速开始" [ref=e35]
+            - list [ref=e36]:
+              - listitem [ref=e37]:
+                - link "安装" [ref=e38] [cursor=pointer]:
+                  - /url: /getting-started/installation
+                  - generic "安装" [ref=e39]
+              - listitem [ref=e40]:
+                - link "登录与账号" [ref=e41] [cursor=pointer]:
+                  - /url: /getting-started/sign-in
+                  - generic "登录与账号" [ref=e42]
+              - listitem [ref=e43]:
+                - link "界面导览" [ref=e44] [cursor=pointer]:
+                  - /url: /getting-started/interface-tour
+                  - generic "界面导览" [ref=e45]
+          - listitem [ref=e46]:
+            - link "任务模式" [ref=e47] [cursor=pointer]:
+              - /url: /task-mode
+              - generic "任务模式" [ref=e48]
+          - listitem [ref=e49]:
+            - button "教学模式" [expanded] [ref=e51] [cursor=pointer]:
+              - generic "教学模式" [ref=e52]
+            - list [ref=e53]:
+              - listitem [ref=e54]:
+                - link "总览" [ref=e55] [cursor=pointer]:
+                  - /url: /teach-mode/overview
+                  - generic "总览" [ref=e56]
+              - listitem [ref=e57]:
+                - link "对话教学" [ref=e58] [cursor=pointer]:
+                  - /url: /teach-mode/teach-by-chat
+                  - generic "对话教学" [ref=e59]
+              - listitem [ref=e60]:
+                - link "录屏教学 ⭐" [ref=e61] [cursor=pointer]:
+                  - /url: /teach-mode/teach-by-recording
+                  - generic "录屏教学 ⭐" [ref=e62]
+              - listitem [ref=e63]:
+                - link "记忆库" [ref=e64] [cursor=pointer]:
+                  - /url: /teach-mode/memory-base
+                  - generic "记忆库" [ref=e65]
+          - listitem [ref=e66]:
+            - button "功能细节" [ref=e68] [cursor=pointer]:
+              - generic "功能细节" [ref=e69]
+          - listitem [ref=e70]:
+            - link "常见问题" [ref=e71] [cursor=pointer]:
+              - /url: /faq
+              - generic "常见问题" [ref=e72]
+    - main [ref=e73]:
+      - generic [ref=e75]:
+        - generic [ref=e77]:
+          - article [ref=e78]:
+            - navigation "页面路径" [ref=e79]:
+              - list [ref=e80]:
+                - listitem [ref=e81]:
+                  - link "主页面" [ref=e82] [cursor=pointer]:
+                    - /url: /
+                    - img [ref=e83]
+                - listitem [ref=e85]:
+                  - generic [ref=e86]: 教学模式
+                - listitem [ref=e87]:
+                  - generic [ref=e88]: 录屏教学 ⭐
+            - generic [ref=e89]:
+              - heading "录屏教学" [level=1] [ref=e91]
+              - paragraph [ref=e92]:
+                - text: 录屏教学是 Agivar 最有特色的能力：
+                - strong [ref=e93]: 你把一套操作演示一遍，AI 就能把它学会、记下来、以后照着做。
+              - blockquote [ref=e94]:
+                - paragraph [ref=e95]: 一图胜千言，一段演示胜千张图。与其费劲用文字描述"先点哪、再点哪"，不如录一段屏——鼠标怎么动、键盘敲了什么、屏幕怎么变，全都被精确捕获，AI 不用猜。
+              - heading "它解决了什么问题它解决了什么问题的直接链接" [level=2] [ref=e96]:
+                - text: 它解决了什么问题
+                - link "它解决了什么问题的直接链接" [ref=e97] [cursor=pointer]:
+                  - /url: "#它解决了什么问题"
+                  - text: "#"
+              - paragraph [ref=e98]: 教 GUI 操作流程，用文字描述常常会卡在两个地方：
+              - list [ref=e99]:
+                - listitem [ref=e100]:
+                  - strong [ref=e101]: 写不准
+                  - text: ——"点那个提交按钮"，哪个？什么颜色？在哪个区域？文字很容易留歧义。
+                - listitem [ref=e102]:
+                  - strong [ref=e103]: 写不全
+                  - text: ——演示者觉得"理所当然"的小步骤（先点一下输入框激活它、滚动到页面底部……）经常被漏掉。
+              - paragraph [ref=e104]: 录屏把这两个问题一并解决：
+              - list [ref=e105]:
+                - listitem [ref=e106]:
+                  - strong [ref=e107]: 精确的动作序列
+                  - text: ——录制时同步捕获鼠标点击/拖拽/滚动、键盘输入、热键，连带时间轴，一个都不漏。
+                - listitem [ref=e108]:
+                  - strong [ref=e109]: 配套的画面
+                  - text: ——录制结束后系统自动抽取
+                  - strong [ref=e110]: 关键帧
+                  - text: ：每个会让画面发生变化的操作（点击、双击、拖拽、按 Enter 提交……）前的那一帧都会被留下，再加上安静时段的定时取样。AI 既能"看见"操作前的界面长什么样，也能对照"操作后变成了什么"。
+                - listitem [ref=e111]:
+                  - strong [ref=e112]: 你的补充讲解
+                  - text: ——录制过程中可以添加文字注释（Windows：Alt+I；macOS：Cmd+Shift+I），也可以点绿色声波按钮录入语音注释；这些讲解会按时间轴并入录屏。
+                - listitem [ref=e113]:
+                  - strong [ref=e114]: 沉淀成可复用知识
+                  - text: ——录屏会被处理成一份
+                  - strong [ref=e115]: 结构化的"操作描述"
+                  - text: （概述 / 初始状态 / 分步操作 / 阶段性成果），直接进记忆库；条目里还会写明"相关示教视频"的 ID 和关键片段，任务模式日后可以就录屏里的细节追问。
+              - heading "完整流程完整流程的直接链接" [level=2] [ref=e116]:
+                - text: 完整流程
+                - link "完整流程的直接链接" [ref=e117] [cursor=pointer]:
+                  - /url: "#完整流程"
+                  - text: "#"
+              - heading "第 1 步：开始录屏第 1 步：开始录屏的直接链接" [level=3] [ref=e118]:
+                - text: 第 1 步：开始录屏
+                - link "第 1 步：开始录屏的直接链接" [ref=e119] [cursor=pointer]:
+                  - /url: "#第-1-步开始录屏"
+                  - text: "#"
+              - list [ref=e120]:
+                - listitem [ref=e121]:
+                  - text: 新建一个对话并开启
+                  - strong [ref=e122]: 教学模式
+                  - text: 。
+                - listitem [ref=e123]: 点输入栏「录屏」→「开始录屏」（或在「选择历史录屏」里点「开始录制」）。
+                - listitem [ref=e124]:
+                  - text: 屏幕上会出现一个
+                  - strong [ref=e125]: 浮动录制控制条
+                  - text: ——半透明、可拖动、始终置顶，上面有计时、语音注释、文字注释、历史、暂停 / 继续和「结束」。
+              - generic [ref=e126]:
+                - generic [ref=e127]:
+                  - img [ref=e129]
+                  - text: 控制条不会被录进去
+                - paragraph [ref=e132]:
+                  - text: 默认情况下，控制条和注释框会从录屏画面里排除，录到的是它
+                  - strong [ref=e133]: 背后
+                  - text: 的内容，所以你不用担心它们挡住东西或被一起录下来。只有打开「主播模式」时，浮窗才会被录进去。
+              - heading "第 2 步：演示操作（用文字或语音讲解）第 2 步：演示操作（用文字或语音讲解）的直接链接" [level=3] [ref=e134]:
+                - text: 第 2 步：演示操作（用文字或语音讲解）
+                - link "第 2 步：演示操作（用文字或语音讲解）的直接链接" [ref=e135] [cursor=pointer]:
+                  - /url: "#第-2-步演示操作用文字或语音讲解"
+                  - text: "#"
+              - paragraph [ref=e136]: 正常去做你要演示的操作就行。建议：
+              - list [ref=e137]:
+                - listitem [ref=e138]:
+                  - strong [ref=e139]: 动作放慢一点
+                  - text: ，每步之间留个小停顿，让关键帧能稳稳抓到操作前的画面。
+                - listitem [ref=e140]:
+                  - strong [ref=e141]: 一次只演示一个完整的流程
+                  - text: ——从一个明确的起点（比如"浏览器已打开"）到一个明确的终点（"已成功投币"），不要把好几件不相干的事录在一起。
+              - paragraph [ref=e142]:
+                - text: 想给某一步加文字说明时，点控制条上的「注释」，或使用快捷键（Windows：Alt+I；macOS：Cmd+Shift+I），浮窗旁会展开一个
+                - strong [ref=e143]: 注释输入区
+                - text: ：
+              - list [ref=e144]:
+                - listitem [ref=e145]: 输入你的说明，比如"这里要等页面完全加载出来再点，否则按钮没反应"。
+                - listitem [ref=e146]: Enter 发送，Shift+Enter 换行，Esc 取消。
+                - listitem [ref=e147]: 这条注释会按它发生的时间点并入录屏的操作时间轴。
+                - listitem [ref=e148]:
+                  - text: 输入注释期间你在框里的输入
+                  - strong [ref=e149]: 不会被当成操作录进去
+                  - text: （连触发用的注释快捷键，以及之后松开修饰键的动作都会被过滤掉）。
+              - paragraph [ref=e150]:
+                - text: 如果想边演示边说话，点控制条上的绿色声波按钮，或使用快捷键（Windows：Alt+D；macOS：Cmd+Shift+D）开始
+                - strong [ref=e151]: 语音注释
+                - text: ；再点一次或再次使用同一个快捷键停止。Agivar 会把你的语音转成带时间点的文字注释，识别到内容后自动显示在注释历史里。
+              - paragraph [ref=e152]: 什么时候值得加注释？——凡是"光看画面看不出来"的信息：为什么要等一下、为什么选这个而不是那个、这一步的目的是什么、有什么坑。
+              - heading "第 3 步：结束录制第 3 步：结束录制的直接链接" [level=3] [ref=e153]:
+                - text: 第 3 步：结束录制
+                - link "第 3 步：结束录制的直接链接" [ref=e154] [cursor=pointer]:
+                  - /url: "#第-3-步结束录制"
+                  - text: "#"
+              - paragraph [ref=e155]: 点控制条上的「结束」。如果中途要停一下，先点「暂停」，准备好后再点「继续」；暂停期间不会继续抓画面和操作，也不计入录屏时长。
+              - paragraph [ref=e156]:
+                - text: 停止后，系统会把刚录的内容整理好，并开始
+                - strong [ref=e157]: 后台处理
+                - text: ——这一步要联网，耗时取决于录屏长度，通常几十秒到几分钟。处理期间：
+              - list [ref=e158]:
+                - listitem [ref=e159]:
+                  - text: 你可以
+                  - strong [ref=e160]: 继续在输入栏打字、再加别的附件
+                  - text: ；
+                - listitem [ref=e161]:
+                  - text: 但
+                  - strong [ref=e162]: 发送按钮会暂时禁用
+                  - text: ，等处理完成才能把这条消息（带录屏）发出去；
+                - listitem [ref=e163]: 录屏附件上会显示已用时间 / 预计剩余时间。
+                - listitem [ref=e164]:
+                  - text: 如果这段不想随当前消息发送，可以点附件卡片上的
+                  - code [ref=e165]: X
+                  - text: 移除；录屏仍可在「选择历史录屏」里找到，确定不要时再从历史中删除。
+              - heading "第 4 步：预览回放（可选）第 4 步：预览回放（可选）的直接链接" [level=3] [ref=e166]:
+                - text: 第 4 步：预览回放（可选）
+                - link "第 4 步：预览回放（可选）的直接链接" [ref=e167] [cursor=pointer]:
+                  - /url: "#第-4-步预览回放可选"
+                  - text: "#"
+              - paragraph [ref=e168]:
+                - text: 处理完后（或处理前）可以打开
+                - strong [ref=e169]: 录屏预览
+                - text: 对话框，把刚录的内容播放一遍，确认演示完整：
+              - list [ref=e170]:
+                - listitem [ref=e171]:
+                  - strong [ref=e172]: ▶ 播放 / ⏸ 暂停 / ⟲ 重播
+                  - text: 。
+                - listitem [ref=e173]: 觉得录得不好，删掉附件重录就行。
+              - heading "第 5 步：发送，交给教学 Agent第 5 步：发送，交给教学 Agent的直接链接" [level=3] [ref=e174]:
+                - text: 第 5 步：发送，交给教学 Agent
+                - link "第 5 步：发送，交给教学 Agent的直接链接" [ref=e175] [cursor=pointer]:
+                  - /url: "#第-5-步发送交给教学-agent"
+                  - text: "#"
+              - paragraph [ref=e176]: 处理完成、发送按钮恢复后，把这条消息发出去（可以同时打几句文字补充注意事项）。教学 Agent 收到后：
+              - list [ref=e177]:
+                - listitem [ref=e178]:
+                  - text: 会先看到这段录屏的
+                  - strong [ref=e179]: 简介
+                  - text: 和
+                  - strong [ref=e180]: 结构化操作描述
+                  - text: ——不用再额外查询就知道整个流程；
+                - listitem [ref=e181]:
+                  - text: 如果还需要录屏里的更多细节，它可以
+                  - strong [ref=e182]: 就录屏内容做针对性提问
+                  - text: （内部用一个专门的"视频问答"能力，比如"第几帧那个弹窗上写的是什么"）；
+                - listitem [ref=e183]: 信息不全或有歧义时，它会反问你确认。
+              - heading "第 6 步：沉淀成记忆条目第 6 步：沉淀成记忆条目的直接链接" [level=3] [ref=e184]:
+                - text: 第 6 步：沉淀成记忆条目
+                - link "第 6 步：沉淀成记忆条目的直接链接" [ref=e185] [cursor=pointer]:
+                  - /url: "#第-6-步沉淀成记忆条目"
+                  - text: "#"
+              - paragraph [ref=e186]:
+                - text: 教学 Agent 会把这套流程整理进记忆库（按
+                - code [ref=e187]: 平台/主题
+                - text: 归档），条目大致长这样：
+              - generic [ref=e189]:
+                - code [ref=e191]:
+                  - generic [ref=e192]: "# 概述"
+                  - generic [ref=e193]: 这个操作演示了用户打开 B 站"非十科技"的视频，并给该视频投两个币的过程。
+                  - generic [ref=e195]: "# 初始状态"
+                  - generic [ref=e196]: 浏览器已打开。
+                  - generic [ref=e198]: "# 操作步骤"
+                  - generic [ref=e200]: "## 第一步：新建标签页并导航至 B 站"
+                  - generic [ref=e201]: 1. 点击浏览器标签栏右侧的"+"按钮，打开新标签页。
+                  - generic [ref=e202]: 2. 点击浏览器顶部地址栏，激活输入状态。
+                  - generic [ref=e203]: 3. 在地址栏中输入 bilibili.com。
+                  - generic [ref=e204]: 4. 按 Enter 键跳转。
+                  - generic [ref=e205]: 阶段性成果：成功进入 bilibili.com 首页，页面显示推荐视频列表和顶部搜索栏。
+                  - generic [ref=e207]: "## 第二步：……"
+                  - generic [ref=e208]: ……
+                  - generic [ref=e209]: 阶段性成果：……
+                  - generic [ref=e211]: "# 相关示教视频"
+                  - generic [ref=e212]: 视频 ID：00046；视频简介：……；关键片段：……
+                - button "复制代码到剪贴板" [ref=e214] [cursor=pointer]:
+                  - generic [ref=e215]:
+                    - img [ref=e216]
+                    - img [ref=e218]
+              - paragraph [ref=e220]: 注意几个细节：
+              - list [ref=e221]:
+                - listitem [ref=e222]:
+                  - text: 步骤被拆成
+                  - strong [ref=e223]: 多个抽象步骤
+                  - text: ，每个抽象步骤下面是具体操作，
+                  - strong [ref=e224]: 结尾都有一句"阶段性成果"
+                  - text: ——任务模式照着做时可以靠它判断当前阶段算不算完成。
+                - listitem [ref=e225]:
+                  - text: 界面定位写得
+                  - strong [ref=e226]: 消歧义
+                  - text: ——"点击弹窗右下角的蓝色『确认』按钮""点击搜索框右侧的放大镜图标"，而不是只说"点确认"。
+                - listitem [ref=e227]:
+                  - text: 条目末尾记着
+                  - strong [ref=e228]: 示教视频的 ID
+                  - text: ，任务模式以后执行相关任务时，可以直接调出这段录屏问细节。
+              - heading "录屏处理时到底发生了什么录屏处理时到底发生了什么的直接链接" [level=2] [ref=e229]:
+                - text: 录屏处理时到底发生了什么
+                - link "录屏处理时到底发生了什么的直接链接" [ref=e230] [cursor=pointer]:
+                  - /url: "#录屏处理时到底发生了什么"
+                  - text: "#"
+              - paragraph [ref=e231]: 供你了解，"后台处理"大致分四步（你不需要做任何操作）：
+              - list [ref=e232]:
+                - listitem [ref=e233]:
+                  - strong [ref=e234]: 上传关键帧
+                  - text: ——从录屏里挑出的关键帧上传到云端。
+                - listitem [ref=e235]:
+                  - strong [ref=e236]: 逐帧标注
+                  - text: ——AI 看着这些关键帧，结合鼠标/键盘动作时间轴，生成一份带画面引用的详细描述。
+                - listitem [ref=e237]:
+                  - strong [ref=e238]: 生成简介
+                  - text: ——把详细描述浓缩成一段简短的视频简介。
+                - listitem [ref=e239]:
+                  - strong [ref=e240]: 生成操作描述
+                  - text: ——按"概述 / 初始状态 / 分步操作 / 阶段性成果"的结构，产出那份能直接放进记忆条目的"操作描述"。
+              - paragraph [ref=e241]:
+                - text: 录屏的原始帧和鼠标键盘事件留在本地
+                - code [ref=e242]: ~/.agivar/
+                - text: 下；处理结果（关键帧、简介、操作描述）保存在云端，和你的账号绑定。
+              - heading "语音注释（可选）语音注释（可选）的直接链接" [level=2] [ref=e243]:
+                - text: 语音注释（可选）
+                - link "语音注释（可选）的直接链接" [ref=e244] [cursor=pointer]:
+                  - /url: "#语音注释可选"
+                  - text: "#"
+              - paragraph [ref=e245]: 控制条里的绿色声波按钮用于语音注释。开启后你可以照常讲解，Agivar 会实时转写，并把识别出的内容按时间点放进注释历史。AI 在生成"操作描述"时会优先复用你说出来的术语和分段方式（"先点这个按钮"、"接下来..."），所以长流程里不用每一步都打字。
+              - paragraph [ref=e246]: 第一次使用时系统可能会弹麦克风权限，允许后即可使用。如果某次没有麦克风权限或设备不可用，录屏照常进行，只是这次没有语音注释。
+              - heading "录屏教学的最佳实践录屏教学的最佳实践的直接链接" [level=2] [ref=e247]:
+                - text: 录屏教学的最佳实践
+                - link "录屏教学的最佳实践的直接链接" [ref=e248] [cursor=pointer]:
+                  - /url: "#录屏教学的最佳实践"
+                  - text: "#"
+              - list [ref=e249]:
+                - listitem [ref=e250]:
+                  - text: ✅
+                  - strong [ref=e251]: 一次一个流程
+                  - text: ，起点终点明确。
+                - listitem [ref=e252]:
+                  - text: ✅
+                  - strong [ref=e253]: 动作放慢
+                  - text: ，每步之间留停顿。
+                - listitem [ref=e254]:
+                  - text: ✅
+                  - strong [ref=e255]: 关键处用文字或语音注释
+                  - text: 解释"为什么"——这是录屏给不出、只有你能给的信息。
+                - listitem [ref=e256]:
+                  - text: ✅
+                  - strong [ref=e257]: 演示前把环境准备好
+                  - text: （该登录的先登录、该打开的先打开），并在"初始状态"里说清楚。
+                - listitem [ref=e258]:
+                  - text: ✅ 录完
+                  - strong [ref=e259]: 预览一遍
+                  - text: 再发送。
+                - listitem [ref=e260]: ⚠️ 别把验证码、密码这类敏感画面录进去——确实需要这一步时，录到那里停一下，用文字注释说明"此处由用户登录"，跳过实际输入。
+                - listitem [ref=e261]:
+                  - text: ⚠️ 多显示器时录的是
+                  - strong [ref=e262]: 主显示器
+                  - text: ；把演示放在主屏上做。
+              - heading "下一步下一步的直接链接" [level=2] [ref=e263]:
+                - text: 下一步
+                - link "下一步的直接链接" [ref=e264] [cursor=pointer]:
+                  - /url: "#下一步"
+                  - text: "#"
+              - list [ref=e265]:
+                - listitem [ref=e266]:
+                  - link "记忆库管理" [ref=e267] [cursor=pointer]:
+                    - /url: /teach-mode/memory-base
+                  - text: —— 看看录屏学到的东西最终存成了什么
+                - listitem [ref=e268]:
+                  - link "录屏与录音教程" [ref=e269] [cursor=pointer]:
+                    - /url: /features/recording
+                  - text: —— 浮窗和录音功能逐项说明
+                - listitem [ref=e270]:
+                  - link "任务模式" [ref=e271] [cursor=pointer]:
+                    - /url: /task-mode
+                  - text: —— 这些经验如何在执行任务时被复用
+                - listitem [ref=e272]:
+                  - link "常见问题" [ref=e273] [cursor=pointer]:
+                    - /url: /faq
+          - navigation "文件选项卡" [ref=e274]:
+            - link "上一页 « 对话教学" [ref=e275] [cursor=pointer]:
+              - /url: /teach-mode/teach-by-chat
+              - generic [ref=e276]: 上一页
+              - generic [ref=e277]: « 对话教学
+            - link "下一页 记忆库 »" [ref=e278] [cursor=pointer]:
+              - /url: /teach-mode/memory-base
+              - generic [ref=e279]: 下一页
+              - generic [ref=e280]: 记忆库 »
+        - list [ref=e283]:
+          - listitem [ref=e284]:
+            - link "它解决了什么问题" [ref=e285] [cursor=pointer]:
+              - /url: "#它解决了什么问题"
+          - listitem [ref=e286]:
+            - link "完整流程" [ref=e287] [cursor=pointer]:
+              - /url: "#完整流程"
+            - list [ref=e288]:
+              - listitem [ref=e289]:
+                - link "第 1 步：开始录屏" [ref=e290] [cursor=pointer]:
+                  - /url: "#第-1-步开始录屏"
+              - listitem [ref=e291]:
+                - link "第 2 步：演示操作（用文字或语音讲解）" [ref=e292] [cursor=pointer]:
+                  - /url: "#第-2-步演示操作用文字或语音讲解"
+              - listitem [ref=e293]:
+                - link "第 3 步：结束录制" [ref=e294] [cursor=pointer]:
+                  - /url: "#第-3-步结束录制"
+              - listitem [ref=e295]:
+                - link "第 4 步：预览回放（可选）" [ref=e296] [cursor=pointer]:
+                  - /url: "#第-4-步预览回放可选"
+              - listitem [ref=e297]:
+                - link "第 5 步：发送，交给教学 Agent" [ref=e298] [cursor=pointer]:
+                  - /url: "#第-5-步发送交给教学-agent"
+              - listitem [ref=e299]:
+                - link "第 6 步：沉淀成记忆条目" [ref=e300] [cursor=pointer]:
+                  - /url: "#第-6-步沉淀成记忆条目"
+          - listitem [ref=e301]:
+            - link "录屏处理时到底发生了什么" [ref=e302] [cursor=pointer]:
+              - /url: "#录屏处理时到底发生了什么"
+          - listitem [ref=e303]:
+            - link "语音注释（可选）" [ref=e304] [cursor=pointer]:
+              - /url: "#语音注释可选"
+          - listitem [ref=e305]:
+            - link "录屏教学的最佳实践" [ref=e306] [cursor=pointer]:
+              - /url: "#录屏教学的最佳实践"
+          - listitem [ref=e307]:
+            - link "下一步" [ref=e308] [cursor=pointer]:
+              - /url: "#下一步"
+  - contentinfo [ref=e309]:
+    - generic [ref=e310]:
+      - generic [ref=e311]:
+        - generic [ref=e312]:
+          - generic [ref=e313]: 文档
+          - list [ref=e314]:
+            - listitem [ref=e315]:
+              - link "简介" [ref=e316] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e317]:
+              - link "教学模式" [ref=e318] [cursor=pointer]:
+                - /url: /teach-mode/overview
+            - listitem [ref=e319]:
+              - link "录屏教学" [ref=e320] [cursor=pointer]:
+                - /url: /teach-mode/teach-by-recording
+        - generic [ref=e321]:
+          - generic [ref=e322]: 帮助
+          - list [ref=e323]:
+            - listitem [ref=e324]:
+              - link "常见问题" [ref=e325] [cursor=pointer]:
+                - /url: /faq
+            - listitem [ref=e326]:
+              - link "设置" [ref=e327] [cursor=pointer]:
+                - /url: /features/settings
+      - generic [ref=e329]: Copyright © 2026 Agivar.

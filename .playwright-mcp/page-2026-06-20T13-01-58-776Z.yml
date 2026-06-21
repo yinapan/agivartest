@@ -1,0 +1,246 @@
+- generic [ref=e2]:
+  - region "跳到主要内容":
+    - link "跳到主要内容" [ref=e3] [cursor=pointer]:
+      - /url: "#__docusaurus_skipToContent_fallback"
+  - navigation "主导航" [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "Agivar Agivar" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Agivar" [ref=e9]
+          - generic [ref=e10]: Agivar
+        - link "文档" [ref=e11] [cursor=pointer]:
+          - /url: /
+      - generic [ref=e12]:
+        - button "简体中文" [ref=e14] [cursor=pointer]:
+          - img [ref=e15]
+          - text: 简体中文
+        - button "切换浅色/暗黑模式（当前为system mode）" [ref=e18] [cursor=pointer]:
+          - img [ref=e19]
+  - generic [ref=e23]:
+    - complementary [ref=e24]:
+      - navigation "文档侧边栏" [ref=e27]:
+        - list [ref=e28]:
+          - listitem [ref=e29]:
+            - link "简介" [ref=e30] [cursor=pointer]:
+              - /url: /
+              - generic "简介" [ref=e31]
+          - listitem [ref=e32]:
+            - button "快速开始" [expanded] [ref=e34] [cursor=pointer]:
+              - generic "快速开始" [ref=e35]
+            - list [ref=e36]:
+              - listitem [ref=e37]:
+                - link "安装" [ref=e38] [cursor=pointer]:
+                  - /url: /getting-started/installation
+                  - generic "安装" [ref=e39]
+              - listitem [ref=e40]:
+                - link "登录与账号" [ref=e41] [cursor=pointer]:
+                  - /url: /getting-started/sign-in
+                  - generic "登录与账号" [ref=e42]
+              - listitem [ref=e43]:
+                - link "界面导览" [ref=e44] [cursor=pointer]:
+                  - /url: /getting-started/interface-tour
+                  - generic "界面导览" [ref=e45]
+          - listitem [ref=e46]:
+            - link "任务模式" [ref=e47] [cursor=pointer]:
+              - /url: /task-mode
+              - generic "任务模式" [ref=e48]
+          - listitem [ref=e49]:
+            - button "教学模式" [expanded] [ref=e51] [cursor=pointer]:
+              - generic "教学模式" [ref=e52]
+            - list [ref=e53]:
+              - listitem [ref=e54]:
+                - link "总览" [ref=e55] [cursor=pointer]:
+                  - /url: /teach-mode/overview
+                  - generic "总览" [ref=e56]
+              - listitem [ref=e57]:
+                - link "对话教学" [ref=e58] [cursor=pointer]:
+                  - /url: /teach-mode/teach-by-chat
+                  - generic "对话教学" [ref=e59]
+              - listitem [ref=e60]:
+                - link "录屏教学 ⭐" [ref=e61] [cursor=pointer]:
+                  - /url: /teach-mode/teach-by-recording
+                  - generic "录屏教学 ⭐" [ref=e62]
+              - listitem [ref=e63]:
+                - link "记忆库" [ref=e64] [cursor=pointer]:
+                  - /url: /teach-mode/memory-base
+                  - generic "记忆库" [ref=e65]
+          - listitem [ref=e66]:
+            - button "功能细节" [ref=e68] [cursor=pointer]:
+              - generic "功能细节" [ref=e69]
+          - listitem [ref=e70]:
+            - link "常见问题" [ref=e71] [cursor=pointer]:
+              - /url: /faq
+              - generic "常见问题" [ref=e72]
+    - main [ref=e73]:
+      - generic [ref=e75]:
+        - generic [ref=e77]:
+          - article [ref=e78]:
+            - navigation "页面路径" [ref=e79]:
+              - list [ref=e80]:
+                - listitem [ref=e81]:
+                  - link "主页面" [ref=e82] [cursor=pointer]:
+                    - /url: /
+                    - img [ref=e83]
+                - listitem [ref=e85]:
+                  - generic [ref=e86]: 任务模式
+            - generic [ref=e87]:
+              - heading "任务模式" [level=1] [ref=e89]
+              - paragraph [ref=e90]: 任务模式是 Agivar 的"干活"模式：你描述要做什么，它自己想清楚步骤，然后真的去操作你的电脑把事情办成。
+              - paragraph [ref=e91]: 新建对话默认就是任务模式（不勾选「教学」即可）。
+              - heading "怎么用怎么用的直接链接" [level=2] [ref=e92]:
+                - text: 怎么用
+                - link "怎么用的直接链接" [ref=e93] [cursor=pointer]:
+                  - /url: "#怎么用"
+                  - text: "#"
+              - paragraph [ref=e94]: 直接说你的需求，越具体越好。比如：
+              - list [ref=e95]:
+                - listitem [ref=e96]:
+                  - text: "\"把"
+                  - code [ref=e97]: D:\照片\2024
+                  - text: 里所有大于 5MB 的 jpg 压缩到 2MB 以内，原图备份到
+                  - code [ref=e98]: _orig
+                  - text: 子目录"
+                - listitem [ref=e99]: "\"打开浏览器，在 bilibili 搜索『非十科技』，进第一个视频，给它投 2 个币\""
+                - listitem [ref=e100]:
+                  - text: "\"把这个 Excel 里 B 列为空的行删掉，另存为"
+                  - code [ref=e101]: cleaned.xlsx
+                  - text: "\""
+              - paragraph [ref=e102]: 如果只是一个能直接回答的简单问题，它会直接回答，不会"为了用工具而用工具"。
+              - heading "它是怎么工作的它是怎么工作的的直接链接" [level=2] [ref=e103]:
+                - text: 它是怎么工作的
+                - link "它是怎么工作的的直接链接" [ref=e104] [cursor=pointer]:
+                  - /url: "#它是怎么工作的"
+                  - text: "#"
+              - list [ref=e105]:
+                - listitem [ref=e106]:
+                  - strong [ref=e107]: 先规划，后执行
+                  - text: ——任务开始时它会先列一个 TODO 计划（你能在任务进度悬浮窗里看到），然后按计划推进，每完成一步就更新状态。
+                - listitem [ref=e108]:
+                  - strong [ref=e109]: 优先用"轻"的方式
+                  - text: ——能用普通工具、命令、脚本完成的部分，它不会去点界面。GUI 操作（computer use）是兜底手段。
+                - listitem [ref=e110]:
+                  - strong [ref=e111]: 确定的批量活儿写成脚本
+                  - text: ——边界清晰、目标明确的部分，它倾向于写一个 Python 脚本（保存到
+                  - code [ref=e112]: ~/.agivar/
+                  - text: 下按日期分的脚本目录）再运行，而不是拆成一堆零碎操作。
+                - listitem [ref=e113]:
+                  - strong [ref=e114]: 执行前查记忆库
+                  - text: ——做 GUI 任务前，它会看看记忆库里有没有相关的平台经验、规则、术语。这正是
+                  - link "教学模式" [ref=e115] [cursor=pointer]:
+                    - /url: /teach-mode/overview
+                  - text: 沉淀下来的东西。如果某条记忆引用了示教录屏，它还能就录屏里的细节提问。
+                - listitem [ref=e116]:
+                  - strong [ref=e117]: 边做边验证
+                  - text: ——每一步操作前后它都会观察当前状态，确认操作有没有生效、是不是在朝目标推进。
+              - heading "你会看到什么你会看到什么的直接链接" [level=2] [ref=e118]:
+                - text: 你会看到什么
+                - link "你会看到什么的直接链接" [ref=e119] [cursor=pointer]:
+                  - /url: "#你会看到什么"
+                  - text: "#"
+              - list [ref=e120]:
+                - listitem [ref=e121]:
+                  - strong [ref=e122]: 任务进度悬浮窗
+                  - text: ：TODO 列表 + 完成进度 + 最新动态。
+                - listitem [ref=e123]:
+                  - strong [ref=e124]: 工具调用卡片
+                  - text: ：每次调用工具的输入/结果，可展开。
+                - listitem [ref=e125]:
+                  - strong [ref=e126]: GUI 操作高亮
+                  - text: ：进行 computer use 时屏幕上的提示覆盖层；聊天区里的"第 N 步：完成"。
+                - listitem [ref=e127]: 任务真正做完时，托盘会弹一个"任务已完成"的通知。
+              - heading "什么时候需要你接管什么时候需要你接管的直接链接" [level=2] [ref=e128]:
+                - text: 什么时候需要你接管
+                - link "什么时候需要你接管的直接链接" [ref=e129] [cursor=pointer]:
+                  - /url: "#什么时候需要你接管"
+                  - text: "#"
+              - paragraph [ref=e130]:
+                - text: 有些步骤 AI 没法替你完成，它会停下来告诉你，并把发送按钮切到
+                - strong [ref=e131]: ▶ 继续
+                - text: ：
+              - list [ref=e132]:
+                - listitem [ref=e133]: 需要登录某个账号、输入密码；
+                - listitem [ref=e134]: 需要过验证码 / 短信验证；
+                - listitem [ref=e135]: 需要授予某种系统权限；
+                - listitem [ref=e136]: 其它必须由你本人操作的环节。
+              - paragraph [ref=e137]:
+                - text: 你处理完之后，点
+                - strong [ref=e138]: ▶ 继续
+                - text: （可以不输入任何文字），它就接着往下做。
+              - heading "停止 / 继续停止 / 继续的直接链接" [level=2] [ref=e139]:
+                - text: 停止 / 继续
+                - link "停止 / 继续的直接链接" [ref=e140] [cursor=pointer]:
+                  - /url: "#停止--继续"
+                  - text: "#"
+              - list [ref=e141]:
+                - listitem [ref=e142]:
+                  - text: 任务进行中，发送按钮是
+                  - strong [ref=e143]: ■ 停止
+                  - text: ——点它中止当前回复。
+                - listitem [ref=e144]:
+                  - text: 任务被暂停（等你接管，或被你停下）后，发送按钮是
+                  - strong [ref=e145]: ▶ 继续
+                  - text: ——点它继续，或者直接输入新的指示再发送。
+              - heading "想让它做得更好？想让它做得更好？的直接链接" [level=2] [ref=e146]:
+                - text: 想让它做得更好？
+                - link "想让它做得更好？的直接链接" [ref=e147] [cursor=pointer]:
+                  - /url: "#想让它做得更好"
+                  - text: "#"
+              - paragraph [ref=e148]:
+                - text: 把你的固定流程、平台规则、个人偏好教给它——见
+                - link "教学模式总览" [ref=e149] [cursor=pointer]:
+                  - /url: /teach-mode/overview
+                - text: 。一次教学，之后所有相关任务都受益。
+          - navigation "文件选项卡" [ref=e150]:
+            - link "上一页 « 界面导览" [ref=e151] [cursor=pointer]:
+              - /url: /getting-started/interface-tour
+              - generic [ref=e152]: 上一页
+              - generic [ref=e153]: « 界面导览
+            - link "下一页 总览 »" [ref=e154] [cursor=pointer]:
+              - /url: /teach-mode/overview
+              - generic [ref=e155]: 下一页
+              - generic [ref=e156]: 总览 »
+        - list [ref=e159]:
+          - listitem [ref=e160]:
+            - link "怎么用" [ref=e161] [cursor=pointer]:
+              - /url: "#怎么用"
+          - listitem [ref=e162]:
+            - link "它是怎么工作的" [ref=e163] [cursor=pointer]:
+              - /url: "#它是怎么工作的"
+          - listitem [ref=e164]:
+            - link "你会看到什么" [ref=e165] [cursor=pointer]:
+              - /url: "#你会看到什么"
+          - listitem [ref=e166]:
+            - link "什么时候需要你接管" [ref=e167] [cursor=pointer]:
+              - /url: "#什么时候需要你接管"
+          - listitem [ref=e168]:
+            - link "停止 / 继续" [ref=e169] [cursor=pointer]:
+              - /url: "#停止--继续"
+          - listitem [ref=e170]:
+            - link "想让它做得更好？" [ref=e171] [cursor=pointer]:
+              - /url: "#想让它做得更好"
+  - contentinfo [ref=e172]:
+    - generic [ref=e173]:
+      - generic [ref=e174]:
+        - generic [ref=e175]:
+          - generic [ref=e176]: 文档
+          - list [ref=e177]:
+            - listitem [ref=e178]:
+              - link "简介" [ref=e179] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e180]:
+              - link "教学模式" [ref=e181] [cursor=pointer]:
+                - /url: /teach-mode/overview
+            - listitem [ref=e182]:
+              - link "录屏教学" [ref=e183] [cursor=pointer]:
+                - /url: /teach-mode/teach-by-recording
+        - generic [ref=e184]:
+          - generic [ref=e185]: 帮助
+          - list [ref=e186]:
+            - listitem [ref=e187]:
+              - link "常见问题" [ref=e188] [cursor=pointer]:
+                - /url: /faq
+            - listitem [ref=e189]:
+              - link "设置" [ref=e190] [cursor=pointer]:
+                - /url: /features/settings
+      - generic [ref=e192]: Copyright © 2026 Agivar.

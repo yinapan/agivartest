@@ -1,0 +1,310 @@
+- generic [ref=e2]:
+  - region "跳到主要内容":
+    - link "跳到主要内容" [ref=e3] [cursor=pointer]:
+      - /url: "#__docusaurus_skipToContent_fallback"
+  - navigation "主导航" [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "Agivar Agivar" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Agivar" [ref=e9]
+          - generic [ref=e10]: Agivar
+        - link "文档" [ref=e11] [cursor=pointer]:
+          - /url: /
+      - generic [ref=e12]:
+        - button "简体中文" [ref=e14] [cursor=pointer]:
+          - img [ref=e15]
+          - text: 简体中文
+        - button "切换浅色/暗黑模式（当前为system mode）" [ref=e18] [cursor=pointer]:
+          - img [ref=e19]
+  - generic [ref=e23]:
+    - complementary [ref=e24]:
+      - navigation "文档侧边栏" [ref=e27]:
+        - list [ref=e28]:
+          - listitem [ref=e29]:
+            - link "简介" [ref=e30] [cursor=pointer]:
+              - /url: /
+              - generic "简介" [ref=e31]
+          - listitem [ref=e32]:
+            - button "快速开始" [expanded] [ref=e34] [cursor=pointer]:
+              - generic "快速开始" [ref=e35]
+            - list [ref=e36]:
+              - listitem [ref=e37]:
+                - link "安装" [ref=e38] [cursor=pointer]:
+                  - /url: /getting-started/installation
+                  - generic "安装" [ref=e39]
+              - listitem [ref=e40]:
+                - link "登录与账号" [ref=e41] [cursor=pointer]:
+                  - /url: /getting-started/sign-in
+                  - generic "登录与账号" [ref=e42]
+              - listitem [ref=e43]:
+                - link "界面导览" [ref=e44] [cursor=pointer]:
+                  - /url: /getting-started/interface-tour
+                  - generic "界面导览" [ref=e45]
+          - listitem [ref=e46]:
+            - link "任务模式" [ref=e47] [cursor=pointer]:
+              - /url: /task-mode
+              - generic "任务模式" [ref=e48]
+          - listitem [ref=e49]:
+            - button "教学模式" [expanded] [ref=e51] [cursor=pointer]:
+              - generic "教学模式" [ref=e52]
+            - list [ref=e53]:
+              - listitem [ref=e54]:
+                - link "总览" [ref=e55] [cursor=pointer]:
+                  - /url: /teach-mode/overview
+                  - generic "总览" [ref=e56]
+              - listitem [ref=e57]:
+                - link "对话教学" [ref=e58] [cursor=pointer]:
+                  - /url: /teach-mode/teach-by-chat
+                  - generic "对话教学" [ref=e59]
+              - listitem [ref=e60]:
+                - link "录屏教学 ⭐" [ref=e61] [cursor=pointer]:
+                  - /url: /teach-mode/teach-by-recording
+                  - generic "录屏教学 ⭐" [ref=e62]
+              - listitem [ref=e63]:
+                - link "记忆库" [ref=e64] [cursor=pointer]:
+                  - /url: /teach-mode/memory-base
+                  - generic "记忆库" [ref=e65]
+          - listitem [ref=e66]:
+            - button "功能细节" [ref=e68] [cursor=pointer]:
+              - generic "功能细节" [ref=e69]
+          - listitem [ref=e70]:
+            - link "常见问题" [ref=e71] [cursor=pointer]:
+              - /url: /faq
+              - generic "常见问题" [ref=e72]
+    - main [ref=e73]:
+      - generic [ref=e75]:
+        - generic [ref=e77]:
+          - article [ref=e78]:
+            - navigation "页面路径" [ref=e79]:
+              - list [ref=e80]:
+                - listitem [ref=e81]:
+                  - link "主页面" [ref=e82] [cursor=pointer]:
+                    - /url: /
+                    - img [ref=e83]
+                - listitem [ref=e85]:
+                  - generic [ref=e86]: 教学模式
+                - listitem [ref=e87]:
+                  - generic [ref=e88]: 记忆库
+            - generic [ref=e89]:
+              - heading "记忆库管理" [level=1] [ref=e91]
+              - paragraph [ref=e92]: 记忆库是 Agivar 长期记住"你教过的东西"的地方。教学模式往里写，任务模式从里读。
+              - heading "结构：平台 / 主题结构：平台 / 主题的直接链接" [level=2] [ref=e93]:
+                - text: 结构：平台 / 主题
+                - link "结构：平台 / 主题的直接链接" [ref=e94] [cursor=pointer]:
+                  - /url: "#结构平台--主题"
+                  - text: "#"
+              - paragraph [ref=e95]:
+                - text: 每条记忆归在一个
+                - code [ref=e96]: 平台/主题
+                - text: 路径下：
+              - list [ref=e97]:
+                - listitem [ref=e98]:
+                  - strong [ref=e99]: 平台（platform）
+                  - text: ——某个软件、网站、系统的名字，比如
+                  - code [ref=e100]: bilibili
+                  - text: 、
+                  - code [ref=e101]: vscode
+                  - text: 、
+                  - code [ref=e102]: 公司报销系统
+                  - text: 。跨平台、或没有明确归属的经验放在
+                  - code [ref=e103]: general
+                  - text: 下。
+                - listitem [ref=e104]:
+                  - strong [ref=e105]: 主题（topic）
+                  - text: ——具体的某个操作、流程、规则或经验，比如
+                  - code [ref=e106]: 投币
+                  - text: 、
+                  - code [ref=e107]: 提交发票
+                  - text: 、
+                  - code [ref=e108]: 工具调用偏好
+                  - text: 。
+              - paragraph [ref=e109]: 例子：
+              - generic [ref=e111]:
+                - code [ref=e113]:
+                  - generic [ref=e114]: bilibili/投币
+                  - generic [ref=e115]: bilibili/三连
+                  - generic [ref=e116]: 公司报销系统/提交发票
+                  - generic [ref=e117]: general/报销规则
+                  - generic [ref=e118]: general/工具调用偏好
+                - button "复制代码到剪贴板" [ref=e120] [cursor=pointer]:
+                  - generic [ref=e121]:
+                    - img [ref=e122]
+                    - img [ref=e124]
+              - heading "一条记忆长什么样一条记忆长什么样的直接链接" [level=2] [ref=e126]:
+                - text: 一条记忆长什么样
+                - link "一条记忆长什么样的直接链接" [ref=e127] [cursor=pointer]:
+                  - /url: "#一条记忆长什么样"
+                  - text: "#"
+              - paragraph [ref=e128]: 按内容分两类：
+              - heading "操作流程类（最常见）操作流程类（最常见）的直接链接" [level=3] [ref=e129]:
+                - text: 操作流程类（最常见）
+                - link "操作流程类（最常见）的直接链接" [ref=e130] [cursor=pointer]:
+                  - /url: "#操作流程类最常见"
+                  - text: "#"
+              - paragraph [ref=e131]: 教某个软件/网页/系统的操作流程时，条目里包含：
+              - list [ref=e132]:
+                - listitem [ref=e133]:
+                  - strong [ref=e134]: 概述
+                  - text: ——这个操作的目标、适用场景、最终结果。
+                - listitem [ref=e135]:
+                  - strong [ref=e136]: 初始状态
+                  - text: ——执行前应处于什么状态（是否已打开浏览器、是否已登录、当前在哪个页面、页面上应看到哪些关键元素）。
+                - listitem [ref=e137]:
+                  - strong [ref=e138]: 操作步骤
+                  - text: ——拆成多个抽象步骤；每个抽象步骤下面是具体操作，结尾一句"阶段性成果"。界面定位写得消歧义。
+                - listitem [ref=e139]:
+                  - strong [ref=e140]: 相关示教视频
+                  - text: （如有录屏）——视频 ID、简介、与本条记忆相关的关键片段。
+              - paragraph [ref=e141]:
+                - text: （完整示例见
+                - link "录屏教学 → 第 6 步" [ref=e142] [cursor=pointer]:
+                  - /url: /teach-mode/teach-by-recording#%E7%AC%AC-6-%E6%AD%A5%E6%B2%89%E6%B7%80%E6%88%90%E8%AE%B0%E5%BF%86%E6%9D%A1%E7%9B%AE
+                - text: 。）
+              - heading "规则 / 偏好 / 概念类规则 / 偏好 / 概念类的直接链接" [level=3] [ref=e143]:
+                - text: 规则 / 偏好 / 概念类
+                - link "规则 / 偏好 / 概念类的直接链接" [ref=e144] [cursor=pointer]:
+                  - /url: "#规则--偏好--概念类"
+                  - text: "#"
+              - paragraph [ref=e145]: 比如"报销不超过 500 元的发票不需附说明"、"我喜欢工具调用合并到一个 actions 数组"、"我们说的『冻结订单』指的是……"——按内容自由组织，但保证结构清晰、可复用。
+              - heading "AI 是怎么维护它的AI 是怎么维护它的的直接链接" [level=2] [ref=e146]:
+                - text: AI 是怎么维护它的
+                - link "AI 是怎么维护它的的直接链接" [ref=e147] [cursor=pointer]:
+                  - /url: "#ai-是怎么维护它的"
+                  - text: "#"
+              - list [ref=e148]:
+                - listitem [ref=e149]:
+                  - strong [ref=e150]: 先看索引再决定新增还是更新
+                  - text: ——教学/任务 Agent 启动时就拿到了当前记忆库的索引（每条一行：
+                  - code [ref=e151]: 平台/主题 + 一句简介
+                  - text: ），所以它知道有哪些条目。要改某条时，会先读出原文，再做精确的局部修改，而不是新建一条重复的。
+                - listitem [ref=e152]:
+                  - strong [ref=e153]: 整理而非照抄
+                  - text: ——把你说的整理成清晰、可执行、可复用的形式。
+                - listitem [ref=e154]:
+                  - strong [ref=e155]: 冲突以最新为准
+                  - text: ——新旧信息冲突时，以你最新的明确说明为准。
+                - listitem [ref=e156]:
+                  - strong [ref=e157]: 不确定就标注或反问
+                  - text: ——不会编造你没教过的步骤。
+                - listitem [ref=e158]:
+                  - strong [ref=e159]: 不是什么都往里塞
+                  - text: ——临时闲聊、一次性指令、没复用价值的信息不入库。
+              - heading "怎么查看 / 修改怎么查看 / 修改的直接链接" [level=2] [ref=e160]:
+                - text: 怎么查看 / 修改
+                - link "怎么查看 / 修改的直接链接" [ref=e161] [cursor=pointer]:
+                  - /url: "#怎么查看--修改"
+                  - text: "#"
+              - list [ref=e162]:
+                - listitem [ref=e163]:
+                  - strong [ref=e164]: 查看
+                  - text: ：在教学模式（或任务模式）对话里直接让它"列一下记忆库里和 XX 有关的条目"、"把
+                  - code [ref=e165]: bilibili/投币
+                  - text: 这条读给我听"。
+                - listitem [ref=e166]:
+                  - strong [ref=e167]: 修改 / 纠正
+                  - text: ：在教学模式对话里指出哪里不对、要补什么，它会更新对应条目——见
+                  - link "对话教学 → 纠正或补充已有记忆" [ref=e168] [cursor=pointer]:
+                    - /url: /teach-mode/teach-by-chat#%E7%BA%A0%E6%AD%A3%E6%88%96%E8%A1%A5%E5%85%85%E5%B7%B2%E6%9C%89%E8%AE%B0%E5%BF%86
+                  - text: 。
+                - listitem [ref=e169]:
+                  - strong [ref=e170]: 删除
+                  - text: ：让它把某条不再需要的记忆删掉即可。
+              - heading "任务模式怎么用到它任务模式怎么用到它的直接链接" [level=2] [ref=e171]:
+                - text: 任务模式怎么用到它
+                - link "任务模式怎么用到它的直接链接" [ref=e172] [cursor=pointer]:
+                  - /url: "#任务模式怎么用到它"
+                  - text: "#"
+              - paragraph [ref=e173]:
+                - text: 任务模式执行 GUI 任务前会先查记忆库：只要某条记忆里
+                - strong [ref=e174]: 可能
+                - text: 有部分内容对当前任务有帮助，它就会读一下；完全不相关的跳过。如果读到的条目里引用了示教录屏（
+                - code [ref=e175]: 视频 ID：00046
+                - text: 这样），而那段录屏对具体步骤有参考价值，它会就录屏里的细节做针对性提问。
+              - paragraph [ref=e176]:
+                - text: 所以——
+                - strong [ref=e177]: 你在教学模式里教得越多、教得越准，任务模式就越省事、越靠谱。
+              - heading "多设备 / 多账号多设备 / 多账号的直接链接" [level=2] [ref=e178]:
+                - text: 多设备 / 多账号
+                - link "多设备 / 多账号的直接链接" [ref=e179] [cursor=pointer]:
+                  - /url: "#多设备--多账号"
+                  - text: "#"
+              - paragraph [ref=e180]:
+                - text: 记忆库存在云端，和
+                - strong [ref=e181]: 账号
+                - text: 绑定。换一台电脑登录同一账号，记忆库还在；不同账号之间记忆库互相独立。（录屏的原始帧留在录制它的那台电脑本地；云端保留的是处理后的关键帧和文本结果。）
+              - heading "下一步下一步的直接链接" [level=2] [ref=e182]:
+                - text: 下一步
+                - link "下一步的直接链接" [ref=e183] [cursor=pointer]:
+                  - /url: "#下一步"
+                  - text: "#"
+              - list [ref=e184]:
+                - listitem [ref=e185]:
+                  - link "录屏教学" [ref=e186] [cursor=pointer]:
+                    - /url: /teach-mode/teach-by-recording
+                - listitem [ref=e187]:
+                  - link "任务模式" [ref=e188] [cursor=pointer]:
+                    - /url: /task-mode
+          - navigation "文件选项卡" [ref=e189]:
+            - link "上一页 « 录屏教学 ⭐" [ref=e190] [cursor=pointer]:
+              - /url: /teach-mode/teach-by-recording
+              - generic [ref=e191]: 上一页
+              - generic [ref=e192]: « 录屏教学 ⭐
+            - link "下一页 录屏与录音 »" [ref=e193] [cursor=pointer]:
+              - /url: /features/recording
+              - generic [ref=e194]: 下一页
+              - generic [ref=e195]: 录屏与录音 »
+        - list [ref=e198]:
+          - listitem [ref=e199]:
+            - link "结构：平台 / 主题" [ref=e200] [cursor=pointer]:
+              - /url: "#结构平台--主题"
+          - listitem [ref=e201]:
+            - link "一条记忆长什么样" [ref=e202] [cursor=pointer]:
+              - /url: "#一条记忆长什么样"
+            - list [ref=e203]:
+              - listitem [ref=e204]:
+                - link "操作流程类（最常见）" [ref=e205] [cursor=pointer]:
+                  - /url: "#操作流程类最常见"
+              - listitem [ref=e206]:
+                - link "规则 / 偏好 / 概念类" [ref=e207] [cursor=pointer]:
+                  - /url: "#规则--偏好--概念类"
+          - listitem [ref=e208]:
+            - link "AI 是怎么维护它的" [ref=e209] [cursor=pointer]:
+              - /url: "#ai-是怎么维护它的"
+          - listitem [ref=e210]:
+            - link "怎么查看 / 修改" [ref=e211] [cursor=pointer]:
+              - /url: "#怎么查看--修改"
+          - listitem [ref=e212]:
+            - link "任务模式怎么用到它" [ref=e213] [cursor=pointer]:
+              - /url: "#任务模式怎么用到它"
+          - listitem [ref=e214]:
+            - link "多设备 / 多账号" [ref=e215] [cursor=pointer]:
+              - /url: "#多设备--多账号"
+          - listitem [ref=e216]:
+            - link "下一步" [ref=e217] [cursor=pointer]:
+              - /url: "#下一步"
+  - contentinfo [ref=e218]:
+    - generic [ref=e219]:
+      - generic [ref=e220]:
+        - generic [ref=e221]:
+          - generic [ref=e222]: 文档
+          - list [ref=e223]:
+            - listitem [ref=e224]:
+              - link "简介" [ref=e225] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e226]:
+              - link "教学模式" [ref=e227] [cursor=pointer]:
+                - /url: /teach-mode/overview
+            - listitem [ref=e228]:
+              - link "录屏教学" [ref=e229] [cursor=pointer]:
+                - /url: /teach-mode/teach-by-recording
+        - generic [ref=e230]:
+          - generic [ref=e231]: 帮助
+          - list [ref=e232]:
+            - listitem [ref=e233]:
+              - link "常见问题" [ref=e234] [cursor=pointer]:
+                - /url: /faq
+            - listitem [ref=e235]:
+              - link "设置" [ref=e236] [cursor=pointer]:
+                - /url: /features/settings
+      - generic [ref=e238]: Copyright © 2026 Agivar.

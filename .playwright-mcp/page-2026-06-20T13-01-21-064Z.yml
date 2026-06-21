@@ -1,0 +1,250 @@
+- generic [ref=e2]:
+  - region "跳到主要内容":
+    - link "跳到主要内容" [ref=e3] [cursor=pointer]:
+      - /url: "#__docusaurus_skipToContent_fallback"
+  - navigation "主导航" [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "Agivar Agivar" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Agivar" [ref=e9]
+          - generic [ref=e10]: Agivar
+        - link "文档" [ref=e11] [cursor=pointer]:
+          - /url: /
+      - generic [ref=e12]:
+        - button "简体中文" [ref=e14] [cursor=pointer]:
+          - img [ref=e15]
+          - text: 简体中文
+        - button "切换浅色/暗黑模式（当前为system mode）" [ref=e18] [cursor=pointer]:
+          - img [ref=e19]
+  - generic [ref=e23]:
+    - complementary [ref=e24]:
+      - navigation "文档侧边栏" [ref=e27]:
+        - list [ref=e28]:
+          - listitem [ref=e29]:
+            - link "简介" [ref=e30] [cursor=pointer]:
+              - /url: /
+              - generic "简介" [ref=e31]
+          - listitem [ref=e32]:
+            - button "快速开始" [expanded] [ref=e34] [cursor=pointer]:
+              - generic "快速开始" [ref=e35]
+            - list [ref=e36]:
+              - listitem [ref=e37]:
+                - link "安装" [ref=e38] [cursor=pointer]:
+                  - /url: /getting-started/installation
+                  - generic "安装" [ref=e39]
+              - listitem [ref=e40]:
+                - link "登录与账号" [ref=e41] [cursor=pointer]:
+                  - /url: /getting-started/sign-in
+                  - generic "登录与账号" [ref=e42]
+              - listitem [ref=e43]:
+                - link "界面导览" [ref=e44] [cursor=pointer]:
+                  - /url: /getting-started/interface-tour
+                  - generic "界面导览" [ref=e45]
+          - listitem [ref=e46]:
+            - link "任务模式" [ref=e47] [cursor=pointer]:
+              - /url: /task-mode
+              - generic "任务模式" [ref=e48]
+          - listitem [ref=e49]:
+            - button "教学模式" [expanded] [ref=e51] [cursor=pointer]:
+              - generic "教学模式" [ref=e52]
+            - list [ref=e53]:
+              - listitem [ref=e54]:
+                - link "总览" [ref=e55] [cursor=pointer]:
+                  - /url: /teach-mode/overview
+                  - generic "总览" [ref=e56]
+              - listitem [ref=e57]:
+                - link "对话教学" [ref=e58] [cursor=pointer]:
+                  - /url: /teach-mode/teach-by-chat
+                  - generic "对话教学" [ref=e59]
+              - listitem [ref=e60]:
+                - link "录屏教学 ⭐" [ref=e61] [cursor=pointer]:
+                  - /url: /teach-mode/teach-by-recording
+                  - generic "录屏教学 ⭐" [ref=e62]
+              - listitem [ref=e63]:
+                - link "记忆库" [ref=e64] [cursor=pointer]:
+                  - /url: /teach-mode/memory-base
+                  - generic "记忆库" [ref=e65]
+          - listitem [ref=e66]:
+            - button "功能细节" [ref=e68] [cursor=pointer]:
+              - generic "功能细节" [ref=e69]
+          - listitem [ref=e70]:
+            - link "常见问题" [ref=e71] [cursor=pointer]:
+              - /url: /faq
+              - generic "常见问题" [ref=e72]
+    - main [ref=e73]:
+      - generic [ref=e75]:
+        - generic [ref=e77]:
+          - article [ref=e78]:
+            - navigation "页面路径" [ref=e79]:
+              - list [ref=e80]:
+                - listitem [ref=e81]:
+                  - link "主页面" [ref=e82] [cursor=pointer]:
+                    - /url: /
+                    - img [ref=e83]
+                - listitem [ref=e85]:
+                  - generic [ref=e86]: 简介
+            - generic [ref=e87]:
+              - heading "Agivar 是什么" [level=1] [ref=e89]
+              - paragraph [ref=e90]:
+                - strong [ref=e91]: Agivar
+                - text: 是一款运行在你电脑上的桌面 AI 助手。它有两个互相成就的能力：
+              - list [ref=e92]:
+                - listitem [ref=e93]:
+                  - strong [ref=e94]: 替你做事
+                  - text: ——理解你的需求，自己规划步骤，并直接操作桌面图形界面、运行命令、处理文件，把任务完成。
+                - listitem [ref=e95]:
+                  - strong [ref=e96]: 被你教会
+                  - text: ——你可以"教"它某个软件/网站的操作流程、业务规则或个人偏好；尤其是用
+                  - strong [ref=e97]: 录屏
+                  - text: 演示一遍，它就能把这套经验沉淀下来，以后执行相关任务时直接复用。
+              - paragraph [ref=e98]:
+                - text: 简单说：
+                - strong [ref=e99]: 用得越多、教得越多，它就越懂你的电脑和你的做事方式。
+              - heading "两种工作模式两种工作模式的直接链接" [level=2] [ref=e100]:
+                - text: 两种工作模式
+                - link "两种工作模式的直接链接" [ref=e101] [cursor=pointer]:
+                  - /url: "#两种工作模式"
+                  - text: "#"
+              - table [ref=e102]:
+                - rowgroup [ref=e103]:
+                  - row "任务模式（Task Mode） 教学模式（Teach Mode）" [ref=e104]:
+                    - columnheader [ref=e105]
+                    - columnheader "任务模式（Task Mode）" [ref=e106]
+                    - columnheader "教学模式（Teach Mode）" [ref=e107]
+                - rowgroup [ref=e108]:
+                  - row "你在做什么 让它执行一个任务 教它知识、流程或偏好" [ref=e109]:
+                    - cell "你在做什么" [ref=e110]
+                    - cell "让它执行一个任务" [ref=e111]:
+                      - text: 让它
+                      - strong [ref=e112]: 执行
+                      - text: 一个任务
+                    - cell "教它知识、流程或偏好" [ref=e113]:
+                      - strong [ref=e114]: 教
+                      - text: 它知识、流程或偏好
+                  - row "它会做什么 规划 → 操作界面/运行命令 → 验证 → 给出结果 理解你的讲解/示教 → 整理成可复用条目 → 写入记忆库" [ref=e115]:
+                    - cell "它会做什么" [ref=e116]
+                    - cell "规划 → 操作界面/运行命令 → 验证 → 给出结果" [ref=e117]
+                    - cell "理解你的讲解/示教 → 整理成可复用条目 → 写入记忆库" [ref=e118]
+                  - row "典型输入 \"把这个文件夹里的图片都压缩一下\" \"帮我在 B 站给这个 UP 主投币\" \"我教你怎么在公司报销系统提交发票\" （附一段录屏）\"照着这个流程操作\"" [ref=e119]:
+                    - cell "典型输入" [ref=e120]
+                    - cell "\"把这个文件夹里的图片都压缩一下\" \"帮我在 B 站给这个 UP 主投币\"" [ref=e121]:
+                      - text: "\"把这个文件夹里的图片都压缩一下\""
+                      - text: "\"帮我在 B 站给这个 UP 主投币\""
+                    - cell "\"我教你怎么在公司报销系统提交发票\" （附一段录屏）\"照着这个流程操作\"" [ref=e122]:
+                      - text: "\"我教你怎么在公司报销系统提交发票\""
+                      - text: （附一段录屏）"照着这个流程操作"
+                  - row "产出 任务完成 + 总结 一条记忆条目（按 平台/主题 归档）" [ref=e123]:
+                    - cell "产出" [ref=e124]
+                    - cell "任务完成 + 总结" [ref=e125]
+                    - cell "一条记忆条目（按 平台/主题 归档）" [ref=e126]:
+                      - text: 一条记忆条目（按
+                      - code [ref=e127]: 平台/主题
+                      - text: 归档）
+              - paragraph [ref=e128]: 两种模式都在同一个聊天窗口里，新建对话时切换即可。一旦对话里有了消息，模式就固定下来，不能再改。
+              - heading "\"教学 → 记忆 → 执行\" 的闭环\"教学 → 记忆 → 执行\" 的闭环的直接链接" [level=2] [ref=e129]:
+                - text: "\"教学 → 记忆 → 执行\" 的闭环"
+                - link "\"教学 → 记忆 → 执行\" 的闭环的直接链接" [ref=e130] [cursor=pointer]:
+                  - /url: "#教学--记忆--执行-的闭环"
+                  - text: "#"
+              - generic [ref=e132]:
+                - code [ref=e134]:
+                  - generic [ref=e135]: 教学模式 记忆库 任务模式
+                  - generic [ref=e136]: ┌──────────────┐ 整理沉淀 ┌────────────────────┐ 执行前查阅 ┌──────────────┐
+                  - generic [ref=e137]: │ 你讲解 / 录屏 │ ──────────▶ │ 平台/主题 + 操作描述 │ ──────────▶ │ 照着流程办事 │
+                  - generic [ref=e138]: │ 演示一遍 │ │ +（可选）示教录屏 │ │ 少走弯路 │
+                  - generic [ref=e139]: └──────────────┘ └────────────────────┘ └──────────────┘
+                - generic [ref=e140]:
+                  - button "切换自动换行" [ref=e141] [cursor=pointer]:
+                    - img [ref=e142]
+                  - button "复制代码到剪贴板" [ref=e144] [cursor=pointer]:
+                    - generic [ref=e145]:
+                      - img [ref=e146]
+                      - img [ref=e148]
+              - list [ref=e150]:
+                - listitem [ref=e151]:
+                  - text: 录屏会被自动处理：抽取关键帧、生成视频简介、生成一份
+                  - strong [ref=e152]: 结构化的"操作描述"
+                  - text: （概述 / 初始状态 / 分步操作 / 阶段性成果）。
+                - listitem [ref=e153]:
+                  - text: 教到的内容存进记忆库，按
+                  - code [ref=e154]: 平台/主题
+                  - text: （如
+                  - code [ref=e155]: bilibili/投币
+                  - text: 、
+                  - code [ref=e156]: general/报销规则
+                  - text: ）组织。
+                - listitem [ref=e157]: 任务模式在执行 GUI 任务前会先查记忆库；如果某条记忆里引用了录屏，它还能就录屏里的细节做针对性提问。
+              - heading "适合谁用适合谁用的直接链接" [level=2] [ref=e158]:
+                - text: 适合谁用
+                - link "适合谁用的直接链接" [ref=e159] [cursor=pointer]:
+                  - /url: "#适合谁用"
+                  - text: "#"
+              - list [ref=e160]:
+                - listitem [ref=e161]: 经常要在某些固定网站/软件里做重复操作，想让 AI 学会后代劳。
+                - listitem [ref=e162]: 有一套"只有自己知道"的内部流程（报销、审批、上架商品……），想沉淀成可复用的知识。
+                - listitem [ref=e163]: 希望 AI 在你的电脑上做事时遵守你的偏好和规则，而不是每次都重新解释。
+              - heading "接下来接下来的直接链接" [level=2] [ref=e164]:
+                - text: 接下来
+                - link "接下来的直接链接" [ref=e165] [cursor=pointer]:
+                  - /url: "#接下来"
+                  - text: "#"
+              - list [ref=e166]:
+                - listitem [ref=e167]:
+                  - text: 还没装？→
+                  - link "安装" [ref=e168] [cursor=pointer]:
+                    - /url: /getting-started/installation
+                - listitem [ref=e169]:
+                  - text: 装好了想先逛一圈？→
+                  - link "界面导览" [ref=e170] [cursor=pointer]:
+                    - /url: /getting-started/interface-tour
+                - listitem [ref=e171]:
+                  - text: 想直接看重点？→
+                  - link "教学模式总览" [ref=e172] [cursor=pointer]:
+                    - /url: /teach-mode/overview
+                  - text: ·
+                  - link "录屏教学" [ref=e173] [cursor=pointer]:
+                    - /url: /teach-mode/teach-by-recording
+          - navigation "文件选项卡" [ref=e174]:
+            - link "下一页 安装 »" [ref=e175] [cursor=pointer]:
+              - /url: /getting-started/installation
+              - generic [ref=e176]: 下一页
+              - generic [ref=e177]: 安装 »
+        - list [ref=e180]:
+          - listitem [ref=e181]:
+            - link "两种工作模式" [ref=e182] [cursor=pointer]:
+              - /url: "#两种工作模式"
+          - listitem [ref=e183]:
+            - link "\"教学 → 记忆 → 执行\" 的闭环" [ref=e184] [cursor=pointer]:
+              - /url: "#教学--记忆--执行-的闭环"
+          - listitem [ref=e185]:
+            - link "适合谁用" [ref=e186] [cursor=pointer]:
+              - /url: "#适合谁用"
+          - listitem [ref=e187]:
+            - link "接下来" [ref=e188] [cursor=pointer]:
+              - /url: "#接下来"
+  - contentinfo [ref=e189]:
+    - generic [ref=e190]:
+      - generic [ref=e191]:
+        - generic [ref=e192]:
+          - generic [ref=e193]: 文档
+          - list [ref=e194]:
+            - listitem [ref=e195]:
+              - link "简介" [ref=e196] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e197]:
+              - link "教学模式" [ref=e198] [cursor=pointer]:
+                - /url: /teach-mode/overview
+            - listitem [ref=e199]:
+              - link "录屏教学" [ref=e200] [cursor=pointer]:
+                - /url: /teach-mode/teach-by-recording
+        - generic [ref=e201]:
+          - generic [ref=e202]: 帮助
+          - list [ref=e203]:
+            - listitem [ref=e204]:
+              - link "常见问题" [ref=e205] [cursor=pointer]:
+                - /url: /faq
+            - listitem [ref=e206]:
+              - link "设置" [ref=e207] [cursor=pointer]:
+                - /url: /features/settings
+      - generic [ref=e209]: Copyright © 2026 Agivar.

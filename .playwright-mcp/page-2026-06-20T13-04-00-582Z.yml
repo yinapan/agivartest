@@ -1,0 +1,273 @@
+- generic [ref=e2]:
+  - region "跳到主要内容":
+    - link "跳到主要内容" [ref=e3] [cursor=pointer]:
+      - /url: "#__docusaurus_skipToContent_fallback"
+  - navigation "主导航" [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "Agivar Agivar" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Agivar" [ref=e9]
+          - generic [ref=e10]: Agivar
+        - link "文档" [ref=e11] [cursor=pointer]:
+          - /url: /
+      - generic [ref=e12]:
+        - button "简体中文" [ref=e14] [cursor=pointer]:
+          - img [ref=e15]
+          - text: 简体中文
+        - button "切换浅色/暗黑模式（当前为system mode）" [ref=e18] [cursor=pointer]:
+          - img [ref=e19]
+  - generic [ref=e23]:
+    - complementary [ref=e24]:
+      - navigation "文档侧边栏" [ref=e27]:
+        - list [ref=e28]:
+          - listitem [ref=e29]:
+            - link "简介" [ref=e30] [cursor=pointer]:
+              - /url: /
+              - generic "简介" [ref=e31]
+          - listitem [ref=e32]:
+            - button "快速开始" [expanded] [ref=e34] [cursor=pointer]:
+              - generic "快速开始" [ref=e35]
+            - list [ref=e36]:
+              - listitem [ref=e37]:
+                - link "安装" [ref=e38] [cursor=pointer]:
+                  - /url: /getting-started/installation
+                  - generic "安装" [ref=e39]
+              - listitem [ref=e40]:
+                - link "登录与账号" [ref=e41] [cursor=pointer]:
+                  - /url: /getting-started/sign-in
+                  - generic "登录与账号" [ref=e42]
+              - listitem [ref=e43]:
+                - link "界面导览" [ref=e44] [cursor=pointer]:
+                  - /url: /getting-started/interface-tour
+                  - generic "界面导览" [ref=e45]
+          - listitem [ref=e46]:
+            - link "任务模式" [ref=e47] [cursor=pointer]:
+              - /url: /task-mode
+              - generic "任务模式" [ref=e48]
+          - listitem [ref=e49]:
+            - button "教学模式" [expanded] [ref=e51] [cursor=pointer]:
+              - generic "教学模式" [ref=e52]
+            - list [ref=e53]:
+              - listitem [ref=e54]:
+                - link "总览" [ref=e55] [cursor=pointer]:
+                  - /url: /teach-mode/overview
+                  - generic "总览" [ref=e56]
+              - listitem [ref=e57]:
+                - link "对话教学" [ref=e58] [cursor=pointer]:
+                  - /url: /teach-mode/teach-by-chat
+                  - generic "对话教学" [ref=e59]
+              - listitem [ref=e60]:
+                - link "录屏教学 ⭐" [ref=e61] [cursor=pointer]:
+                  - /url: /teach-mode/teach-by-recording
+                  - generic "录屏教学 ⭐" [ref=e62]
+              - listitem [ref=e63]:
+                - link "记忆库" [ref=e64] [cursor=pointer]:
+                  - /url: /teach-mode/memory-base
+                  - generic "记忆库" [ref=e65]
+          - listitem [ref=e66]:
+            - button "功能细节" [ref=e68] [cursor=pointer]:
+              - generic "功能细节" [ref=e69]
+          - listitem [ref=e70]:
+            - link "常见问题" [ref=e71] [cursor=pointer]:
+              - /url: /faq
+              - generic "常见问题" [ref=e72]
+    - main [ref=e73]:
+      - generic [ref=e75]:
+        - generic [ref=e77]:
+          - article [ref=e78]:
+            - navigation "页面路径" [ref=e79]:
+              - list [ref=e80]:
+                - listitem [ref=e81]:
+                  - link "主页面" [ref=e82] [cursor=pointer]:
+                    - /url: /
+                    - img [ref=e83]
+                - listitem [ref=e85]:
+                  - generic [ref=e86]: 快速开始
+                - listitem [ref=e87]:
+                  - generic [ref=e88]: 界面导览
+            - generic [ref=e89]:
+              - heading "界面导览" [level=1] [ref=e91]
+              - paragraph [ref=e92]:
+                - text: 主窗口分三块：左侧
+                - strong [ref=e93]: 会话侧边栏
+                - text: 、中间
+                - strong [ref=e94]: 聊天区
+                - text: 、底部
+                - strong [ref=e95]: 输入栏
+                - text: 。再加上几个会按需出现的浮动小窗。
+              - heading "1. 会话侧边栏（左侧）1. 会话侧边栏（左侧）的直接链接" [level=2] [ref=e96]:
+                - text: 1. 会话侧边栏（左侧）
+                - link "1. 会话侧边栏（左侧）的直接链接" [ref=e97] [cursor=pointer]:
+                  - /url: "#1-会话侧边栏左侧"
+                  - text: "#"
+              - list [ref=e98]:
+                - listitem [ref=e99]:
+                  - strong [ref=e100]: 新对话
+                  - text: ：每个对话独立，可以是任务模式或教学模式。
+                - listitem [ref=e101]:
+                  - strong [ref=e102]: 最近
+                  - text: ：按时间倒序列出历史对话，自动生成标题。
+                - listitem [ref=e103]:
+                  - strong [ref=e104]: 筛选
+                  - text: ：可以只看「任务」或只看「教学」对话；教学模式的对话会带一个"书"形图标。
+                - listitem [ref=e105]:
+                  - strong [ref=e106]: 删除
+                  - text: ：在对话上右键 / 悬停可删除。
+                - listitem [ref=e107]:
+                  - text: 左下角是
+                  - strong [ref=e108]: 账号区
+                  - text: （当前用户）。
+              - paragraph [ref=e109]:
+                - text: 详见
+                - link "会话管理" [ref=e110] [cursor=pointer]:
+                  - /url: /features/conversations
+                - text: 。
+              - heading "2. 聊天区（中间）2. 聊天区（中间）的直接链接" [level=2] [ref=e111]:
+                - text: 2. 聊天区（中间）
+                - link "2. 聊天区（中间）的直接链接" [ref=e112] [cursor=pointer]:
+                  - /url: "#2-聊天区中间"
+                  - text: "#"
+              - paragraph [ref=e113]: 显示当前对话的消息往来。任务执行过程中你还会在这里看到：
+              - list [ref=e114]:
+                - listitem [ref=e115]:
+                  - strong [ref=e116]: 工具调用卡片
+                  - text: ——AI 调用某个工具（读文件、搜索、运行命令、查记忆库……）时的输入和结果，可展开查看。
+                - listitem [ref=e117]:
+                  - strong [ref=e118]: GUI 操作高亮
+                  - text: ——AI 进行 computer use 时，屏幕上会有提示性的高亮覆盖层；聊天区里会显示"第 N 步：完成"之类的进度。
+              - heading "3. 输入栏（底部）3. 输入栏（底部）的直接链接" [level=2] [ref=e119]:
+                - text: 3. 输入栏（底部）
+                - link "3. 输入栏（底部）的直接链接" [ref=e120] [cursor=pointer]:
+                  - /url: "#3-输入栏底部"
+                  - text: "#"
+              - list [ref=e121]:
+                - listitem [ref=e122]:
+                  - strong [ref=e123]: 文本框
+                  - text: ：输入消息。Enter 发送，Shift+Enter 换行。
+                - listitem [ref=e124]:
+                  - strong [ref=e125]: 图片
+                  - text: ：把截图/图片作为附件发给 AI。
+                - listitem [ref=e126]:
+                  - strong [ref=e127]: 录屏
+                  - text: ：下拉可开始录屏，或选择历史录屏作为附件（教学模式下最常用，见
+                  - link "录屏与录音教程" [ref=e128] [cursor=pointer]:
+                    - /url: /features/recording
+                  - text: ）。
+                - listitem [ref=e129]:
+                  - strong [ref=e130]: 教学模式 chip
+                  - text: ：当对话处于教学模式时，文本框左侧会出现一个「教学」标签；对话还没有消息时可以点 ✕ 退出教学模式。也可以从
+                  - code [ref=e131]: +
+                  - text: 旁的菜单里勾选/取消「教学」。
+                - listitem [ref=e132]:
+                  - strong [ref=e133]: 发送按钮
+                  - text: ：会在三种状态间切换——
+                  - list [ref=e134]:
+                    - listitem [ref=e135]:
+                      - strong [ref=e136]: ▲ 发送
+                      - text: ：提交消息；
+                    - listitem [ref=e137]:
+                      - strong [ref=e138]: ■ 停止
+                      - text: ：任务进行中，点它可中止当前回复；
+                    - listitem [ref=e139]:
+                      - strong [ref=e140]: ▶ 继续
+                      - text: ：任务被暂停后，点它（可以不输入任何内容）让 AI 继续。
+                - listitem [ref=e141]:
+                  - text: 录屏正在后台处理时，文本框仍可输入、还能继续加附件，但
+                  - strong [ref=e142]: 发送按钮会暂时禁用
+                  - text: ，等处理完成才能发出。
+              - heading "4. 浮动小窗（按需出现）4. 浮动小窗（按需出现）的直接链接" [level=2] [ref=e143]:
+                - text: 4. 浮动小窗（按需出现）
+                - link "4. 浮动小窗（按需出现）的直接链接" [ref=e144] [cursor=pointer]:
+                  - /url: "#4-浮动小窗按需出现"
+                  - text: "#"
+              - list [ref=e145]:
+                - listitem [ref=e146]:
+                  - strong [ref=e147]: 录制控制条
+                  - text: ：录屏时出现在屏幕上的一个半透明小条，可拖动，带语音注释、文字注释、历史、暂停 / 继续和结束按钮。默认
+                  - strong [ref=e148]: 不会被录进画面
+                  - text: 。
+                - listitem [ref=e149]:
+                  - strong [ref=e150]: 注释输入区
+                  - text: ：录屏过程中点「注释」展开，或使用快捷键（Windows：Alt+I；macOS：Cmd+Shift+I），用来给某一步加文字说明；绿色声波按钮可录入语音注释。
+                - listitem [ref=e151]:
+                  - strong [ref=e152]: 录屏预览
+                  - text: ：录制结束后可以播放/暂停/重播刚录的内容。
+                - listitem [ref=e153]:
+                  - strong [ref=e154]: 任务进度悬浮窗
+                  - text: ：任务模式下显示 TODO 列表的完成进度和最新动态。
+              - heading "设置入口设置入口的直接链接" [level=2] [ref=e155]:
+                - text: 设置入口
+                - link "设置入口的直接链接" [ref=e156] [cursor=pointer]:
+                  - /url: "#设置入口"
+                  - text: "#"
+              - paragraph [ref=e157]:
+                - text: 窗口里有一个齿轮图标打开「设置」：切换界面语言（English / 中文）、使用高级选项（如主播模式、检查更新）、退出登录。详见
+                - link "设置" [ref=e158] [cursor=pointer]:
+                  - /url: /features/settings
+                - text: 。
+              - heading "下一步下一步的直接链接" [level=2] [ref=e159]:
+                - text: 下一步
+                - link "下一步的直接链接" [ref=e160] [cursor=pointer]:
+                  - /url: "#下一步"
+                  - text: "#"
+              - list [ref=e161]:
+                - listitem [ref=e162]:
+                  - link "任务模式" [ref=e163] [cursor=pointer]:
+                    - /url: /task-mode
+                - listitem [ref=e164]:
+                  - link "教学模式总览" [ref=e165] [cursor=pointer]:
+                    - /url: /teach-mode/overview
+          - navigation "文件选项卡" [ref=e166]:
+            - link "上一页 « 登录与账号" [ref=e167] [cursor=pointer]:
+              - /url: /getting-started/sign-in
+              - generic [ref=e168]: 上一页
+              - generic [ref=e169]: « 登录与账号
+            - link "下一页 任务模式 »" [ref=e170] [cursor=pointer]:
+              - /url: /task-mode
+              - generic [ref=e171]: 下一页
+              - generic [ref=e172]: 任务模式 »
+        - list [ref=e175]:
+          - listitem [ref=e176]:
+            - link "1. 会话侧边栏（左侧）" [ref=e177] [cursor=pointer]:
+              - /url: "#1-会话侧边栏左侧"
+          - listitem [ref=e178]:
+            - link "2. 聊天区（中间）" [ref=e179] [cursor=pointer]:
+              - /url: "#2-聊天区中间"
+          - listitem [ref=e180]:
+            - link "3. 输入栏（底部）" [ref=e181] [cursor=pointer]:
+              - /url: "#3-输入栏底部"
+          - listitem [ref=e182]:
+            - link "4. 浮动小窗（按需出现）" [ref=e183] [cursor=pointer]:
+              - /url: "#4-浮动小窗按需出现"
+          - listitem [ref=e184]:
+            - link "设置入口" [ref=e185] [cursor=pointer]:
+              - /url: "#设置入口"
+          - listitem [ref=e186]:
+            - link "下一步" [ref=e187] [cursor=pointer]:
+              - /url: "#下一步"
+  - contentinfo [ref=e188]:
+    - generic [ref=e189]:
+      - generic [ref=e190]:
+        - generic [ref=e191]:
+          - generic [ref=e192]: 文档
+          - list [ref=e193]:
+            - listitem [ref=e194]:
+              - link "简介" [ref=e195] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e196]:
+              - link "教学模式" [ref=e197] [cursor=pointer]:
+                - /url: /teach-mode/overview
+            - listitem [ref=e198]:
+              - link "录屏教学" [ref=e199] [cursor=pointer]:
+                - /url: /teach-mode/teach-by-recording
+        - generic [ref=e200]:
+          - generic [ref=e201]: 帮助
+          - list [ref=e202]:
+            - listitem [ref=e203]:
+              - link "常见问题" [ref=e204] [cursor=pointer]:
+                - /url: /faq
+            - listitem [ref=e205]:
+              - link "设置" [ref=e206] [cursor=pointer]:
+                - /url: /features/settings
+      - generic [ref=e208]: Copyright © 2026 Agivar.

@@ -1,0 +1,213 @@
+- generic [ref=e2]:
+  - region "跳到主要内容":
+    - link "跳到主要内容" [ref=e3] [cursor=pointer]:
+      - /url: "#__docusaurus_skipToContent_fallback"
+  - navigation "主导航" [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "Agivar Agivar" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Agivar" [ref=e9]
+          - generic [ref=e10]: Agivar
+        - link "文档" [ref=e11] [cursor=pointer]:
+          - /url: /
+      - generic [ref=e12]:
+        - button "简体中文" [ref=e14] [cursor=pointer]:
+          - img [ref=e15]
+          - text: 简体中文
+        - button "切换浅色/暗黑模式（当前为system mode）" [ref=e18] [cursor=pointer]:
+          - img [ref=e19]
+  - generic [ref=e23]:
+    - complementary [ref=e24]:
+      - navigation "文档侧边栏" [ref=e27]:
+        - list [ref=e28]:
+          - listitem [ref=e29]:
+            - link "简介" [ref=e30] [cursor=pointer]:
+              - /url: /
+              - generic "简介" [ref=e31]
+          - listitem [ref=e32]:
+            - button "快速开始" [expanded] [ref=e34] [cursor=pointer]:
+              - generic "快速开始" [ref=e35]
+            - list [ref=e36]:
+              - listitem [ref=e37]:
+                - link "安装" [ref=e38] [cursor=pointer]:
+                  - /url: /getting-started/installation
+                  - generic "安装" [ref=e39]
+              - listitem [ref=e40]:
+                - link "登录与账号" [ref=e41] [cursor=pointer]:
+                  - /url: /getting-started/sign-in
+                  - generic "登录与账号" [ref=e42]
+              - listitem [ref=e43]:
+                - link "界面导览" [ref=e44] [cursor=pointer]:
+                  - /url: /getting-started/interface-tour
+                  - generic "界面导览" [ref=e45]
+          - listitem [ref=e46]:
+            - link "任务模式" [ref=e47] [cursor=pointer]:
+              - /url: /task-mode
+              - generic "任务模式" [ref=e48]
+          - listitem [ref=e49]:
+            - button "教学模式" [expanded] [ref=e51] [cursor=pointer]:
+              - generic "教学模式" [ref=e52]
+            - list [ref=e53]:
+              - listitem [ref=e54]:
+                - link "总览" [ref=e55] [cursor=pointer]:
+                  - /url: /teach-mode/overview
+                  - generic "总览" [ref=e56]
+              - listitem [ref=e57]:
+                - link "对话教学" [ref=e58] [cursor=pointer]:
+                  - /url: /teach-mode/teach-by-chat
+                  - generic "对话教学" [ref=e59]
+              - listitem [ref=e60]:
+                - link "录屏教学 ⭐" [ref=e61] [cursor=pointer]:
+                  - /url: /teach-mode/teach-by-recording
+                  - generic "录屏教学 ⭐" [ref=e62]
+              - listitem [ref=e63]:
+                - link "记忆库" [ref=e64] [cursor=pointer]:
+                  - /url: /teach-mode/memory-base
+                  - generic "记忆库" [ref=e65]
+          - listitem [ref=e66]:
+            - button "功能细节" [ref=e68] [cursor=pointer]:
+              - generic "功能细节" [ref=e69]
+          - listitem [ref=e70]:
+            - link "常见问题" [ref=e71] [cursor=pointer]:
+              - /url: /faq
+              - generic "常见问题" [ref=e72]
+    - main [ref=e73]:
+      - generic [ref=e210]:
+        - generic [ref=e212]:
+          - article [ref=e213]:
+            - navigation "页面路径" [ref=e214]:
+              - list [ref=e215]:
+                - listitem [ref=e216]:
+                  - link "主页面" [ref=e217] [cursor=pointer]:
+                    - /url: /
+                    - img [ref=e218]
+                - listitem [ref=e220]:
+                  - generic [ref=e221]: 快速开始
+                - listitem [ref=e222]:
+                  - generic [ref=e223]: 安装
+            - generic [ref=e224]:
+              - heading "安装与首次启动" [level=1] [ref=e226]
+              - heading "系统要求系统要求的直接链接" [level=2] [ref=e227]:
+                - text: 系统要求
+                - link "系统要求的直接链接" [ref=e228] [cursor=pointer]:
+                  - /url: "#系统要求"
+                  - text: "#"
+              - list [ref=e229]:
+                - listitem [ref=e230]:
+                  - strong [ref=e231]: Windows 10（1903 及以上）/ Windows 11
+                  - text: 或
+                  - strong [ref=e232]: macOS
+                  - text: 。
+                - listitem [ref=e233]: macOS 首次使用录屏、输入监听、辅助功能和麦克风时，需要按系统提示授权。
+                - listitem [ref=e234]:
+                  - text: 屏幕分辨率没有硬性要求；多显示器环境下录屏以
+                  - strong [ref=e235]: 主显示器
+                  - text: 为准。
+                - listitem [ref=e236]: 需要联网：登录、记忆库、录屏的云端处理都要访问服务器。
+              - heading "安装安装的直接链接" [level=2] [ref=e237]:
+                - text: 安装
+                - link "安装的直接链接" [ref=e238] [cursor=pointer]:
+                  - /url: "#安装"
+                  - text: "#"
+              - list [ref=e239]:
+                - listitem [ref=e240]: 获取安装包（或绿色版可执行文件）。
+                - listitem [ref=e241]:
+                  - text: 运行安装程序 / 解压后双击
+                  - code [ref=e242]: Agivar
+                  - text: ，首次启动会看到登录页。
+                - listitem [ref=e243]:
+                  - text: 首次启动会看到登录页——见下一节
+                  - link "登录与账号" [ref=e244] [cursor=pointer]:
+                    - /url: /getting-started/sign-in
+                  - text: 。
+              - heading "数据存放在哪里数据存放在哪里的直接链接" [level=2] [ref=e245]:
+                - text: 数据存放在哪里
+                - link "数据存放在哪里的直接链接" [ref=e246] [cursor=pointer]:
+                  - /url: "#数据存放在哪里"
+                  - text: "#"
+              - paragraph [ref=e247]:
+                - text: Agivar 在你的用户目录下创建一个
+                - code [ref=e248]: ~/.agivar/
+                - text: 文件夹（即
+                - code [ref=e249]: C:\Users\<你>\.agivar\
+                - text: ），用于保存：
+              - list [ref=e250]:
+                - listitem [ref=e251]:
+                  - code [ref=e252]: settings.json
+                  - text: ——界面语言、主播模式等本地设置；
+                - listitem [ref=e253]: 会话记录、录屏原始数据（帧 + 鼠标键盘事件），按用户分目录存放；
+                - listitem [ref=e254]: 任务模式运行时生成的脚本会写到该目录下的脚本子目录（按日期分文件夹）。
+              - paragraph [ref=e255]:
+                - text: 录屏的
+                - strong [ref=e256]: 处理结果
+                - text: （关键帧、视频简介、操作描述）和
+                - strong [ref=e257]: 记忆库
+                - text: 保存在云端，与你的账号绑定，本地只留少量索引信息。
+              - generic [ref=e258]:
+                - generic [ref=e259]:
+                  - img [ref=e261]
+                  - text: 提示
+                - paragraph [ref=e264]:
+                  - text: 卸载程序通常不会自动删掉
+                  - code [ref=e265]: ~/.agivar/
+                  - text: 。如果想彻底清理本地数据，手动删除该文件夹即可——但记忆库在云端，不会因此丢失。
+              - heading "下一步下一步的直接链接" [level=2] [ref=e266]:
+                - text: 下一步
+                - link "下一步的直接链接" [ref=e267] [cursor=pointer]:
+                  - /url: "#下一步"
+                  - text: "#"
+              - list [ref=e268]:
+                - listitem [ref=e269]:
+                  - link "登录与账号" [ref=e270] [cursor=pointer]:
+                    - /url: /getting-started/sign-in
+                - listitem [ref=e271]:
+                  - link "界面导览" [ref=e272] [cursor=pointer]:
+                    - /url: /getting-started/interface-tour
+          - navigation "文件选项卡" [ref=e273]:
+            - link "上一页 « 简介" [ref=e274] [cursor=pointer]:
+              - /url: /
+              - generic [ref=e275]: 上一页
+              - generic [ref=e276]: « 简介
+            - link "下一页 登录与账号 »" [ref=e277] [cursor=pointer]:
+              - /url: /getting-started/sign-in
+              - generic [ref=e278]: 下一页
+              - generic [ref=e279]: 登录与账号 »
+        - list [ref=e282]:
+          - listitem [ref=e283]:
+            - link "系统要求" [ref=e284] [cursor=pointer]:
+              - /url: "#系统要求"
+          - listitem [ref=e285]:
+            - link "安装" [ref=e286] [cursor=pointer]:
+              - /url: "#安装"
+          - listitem [ref=e287]:
+            - link "数据存放在哪里" [ref=e288] [cursor=pointer]:
+              - /url: "#数据存放在哪里"
+          - listitem [ref=e289]:
+            - link "下一步" [ref=e290] [cursor=pointer]:
+              - /url: "#下一步"
+  - contentinfo [ref=e189]:
+    - generic [ref=e190]:
+      - generic [ref=e191]:
+        - generic [ref=e192]:
+          - generic [ref=e193]: 文档
+          - list [ref=e194]:
+            - listitem [ref=e195]:
+              - link "简介" [ref=e196] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e197]:
+              - link "教学模式" [ref=e198] [cursor=pointer]:
+                - /url: /teach-mode/overview
+            - listitem [ref=e199]:
+              - link "录屏教学" [ref=e200] [cursor=pointer]:
+                - /url: /teach-mode/teach-by-recording
+        - generic [ref=e201]:
+          - generic [ref=e202]: 帮助
+          - list [ref=e203]:
+            - listitem [ref=e204]:
+              - link "常见问题" [ref=e205] [cursor=pointer]:
+                - /url: /faq
+            - listitem [ref=e206]:
+              - link "设置" [ref=e207] [cursor=pointer]:
+                - /url: /features/settings
+      - generic [ref=e209]: Copyright © 2026 Agivar.

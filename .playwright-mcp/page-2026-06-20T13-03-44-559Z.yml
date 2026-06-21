@@ -1,0 +1,280 @@
+- generic [ref=e2]:
+  - region "跳到主要内容":
+    - link "跳到主要内容" [ref=e3] [cursor=pointer]:
+      - /url: "#__docusaurus_skipToContent_fallback"
+  - navigation "主导航" [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - link "Agivar Agivar" [ref=e7] [cursor=pointer]:
+          - /url: /
+          - img "Agivar" [ref=e9]
+          - generic [ref=e10]: Agivar
+        - link "文档" [ref=e11] [cursor=pointer]:
+          - /url: /
+      - generic [ref=e12]:
+        - button "简体中文" [ref=e14] [cursor=pointer]:
+          - img [ref=e15]
+          - text: 简体中文
+        - button "切换浅色/暗黑模式（当前为system mode）" [ref=e18] [cursor=pointer]:
+          - img [ref=e19]
+  - generic [ref=e23]:
+    - complementary [ref=e24]:
+      - navigation "文档侧边栏" [ref=e27]:
+        - list [ref=e28]:
+          - listitem [ref=e29]:
+            - link "简介" [ref=e30] [cursor=pointer]:
+              - /url: /
+              - generic "简介" [ref=e31]
+          - listitem [ref=e32]:
+            - button "快速开始" [expanded] [ref=e34] [cursor=pointer]:
+              - generic "快速开始" [ref=e35]
+            - list [ref=e36]:
+              - listitem [ref=e37]:
+                - link "安装" [ref=e38] [cursor=pointer]:
+                  - /url: /getting-started/installation
+                  - generic "安装" [ref=e39]
+              - listitem [ref=e40]:
+                - link "登录与账号" [ref=e41] [cursor=pointer]:
+                  - /url: /getting-started/sign-in
+                  - generic "登录与账号" [ref=e42]
+              - listitem [ref=e43]:
+                - link "界面导览" [ref=e44] [cursor=pointer]:
+                  - /url: /getting-started/interface-tour
+                  - generic "界面导览" [ref=e45]
+          - listitem [ref=e46]:
+            - link "任务模式" [ref=e47] [cursor=pointer]:
+              - /url: /task-mode
+              - generic "任务模式" [ref=e48]
+          - listitem [ref=e49]:
+            - button "教学模式" [expanded] [ref=e51] [cursor=pointer]:
+              - generic "教学模式" [ref=e52]
+            - list [ref=e53]:
+              - listitem [ref=e54]:
+                - link "总览" [ref=e55] [cursor=pointer]:
+                  - /url: /teach-mode/overview
+                  - generic "总览" [ref=e56]
+              - listitem [ref=e57]:
+                - link "对话教学" [ref=e58] [cursor=pointer]:
+                  - /url: /teach-mode/teach-by-chat
+                  - generic "对话教学" [ref=e59]
+              - listitem [ref=e60]:
+                - link "录屏教学 ⭐" [ref=e61] [cursor=pointer]:
+                  - /url: /teach-mode/teach-by-recording
+                  - generic "录屏教学 ⭐" [ref=e62]
+              - listitem [ref=e63]:
+                - link "记忆库" [ref=e64] [cursor=pointer]:
+                  - /url: /teach-mode/memory-base
+                  - generic "记忆库" [ref=e65]
+          - listitem [ref=e66]:
+            - button "功能细节" [ref=e68] [cursor=pointer]:
+              - generic "功能细节" [ref=e69]
+          - listitem [ref=e70]:
+            - link "常见问题" [ref=e71] [cursor=pointer]:
+              - /url: /faq
+              - generic "常见问题" [ref=e72]
+    - main [ref=e73]:
+      - generic [ref=e75]:
+        - generic [ref=e77]:
+          - article [ref=e78]:
+            - navigation "页面路径" [ref=e79]:
+              - list [ref=e80]:
+                - listitem [ref=e81]:
+                  - link "主页面" [ref=e82] [cursor=pointer]:
+                    - /url: /
+                    - img [ref=e83]
+                - listitem [ref=e85]:
+                  - generic [ref=e86]: 常见问题
+            - generic [ref=e87]:
+              - heading "常见问题" [level=1] [ref=e89]
+              - heading "录屏会不会把那个浮动控制条也录进去？录屏会不会把那个浮动控制条也录进去？的直接链接" [level=3] [ref=e90]:
+                - text: 录屏会不会把那个浮动控制条也录进去？
+                - link "录屏会不会把那个浮动控制条也录进去？的直接链接" [ref=e91] [cursor=pointer]:
+                  - /url: "#录屏会不会把那个浮动控制条也录进去"
+                  - text: "#"
+              - paragraph [ref=e92]:
+                - text: 默认不会。录制控制条、注释框、任务进度等浮窗默认会从录屏和 AI 截图中排除，录到的是它
+                - strong [ref=e93]: 背后
+                - text: 的内容。只有在「设置 → 高级」打开
+                - strong [ref=e94]: 主播模式
+                - text: 后，这些浮窗才会被录进去。
+              - heading "录制中打开注释输入框时，我打的字会被当成操作录进去吗？录制中打开注释输入框时，我打的字会被当成操作录进去吗？的直接链接" [level=3] [ref=e95]:
+                - text: 录制中打开注释输入框时，我打的字会被当成操作录进去吗？
+                - link "录制中打开注释输入框时，我打的字会被当成操作录进去吗？的直接链接" [ref=e96] [cursor=pointer]:
+                  - /url: "#录制中打开注释输入框时我打的字会被当成操作录进去吗"
+                  - text: "#"
+              - paragraph [ref=e97]: 不会。注释输入区打开期间的键盘输入会被过滤掉，连触发用的快捷键（Windows：Alt+I；macOS：Cmd+Shift+I）、以及之后松开修饰键的动作都不会留在操作时间轴上。注释本身会按它发生的时间点并入录屏。
+              - heading "浮窗里的绿色声波是普通录音吗？浮窗里的绿色声波是普通录音吗？的直接链接" [level=3] [ref=e98]:
+                - text: 浮窗里的绿色声波是普通录音吗？
+                - link "浮窗里的绿色声波是普通录音吗？的直接链接" [ref=e99] [cursor=pointer]:
+                  - /url: "#浮窗里的绿色声波是普通录音吗"
+                  - text: "#"
+              - paragraph [ref=e100]:
+                - text: 它是
+                - strong [ref=e101]: 语音注释
+                - text: ：把你录制中说的话转成带时间点的文字注释，帮助 AI 理解录屏，不是单独发一段音频。输入栏里的麦克风则是聊天语音输入，和录屏注释是两个入口。
+              - heading "录屏处理要多久？能取消吗？录屏处理要多久？能取消吗？的直接链接" [level=3] [ref=e102]:
+                - text: 录屏处理要多久？能取消吗？
+                - link "录屏处理要多久？能取消吗？的直接链接" [ref=e103] [cursor=pointer]:
+                  - /url: "#录屏处理要多久能取消吗"
+                  - text: "#"
+              - paragraph [ref=e104]:
+                - text: 取决于录屏长度，通常几十秒到几分钟（要联网）。处理期间你可以继续打字、加别的附件，但发送按钮会暂时禁用，处理完才能发出。如果这段不想随当前消息发送，点附件卡片上的
+                - code [ref=e105]: X
+                - text: 移除即可；如果要彻底删除，到「选择历史录屏」或历史录屏管理里删除。
+              - heading "录得不好怎么办？录得不好怎么办？的直接链接" [level=3] [ref=e106]:
+                - text: 录得不好怎么办？
+                - link "录得不好怎么办？的直接链接" [ref=e107] [cursor=pointer]:
+                  - /url: "#录得不好怎么办"
+                  - text: "#"
+              - paragraph [ref=e108]:
+                - text: 录制结束后用
+                - strong [ref=e109]: 录屏预览
+                - text: 回放确认；不满意就把附件移除后重录。还没发送之前都可以重来。
+              - heading "教学模式教的东西，任务模式什么时候会用到？教学模式教的东西，任务模式什么时候会用到？的直接链接" [level=3] [ref=e110]:
+                - text: 教学模式教的东西，任务模式什么时候会用到？
+                - link "教学模式教的东西，任务模式什么时候会用到？的直接链接" [ref=e111] [cursor=pointer]:
+                  - /url: "#教学模式教的东西任务模式什么时候会用到"
+                  - text: "#"
+              - paragraph [ref=e112]:
+                - text: 任务模式在执行 GUI 任务前会先查记忆库——只要某条记忆
+                - strong [ref=e113]: 可能
+                - text: 对当前任务有帮助，它就会读一下。所以你教过的相关流程、规则、偏好会被自动复用，不用每次重新交代。如果某条记忆引用了示教录屏，它还能就录屏里的细节追问。
+              - heading "我教错了 / 流程变了，怎么改记忆？我教错了 / 流程变了，怎么改记忆？的直接链接" [level=3] [ref=e114]:
+                - text: 我教错了 / 流程变了，怎么改记忆？
+                - link "我教错了 / 流程变了，怎么改记忆？的直接链接" [ref=e115] [cursor=pointer]:
+                  - /url: "#我教错了--流程变了怎么改记忆"
+                  - text: "#"
+              - paragraph [ref=e116]: 在教学模式对话里直接说出来（"上次那条第三步不对，现在应该……"）。它会找到对应条目、读出原文、更新它，而不是新建一条重复的。冲突时以你最新的明确说明为准。想删某条记忆，让它删掉即可。
+              - heading "为什么它说\"暂时不写入记忆库\"？为什么它说\"暂时不写入记忆库\"？的直接链接" [level=3] [ref=e117]:
+                - text: 为什么它说"暂时不写入记忆库"？
+                - link "为什么它说\"暂时不写入记忆库\"？的直接链接" [ref=e118] [cursor=pointer]:
+                  - /url: "#为什么它说暂时不写入记忆库"
+                  - text: "#"
+              - paragraph [ref=e119]: 因为它判断你说的更像一次性的临时说明、没有长期复用价值。这是有意为之——记忆库只留值得长期保留的东西。如果你确实想让它记住，明确告诉它"这个请记下来"。
+              - heading "任务做到一半停下来了，怎么办？任务做到一半停下来了，怎么办？的直接链接" [level=3] [ref=e120]:
+                - text: 任务做到一半停下来了，怎么办？
+                - link "任务做到一半停下来了，怎么办？的直接链接" [ref=e121] [cursor=pointer]:
+                  - /url: "#任务做到一半停下来了怎么办"
+                  - text: "#"
+              - paragraph [ref=e122]:
+                - text: 通常是遇到了必须你本人处理的环节（登录、密码、验证码、授权……）。它会说明情况，发送按钮切到
+                - strong [ref=e123]: ▶ 继续
+                - text: 。你处理完，点
+                - strong [ref=e124]: ▶ 继续
+                - text: （可以不输入任何文字），它就接着做。如果是你自己点了
+                - strong [ref=e125]: ■ 停止
+                - text: ，同样点
+                - strong [ref=e126]: ▶ 继续
+                - text: 恢复。
+              - heading "换电脑后，我之前教的东西还在吗？换电脑后，我之前教的东西还在吗？的直接链接" [level=3] [ref=e127]:
+                - text: 换电脑后，我之前教的东西还在吗？
+                - link "换电脑后，我之前教的东西还在吗？的直接链接" [ref=e128] [cursor=pointer]:
+                  - /url: "#换电脑后我之前教的东西还在吗"
+                  - text: "#"
+              - paragraph [ref=e129]:
+                - text: 记忆库在云端、和账号绑定——换电脑登录同一账号，记忆库还在。录屏的
+                - strong [ref=e130]: 原始帧
+                - text: 留在录制它的那台电脑本地；云端保留的是处理后的关键帧和文本结果，足够任务模式参考。
+              - heading "数据存在哪里？怎么彻底清理本地数据？数据存在哪里？怎么彻底清理本地数据？的直接链接" [level=3] [ref=e131]:
+                - text: 数据存在哪里？怎么彻底清理本地数据？
+                - link "数据存在哪里？怎么彻底清理本地数据？的直接链接" [ref=e132] [cursor=pointer]:
+                  - /url: "#数据存在哪里怎么彻底清理本地数据"
+                  - text: "#"
+              - paragraph [ref=e133]:
+                - text: 本地数据在
+                - code [ref=e134]: C:\Users\<你>\.agivar\
+                - text: （会话记录、录屏原始数据、任务脚本等）。卸载一般不会自动删它；想彻底清理，手动删掉这个文件夹——记忆库在云端，不会因此丢失。
+              - heading "它支持 Mac / Linux 吗？它支持 Mac / Linux 吗？的直接链接" [level=3] [ref=e135]:
+                - text: 它支持 Mac / Linux 吗？
+                - link "它支持 Mac / Linux 吗？的直接链接" [ref=e136] [cursor=pointer]:
+                  - /url: "#它支持-mac--linux-吗"
+                  - text: "#"
+              - paragraph [ref=e137]:
+                - text: 当前面向
+                - strong [ref=e138]: Windows 10（1903+）/ Windows 11
+                - text: 和
+                - strong [ref=e139]: macOS
+                - text: 。Linux 暂不作为正式支持平台。
+              - heading "还有问题？还有问题？的直接链接" [level=2] [ref=e140]:
+                - text: 还有问题？
+                - link "还有问题？的直接链接" [ref=e141] [cursor=pointer]:
+                  - /url: "#还有问题"
+                  - text: "#"
+              - paragraph [ref=e142]:
+                - text: 回到
+                - link "简介" [ref=e143] [cursor=pointer]:
+                  - /url: /
+                - text: 重新梳理一遍，或从
+                - link "教学模式总览" [ref=e144] [cursor=pointer]:
+                  - /url: /teach-mode/overview
+                - text: 看起。
+          - navigation "文件选项卡" [ref=e145]:
+            - link "上一页 « 设置" [ref=e146] [cursor=pointer]:
+              - /url: /features/settings
+              - generic [ref=e147]: 上一页
+              - generic [ref=e148]: « 设置
+        - list [ref=e151]:
+          - listitem [ref=e152]:
+            - link "录屏会不会把那个浮动控制条也录进去？" [ref=e153] [cursor=pointer]:
+              - /url: "#录屏会不会把那个浮动控制条也录进去"
+          - listitem [ref=e154]:
+            - link "录制中打开注释输入框时，我打的字会被当成操作录进去吗？" [ref=e155] [cursor=pointer]:
+              - /url: "#录制中打开注释输入框时我打的字会被当成操作录进去吗"
+          - listitem [ref=e156]:
+            - link "浮窗里的绿色声波是普通录音吗？" [ref=e157] [cursor=pointer]:
+              - /url: "#浮窗里的绿色声波是普通录音吗"
+          - listitem [ref=e158]:
+            - link "录屏处理要多久？能取消吗？" [ref=e159] [cursor=pointer]:
+              - /url: "#录屏处理要多久能取消吗"
+          - listitem [ref=e160]:
+            - link "录得不好怎么办？" [ref=e161] [cursor=pointer]:
+              - /url: "#录得不好怎么办"
+          - listitem [ref=e162]:
+            - link "教学模式教的东西，任务模式什么时候会用到？" [ref=e163] [cursor=pointer]:
+              - /url: "#教学模式教的东西任务模式什么时候会用到"
+          - listitem [ref=e164]:
+            - link "我教错了 / 流程变了，怎么改记忆？" [ref=e165] [cursor=pointer]:
+              - /url: "#我教错了--流程变了怎么改记忆"
+          - listitem [ref=e166]:
+            - link "为什么它说\"暂时不写入记忆库\"？" [ref=e167] [cursor=pointer]:
+              - /url: "#为什么它说暂时不写入记忆库"
+          - listitem [ref=e168]:
+            - link "任务做到一半停下来了，怎么办？" [ref=e169] [cursor=pointer]:
+              - /url: "#任务做到一半停下来了怎么办"
+          - listitem [ref=e170]:
+            - link "换电脑后，我之前教的东西还在吗？" [ref=e171] [cursor=pointer]:
+              - /url: "#换电脑后我之前教的东西还在吗"
+          - listitem [ref=e172]:
+            - link "数据存在哪里？怎么彻底清理本地数据？" [ref=e173] [cursor=pointer]:
+              - /url: "#数据存在哪里怎么彻底清理本地数据"
+          - listitem [ref=e174]:
+            - link "它支持 Mac / Linux 吗？" [ref=e175] [cursor=pointer]:
+              - /url: "#它支持-mac--linux-吗"
+          - listitem [ref=e176]:
+            - link "还有问题？" [ref=e177] [cursor=pointer]:
+              - /url: "#还有问题"
+  - contentinfo [ref=e178]:
+    - generic [ref=e179]:
+      - generic [ref=e180]:
+        - generic [ref=e181]:
+          - generic [ref=e182]: 文档
+          - list [ref=e183]:
+            - listitem [ref=e184]:
+              - link "简介" [ref=e185] [cursor=pointer]:
+                - /url: /
+            - listitem [ref=e186]:
+              - link "教学模式" [ref=e187] [cursor=pointer]:
+                - /url: /teach-mode/overview
+            - listitem [ref=e188]:
+              - link "录屏教学" [ref=e189] [cursor=pointer]:
+                - /url: /teach-mode/teach-by-recording
+        - generic [ref=e190]:
+          - generic [ref=e191]: 帮助
+          - list [ref=e192]:
+            - listitem [ref=e193]:
+              - link "常见问题" [ref=e194] [cursor=pointer]:
+                - /url: /faq
+            - listitem [ref=e195]:
+              - link "设置" [ref=e196] [cursor=pointer]:
+                - /url: /features/settings
+      - generic [ref=e198]: Copyright © 2026 Agivar.
