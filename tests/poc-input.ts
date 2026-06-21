@@ -26,10 +26,11 @@ export async function runPocInput(outputDir: string): Promise<PocResult> {
   const { controller, checkAbort } = createAbortController();
 
   // 注册 Ctrl+C 作为 abort（Phase 0 简化版紧急停止）
-  process.on('SIGINT', () => {
+  const sigintHandler = () => {
     console.log('\n[abort] Emergency stop triggered');
     controller.abort();
-  });
+  };
+  process.on('SIGINT', sigintHandler);
 
   try {
     // 倒计时
@@ -68,6 +69,7 @@ export async function runPocInput(outputDir: string): Promise<PocResult> {
       result.notes.push(`Error: ${err.message}`);
     }
   } finally {
+    process.removeListener('SIGINT', sigintHandler);
     killTrackedProcesses();
     result.durationMs = Math.round(performance.now() - start);
   }

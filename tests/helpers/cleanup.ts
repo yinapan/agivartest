@@ -1,5 +1,3 @@
-import { execSync } from 'node:child_process';
-
 const launchedPids: number[] = [];
 
 export function trackPid(pid: number): void {

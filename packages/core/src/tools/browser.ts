@@ -23,7 +23,13 @@ async function startLocalServer(fixturesDir: string): Promise<string> {
 
   return new Promise((resolve, reject) => {
     localServer = http.createServer((req, res) => {
-      const filePath = path.join(fixturesDir, req.url === '/' ? 'test-form.html' : req.url!);
+      const requestedPath = req.url === '/' ? 'test-form.html' : req.url!.slice(1);
+      const filePath = path.resolve(fixturesDir, requestedPath);
+      if (!filePath.startsWith(path.resolve(fixturesDir))) {
+        res.writeHead(403);
+        res.end('Forbidden');
+        return;
+      }
       if (!fs.existsSync(filePath)) {
         res.writeHead(404);
         res.end('Not Found');
@@ -103,7 +109,7 @@ export async function navigateTo(page: Page, url: string): Promise<ToolResult<vo
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 10000 });
     return toolOk(undefined, performance.now() - start);
   } catch (err: any) {
-    return toolErr('BROWSER_LAUNCH_FAILED', err.message, performance.now() - start);
+    return toolErr('BROWSER_ACTION_FAILED', err.message, performance.now() - start);
   }
 }
 
@@ -113,7 +119,7 @@ export async function clickElement(page: Page, selector: string): Promise<ToolRe
     await page.click(selector, { timeout: 5000 });
     return toolOk(undefined, performance.now() - start);
   } catch (err: any) {
-    return toolErr('BROWSER_LAUNCH_FAILED', err.message, performance.now() - start);
+    return toolErr('BROWSER_ACTION_FAILED', err.message, performance.now() - start);
   }
 }
 
@@ -123,7 +129,7 @@ export async function fillInput(page: Page, selector: string, value: string): Pr
     await page.fill(selector, value, { timeout: 5000 });
     return toolOk(undefined, performance.now() - start);
   } catch (err: any) {
-    return toolErr('BROWSER_LAUNCH_FAILED', err.message, performance.now() - start);
+    return toolErr('BROWSER_ACTION_FAILED', err.message, performance.now() - start);
   }
 }
 
@@ -133,7 +139,7 @@ export async function getPageText(page: Page): Promise<ToolResult<string>> {
     const text = await page.textContent('body', { timeout: 5000 });
     return toolOk(text ?? '', performance.now() - start);
   } catch (err: any) {
-    return toolErr('BROWSER_LAUNCH_FAILED', err.message, performance.now() - start);
+    return toolErr('BROWSER_ACTION_FAILED', err.message, performance.now() - start);
   }
 }
 
