@@ -109,7 +109,7 @@ export async function getUiTree(
       const code = handleTimeout();
       return toolErr(code, err.message, duration);
     }
-    return toolErr('UIA_TIMEOUT', err.message, duration);
+    return toolErr('UIA_PATTERN_UNSUPPORTED', err.message, duration);
   }
 }
 
@@ -163,13 +163,18 @@ export async function getElementValue(
   hwnd: number,
   query: ElementQuery,
 ): Promise<ToolResult<string>> {
+  if (backendUnreliable) {
+    return toolErr('UIA_BACKEND_UNRELIABLE', 'UIA backend marked unreliable after 3 consecutive timeouts', 0);
+  }
+
   const start = performance.now();
   try {
     const native = loadNative();
     const result = native.getElementValue(hwnd, buildNativeQuery(query, DEFAULT_OPTIONS));
     return toolOk(result, performance.now() - start);
   } catch (err: any) {
-    return toolErr('UIA_PATTERN_UNSUPPORTED', err.message, performance.now() - start);
+    const code = err.message.includes('UIA_ELEMENT_NOT_FOUND') ? 'UIA_ELEMENT_NOT_FOUND' : 'UIA_PATTERN_UNSUPPORTED';
+    return toolErr(code, err.message, performance.now() - start);
   }
 }
 
@@ -178,13 +183,18 @@ export async function setElementValue(
   query: ElementQuery,
   value: string,
 ): Promise<ToolResult<void>> {
+  if (backendUnreliable) {
+    return toolErr('UIA_BACKEND_UNRELIABLE', 'UIA backend marked unreliable after 3 consecutive timeouts', 0);
+  }
+
   const start = performance.now();
   try {
     const native = loadNative();
     native.setElementValue(hwnd, buildNativeQuery(query, DEFAULT_OPTIONS), value);
     return toolOk(undefined, performance.now() - start);
   } catch (err: any) {
-    return toolErr('UIA_PATTERN_UNSUPPORTED', err.message, performance.now() - start);
+    const code = err.message.includes('UIA_ELEMENT_NOT_FOUND') ? 'UIA_ELEMENT_NOT_FOUND' : 'UIA_PATTERN_UNSUPPORTED';
+    return toolErr(code, err.message, performance.now() - start);
   }
 }
 
@@ -192,13 +202,18 @@ export async function invokeElement(
   hwnd: number,
   query: ElementQuery,
 ): Promise<ToolResult<void>> {
+  if (backendUnreliable) {
+    return toolErr('UIA_BACKEND_UNRELIABLE', 'UIA backend marked unreliable after 3 consecutive timeouts', 0);
+  }
+
   const start = performance.now();
   try {
     const native = loadNative();
     native.invokeElement(hwnd, buildNativeQuery(query, DEFAULT_OPTIONS));
     return toolOk(undefined, performance.now() - start);
   } catch (err: any) {
-    return toolErr('UIA_PATTERN_UNSUPPORTED', err.message, performance.now() - start);
+    const code = err.message.includes('UIA_ELEMENT_NOT_FOUND') ? 'UIA_ELEMENT_NOT_FOUND' : 'UIA_PATTERN_UNSUPPORTED';
+    return toolErr(code, err.message, performance.now() - start);
   }
 }
 

@@ -260,6 +260,49 @@ pub fn invoke_element(hwnd: i64, query: ElementQuery) -> Result<()> {
         .map_err(|e| Error::from_reason(format!("invoke: {}", e)))
 }
 
+fn control_type_from_str(s: &str) -> Option<i32> {
+    match s {
+        "Button" => Some(ControlType::Button as i32),
+        "Calendar" => Some(ControlType::Calendar as i32),
+        "CheckBox" => Some(ControlType::CheckBox as i32),
+        "ComboBox" => Some(ControlType::ComboBox as i32),
+        "Custom" => Some(ControlType::Custom as i32),
+        "DataGrid" => Some(ControlType::DataGrid as i32),
+        "DataItem" => Some(ControlType::DataItem as i32),
+        "Document" => Some(ControlType::Document as i32),
+        "Edit" => Some(ControlType::Edit as i32),
+        "Group" => Some(ControlType::Group as i32),
+        "Header" => Some(ControlType::Header as i32),
+        "HeaderItem" => Some(ControlType::HeaderItem as i32),
+        "Hyperlink" => Some(ControlType::Hyperlink as i32),
+        "Image" => Some(ControlType::Image as i32),
+        "List" => Some(ControlType::List as i32),
+        "ListItem" => Some(ControlType::ListItem as i32),
+        "Menu" => Some(ControlType::Menu as i32),
+        "MenuBar" => Some(ControlType::MenuBar as i32),
+        "MenuItem" => Some(ControlType::MenuItem as i32),
+        "Pane" => Some(ControlType::Pane as i32),
+        "ProgressBar" => Some(ControlType::ProgressBar as i32),
+        "RadioButton" => Some(ControlType::RadioButton as i32),
+        "ScrollBar" => Some(ControlType::ScrollBar as i32),
+        "Separator" => Some(ControlType::Separator as i32),
+        "Slider" => Some(ControlType::Slider as i32),
+        "Spinner" => Some(ControlType::Spinner as i32),
+        "SplitButton" => Some(ControlType::SplitButton as i32),
+        "StatusBar" => Some(ControlType::StatusBar as i32),
+        "Tab" => Some(ControlType::Tab as i32),
+        "TabItem" => Some(ControlType::TabItem as i32),
+        "Table" => Some(ControlType::Table as i32),
+        "Text" => Some(ControlType::Text as i32),
+        "ToolBar" => Some(ControlType::ToolBar as i32),
+        "ToolTip" => Some(ControlType::ToolTip as i32),
+        "Tree" => Some(ControlType::Tree as i32),
+        "TreeItem" => Some(ControlType::TreeItem as i32),
+        "Window" => Some(ControlType::Window as i32),
+        _ => None,
+    }
+}
+
 fn build_condition(
     auto: &UIAutomation,
     query: &ElementQuery,
@@ -267,23 +310,53 @@ fn build_condition(
     let mut conditions: Vec<UICondition> = Vec::new();
 
     if let Some(ref name) = query.name {
-        conditions.push(
-            auto.create_property_condition(
-                UIProperty::Name,
-                Variant::from(name.as_str()),
-                None,
-            ).map_err(|e| Error::from_reason(format!("condition: {}", e)))?,
-        );
+        if !name.is_empty() {
+            conditions.push(
+                auto.create_property_condition(
+                    UIProperty::Name,
+                    Variant::from(name.as_str()),
+                    None,
+                ).map_err(|e| Error::from_reason(format!("condition: {}", e)))?,
+            );
+        }
     }
 
     if let Some(ref aid) = query.automation_id {
-        conditions.push(
-            auto.create_property_condition(
-                UIProperty::AutomationId,
-                Variant::from(aid.as_str()),
-                None,
-            ).map_err(|e| Error::from_reason(format!("condition: {}", e)))?,
-        );
+        if !aid.is_empty() {
+            conditions.push(
+                auto.create_property_condition(
+                    UIProperty::AutomationId,
+                    Variant::from(aid.as_str()),
+                    None,
+                ).map_err(|e| Error::from_reason(format!("condition: {}", e)))?,
+            );
+        }
+    }
+
+    if let Some(ref ct) = query.control_type {
+        if !ct.is_empty() {
+            if let Some(ct_id) = control_type_from_str(ct) {
+                conditions.push(
+                    auto.create_property_condition(
+                        UIProperty::ControlType,
+                        Variant::from(ct_id),
+                        None,
+                    ).map_err(|e| Error::from_reason(format!("condition: {}", e)))?,
+                );
+            }
+        }
+    }
+
+    if let Some(ref cn) = query.class_name {
+        if !cn.is_empty() {
+            conditions.push(
+                auto.create_property_condition(
+                    UIProperty::ClassName,
+                    Variant::from(cn.as_str()),
+                    None,
+                ).map_err(|e| Error::from_reason(format!("condition: {}", e)))?,
+            );
+        }
     }
 
     if conditions.is_empty() {
@@ -292,7 +365,6 @@ fn build_condition(
     } else if conditions.len() == 1 {
         Ok(conditions.remove(0))
     } else {
-        // Chain conditions pairwise using create_and_condition
         let mut combined = conditions.remove(0);
         for c in conditions {
             combined = auto.create_and_condition(combined, c)
