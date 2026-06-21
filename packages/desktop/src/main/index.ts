@@ -1,5 +1,6 @@
 import { app } from 'electron';
 import { createMainWindow } from './windows.js';
+import { registerIpcHandlers } from './ipc.js';
 
 let nativeStatus: { loaded: boolean; message: string } = {
   loaded: false,
@@ -17,6 +18,7 @@ try {
 }
 
 app.whenReady().then(() => {
+  registerIpcHandlers();
   createMainWindow();
 });
 
