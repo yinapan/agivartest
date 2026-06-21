@@ -1,0 +1,28 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**", "*.node"]
+    },
+    "dev": {
+      "dependsOn": ["^build"],
+      "persistent": true
+    },
+    "test:poc": {
+      "dependsOn": ["build"]
+    },
+    "poc:readonly": {
+      "dependsOn": ["build"]
+    },
+    "poc:interactive": {
+      "dependsOn": ["build"]
+    },
+    "poc:all": {
+      "dependsOn": ["build"]
+    },
+    "poc:clean": {
+      "cache": false
+    }
+  }
+}
