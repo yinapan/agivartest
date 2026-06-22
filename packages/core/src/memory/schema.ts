@@ -24,18 +24,18 @@ export const MIGRATIONS: Migration[] = [
     up: `
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
-        title TEXT,
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        title TEXT DEFAULT '',
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
 
       CREATE TABLE IF NOT EXISTS messages (
         id TEXT PRIMARY KEY,
-        session_id TEXT NOT NULL REFERENCES sessions(id),
+        session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
         role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system', 'tool')),
         content TEXT NOT NULL,
         metadata TEXT,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
       CREATE INDEX IF NOT EXISTS idx_messages_session_created
         ON messages(session_id, created_at);
@@ -45,19 +45,19 @@ export const MIGRATIONS: Migration[] = [
         app_name TEXT NOT NULL,
         platform TEXT NOT NULL CHECK (platform IN ('desktop', 'browser', 'hybrid')),
         topic TEXT NOT NULL,
-        trigger_examples TEXT,
+        trigger_examples TEXT NOT NULL,
         summary TEXT NOT NULL,
         initial_state TEXT NOT NULL,
         inputs TEXT,
         steps TEXT NOT NULL,
-        success_criteria TEXT NOT NULL,
-        risk_level TEXT NOT NULL,
-        source_type TEXT NOT NULL,
-        version INTEGER NOT NULL,
-        search_text TEXT NOT NULL,
+        success_criteria TEXT,
+        risk_level TEXT NOT NULL DEFAULT 'low',
+        source_type TEXT NOT NULL DEFAULT 'manual',
+        version INTEGER NOT NULL DEFAULT 1,
+        search_text TEXT NOT NULL DEFAULT '',
         embedding_status TEXT NOT NULL DEFAULT 'not_indexed',
-        created_at TEXT NOT NULL,
-        updated_at TEXT NOT NULL
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
       CREATE INDEX IF NOT EXISTS idx_workflow_memories_app_name
         ON workflow_memories(app_name);
@@ -68,12 +68,12 @@ export const MIGRATIONS: Migration[] = [
         id TEXT PRIMARY KEY,
         session_id TEXT NOT NULL,
         user_goal TEXT NOT NULL,
-        mode TEXT NOT NULL CHECK (mode IN ('workflow', 'llm', 'hybrid')),
+        mode TEXT NOT NULL DEFAULT 'workflow' CHECK (mode IN ('workflow', 'llm', 'hybrid')),
         matched_memory_id TEXT REFERENCES workflow_memories(id),
         selected_memory_ids TEXT,
         plan_json TEXT,
         run_config TEXT,
-        status TEXT NOT NULL CHECK (status IN ('pending', 'running', 'paused', 'success', 'failed', 'aborted')),
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'running', 'paused', 'success', 'failed', 'aborted')),
         summary TEXT,
         started_at TEXT,
         finished_at TEXT
@@ -84,20 +84,20 @@ export const MIGRATIONS: Migration[] = [
         task_run_id TEXT NOT NULL REFERENCES task_runs(id) ON DELETE CASCADE,
         step_index INTEGER NOT NULL,
         intent TEXT NOT NULL,
-        action TEXT,
+        action TEXT NOT NULL,
         locator_strategy TEXT,
         before_screenshot TEXT,
         after_screenshot TEXT,
         uia_snapshot TEXT,
         expected_state TEXT,
-        verification_result TEXT CHECK (verification_result IN ('passed', 'failed', 'skipped')),
+        verification_result TEXT CHECK (verification_result IN ('pass', 'fail', 'skipped')),
         error_type TEXT,
         workflow_step_snapshot TEXT,
         target_snapshot TEXT,
         tool_result TEXT,
         failure_info TEXT,
         duration_ms INTEGER,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
       );
       CREATE INDEX IF NOT EXISTS idx_task_step_logs_run_step
         ON task_step_logs(task_run_id, step_index);
