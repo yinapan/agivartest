@@ -219,6 +219,7 @@ interface TaskContext {
   activeHwnd?: number;
   activeWindowTitle?: string;
 
+  maxRetries: number;                // 从 settings.safety.maxRetries 初始化
   outputDir: string;                 // logs/{taskRunId}/
   abortController: AbortController;
   signal: AbortSignal;               // abortController.signal 的快捷引用
@@ -521,6 +522,7 @@ interface ToolAdapters {
     typeText(text: string): Promise<ToolResult<void>>;
     pressKeys(keys: string[]): Promise<ToolResult<void>>;
     scroll(direction: 'up' | 'down', amount: number): Promise<ToolResult<void>>;
+    releaseAllKeys(): Promise<ToolResult<void>>;
   };
   screenshot: {
     captureScreen(monitorIndex?: number): Promise<ToolResult<ScreenshotResult>>;
@@ -529,6 +531,8 @@ interface ToolAdapters {
   };
 }
 ```
+
+> **AbortSignal 策略**：ToolAdapters 本身不携带 `signal` 参数 — Phase 0 工具层保持零改动。ToolRouter 在每次 `dispatch` 调用前统一检查 `context.signal.aborted`，长耗时操作（navigateTo、getUiTree）由 ToolRouter wrapper 加 `Promise.race([tool(), abortPromise])` 超时保护。实施计划中明确：阶段 1 在 ToolRouter 层统一处理中断，Phase 0 工具接口不变。
 
 > **注意**：Phase 0 的 `input` 模块没有 `scroll` 和 `releaseAllKeys` 函数，需要在阶段 1 前置任务中补充实现。
 
