@@ -155,6 +155,52 @@ describe('FailureHandler.handle', () => {
     }
   });
 
+  it('retryable exhausted on non-click action (no degradation target) → takeover', async () => {
+    const step: StepPlan = {
+      intent: 'type text',
+      action: { type: 'type', text: 'hello' },
+      riskLevel: 'low',
+      source: 'workflow',
+    };
+    const ctx = createTaskContext();
+    ctx.retryCountByStep.set(2, 3); // already at max
+
+    const failure: FailureInfo = {
+      stepIndex: 2,
+      message: 'Operation timed out on type action',
+    };
+
+    const result = await handler.handle(failure, step, ctx);
+
+    expect(result.action).toBe('takeover');
+    if (result.action === 'takeover') {
+      expect(result.reason).toBe('重试用尽且无可用降级策略');
+    }
+  });
+
+  it('retryable exhausted on last click strategy (coordinate) → takeover', async () => {
+    const step: StepPlan = {
+      intent: 'click button',
+      action: { type: 'click', target: { strategy: 'coordinate', point: { x: 100, y: 200, space: 'screen-physical' } } },
+      riskLevel: 'low',
+      source: 'workflow',
+    };
+    const ctx = createTaskContext();
+    ctx.retryCountByStep.set(2, 3); // already at max
+
+    const failure: FailureInfo = {
+      stepIndex: 2,
+      message: 'Operation timed out on coordinate click',
+    };
+
+    const result = await handler.handle(failure, step, ctx);
+
+    expect(result.action).toBe('takeover');
+    if (result.action === 'takeover') {
+      expect(result.reason).toBe('重试用尽且无可用降级策略');
+    }
+  });
+
   it('degradable with click (playwright strategy) → returns next strategy uia', async () => {
     const step: StepPlan = {
       intent: 'click submit button',

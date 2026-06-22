@@ -61,8 +61,8 @@ export class StateVerifier {
           try {
             const text = await page.locator(cond.target.selector).textContent({ timeout: 3000 });
             return { passed: text?.trim() === cond.value, actual: text?.trim() ?? '' };
-          } catch {
-            return { passed: false, actual: 'locator error' };
+          } catch (err: unknown) {
+            return { passed: false, actual: `locator error: ${err instanceof Error ? err.message : String(err)}` };
           }
         }
         if (cond.target.strategy === 'uia') {

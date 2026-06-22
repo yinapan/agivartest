@@ -23,7 +23,9 @@ export class FailureHandler {
           context.retryCountByStep.set(context.stepIndex, retryCount + 1);
           return { action: 'retry' };
         }
-        return { action: 'degrade', newStrategy: this.getNextStrategy(step) ?? 'none' };
+        const next = this.getNextStrategy(step);
+        if (next) return { action: 'degrade', newStrategy: next };
+        return { action: 'takeover', reason: '重试用尽且无可用降级策略' };
       }
       case 'degradable': {
         const next = this.getNextStrategy(step);
