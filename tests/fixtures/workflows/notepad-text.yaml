@@ -19,12 +19,8 @@ steps:
   - intent: 打开记事本
     targetHint: 系统应用
     target:
-      strategy: coordinate
-      point:
-        x: 0
-        y: 0
-        space: screen-physical
-    inputHint: "press:LeftSuper,R then type:notepad then press:Return"
+      strategy: human
+      hint: "按 Win+R，输入 notepad，回车打开记事本"
     riskLevel: low
 
   - intent: 等待记事本窗口出现

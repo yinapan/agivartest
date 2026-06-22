@@ -437,12 +437,10 @@ describe('YAML fixture parsing', () => {
     expect(data.inputs!.content.type).toBe('string');
     expect(data.inputs!.content.required).toBe(true);
 
-    // Verify coordinate strategy on step 0
-    expect(data.steps[0].target.strategy).toBe('coordinate');
-    if (data.steps[0].target.strategy === 'coordinate') {
-      expect(data.steps[0].target.point.x).toBe(0);
-      expect(data.steps[0].target.point.y).toBe(0);
-      expect(data.steps[0].target.point.space).toBe('screen-physical');
+    // Verify human strategy on step 0 (keyboard shortcut to launch app)
+    expect(data.steps[0].target.strategy).toBe('human');
+    if (data.steps[0].target.strategy === 'human') {
+      expect(data.steps[0].target.hint).toBeDefined();
     }
 
     // Verify UIA strategy on step 1
