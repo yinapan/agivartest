@@ -3,31 +3,53 @@
 > 日期：2026-06-22
 > 状态：设计完成，待实现
 > 关联：[落地方案.md](../../../落地方案.md) 阶段 1 | [Phase 0 设计](../../specs/2026-06-21-phase0-desktop-poc-design.md) | [Phase 0 验收报告](../../phase0-acceptance-report.md)
+> 评审记录：[Codex 评审意见](./2026-06-22-phase1-teachable-agent-design-review.md)
 
 ---
 
 ## 1. 目标
 
-跑通「手写流程记忆 → 观察 → 执行 → 验证 → 日志」完整闭环，同时支持 LLM 自主规划路径。阶段 0 已验证的 6 项桌面控制能力（截图、UIA、键鼠输入、Playwright、DPI、录屏）作为底层直接复用。
+跑通「手写流程记忆 → 观察 → 执行 → 验证 → 日志」完整闭环。
 
-### 验收条件
+阶段 0 已交付桌面控制代码骨架，其中截图、Playwright、基础 UIA 可直接复用；输入、紧急停止和录屏帧捕获需要在阶段 1 开始前完成补验。
+
+### 阶段 1 前置门槛
+
+阶段 1 可以复用 Phase 0 的代码骨架，但以下能力必须在阶段 1 Day 1-2 补验：
+
+1. 非远程桌面环境下运行 `poc:interactive`，确认键鼠输入成功率 >= 90%。
+2. 确认紧急停止热键真实可中断交互动作，响应时间 < 500ms。
+3. 录屏至少完成 WGC 或 DXGI 的真实帧捕获验证。
+4. UIA 对 Win11 Notepad 的 Document 控件使用 tree walk 回退，不依赖 ValuePattern 读取。
+5. 记录 Phase 0 已知限制清单，并决定哪些限制允许带入阶段 1。
+
+### P0 验收条件（Go/No-Go）
 
 | 条件 | 指标 |
 |------|------|
-| 手写流程导入到执行成功 | < 10 分钟 |
+| 手写流程导入到首次执行成功 | < 10 分钟 |
 | 固定流程重复执行成功率 | > 80%（3 条流程各执行 5 次） |
 | 失败可诊断率 | > 80%（失败时能定位到步骤和原因） |
-| LLM 自主规划完成简单任务 | 3/5 成功（打开网页→填表单→截图） |
 | 紧急停止响应 | < 500ms |
 | 人工接管后可继续 | 100% |
+| 每步执行日志完整率 | 100% |
 
-### 必交付评测流程（3 条）
+### P1 对照验证（不作为 Go/No-Go）
 
-1. **浏览器表单填写**：打开本地测试页 → 填写 3 个字段 → 提交 → 验证成功消息
-2. **浏览器搜索**：打开浏览器 → 导航到目标网站 → 搜索关键词 → 验证搜索结果出现
-3. **记事本操作**：打开记事本 → 输入文本 → 验证文本正确（UIA/截图）
+LLM 自主规划只作为对照实验。验证范围限定在本地测试页和记事本，不进入真实外网站点和高风险动作。
 
-每条流程提供手写 YAML 版本（确定性执行）。同时用 LLM 自主规划路径跑一遍作为对照。
+| 条件 | 指标 |
+|------|------|
+| LLM 自主规划完成本地简单任务 | 3/5 成功（本地测试页填表单 + 记事本输入） |
+| LLM 产出的 StepPlan 通过统一执行链 | 100%（不存在绕过 SafetyLayer 的路径） |
+
+### 必交付评测流程（3 条，全部使用本地可控目标）
+
+1. **form-fill-local.yaml**：打开本地测试页 → 填写 3 个字段 → 提交 → 验证成功消息
+2. **search-local.yaml**：打开本地搜索 fixture → 输入关键词 → 验证搜索结果区域出现匹配项
+3. **notepad-text.yaml**：打开记事本 → 输入文本 → UIA / 截图验证文本
+
+每条流程提供手写 YAML 版本（确定性执行）。同时用 LLM 自主规划路径跑一遍作为 P1 对照。
 
 ---
 
@@ -36,13 +58,14 @@
 | 决策 | 选择 | 理由 |
 |------|------|------|
 | 架构模式 | Agent-First | 两条执行路径（流程/LLM）统一为 StepPlan，共享工具层和安全层 |
-| LLM 接入 | 多模型抽象层（OpenAI 格式兼容） | 支持 GPT-4o / Claude / Qwen-VL / DeepSeek，用户可切换 |
-| Agent 框架 | Vercel AI SDK + 自研编排 | AI SDK 处理工具调用和流式响应，自研编排处理流程执行和失败恢复 |
+| LLM 接入 | 多模型抽象层 | P0 只承诺一个 OpenAI-compatible provider；Claude 通过独立 adapter 接入，不纳入 P0 |
+| Agent 框架 | Vercel AI SDK + 自研编排 | AI SDK 处理 tool 定义和流式响应，LLM 只产出 StepPlan，不直接执行副作用 |
 | 聊天 UI | 完整聊天界面 | 左侧会话列表 + 中间消息流 + 底部输入栏 |
-| 本地存储 | better-sqlite3 | 会话/流程/任务/日志统一存储 |
-| 记忆检索 | 关键词匹配 | 延迟向量检索到阶段 2，阶段 1 用 SQL LIKE + 分词匹配 |
-| 执行路径 | 手写流程 + LLM 自主规划并行 | 有记忆按步骤执行，无记忆 LLM 截图→规划→执行 |
+| 本地存储 | better-sqlite3 | 会话/流程/任务/日志统一存储，WAL 模式 |
+| 记忆检索 | 关键词匹配 + 阈值选择 | 延迟向量检索到阶段 2，阶段 1 用 SQL LIKE + 分词匹配；高分自动选择，低分要求用户确认 |
+| 阶段 1 P0 范围 | 确定性流程闭环 | LLM 自主规划降为 P1 对照实验，避免同时承担闭环工程化和 LLM 稳定性两个难题 |
 | 样式方案 | Tailwind CSS + 暗色主题 | 轻量，不引入组件库 |
+| API Key 存储 | OS 凭据管理器 | settings.json 只存非敏感配置，API Key 存入 Windows Credential Manager |
 
 ---
 
@@ -58,7 +81,7 @@
 │  │ 会话列表  │ │ 消息流+工具卡│ │ 文本+附件+模式切换   │ │
 │  └──────────┘ └──────────────┘ └──────────────────────┘ │
 │  ┌──────────────────────────────────────────────────────┐│
-│  │ TaskProgressOverlay (悬浮窗/内嵌进度面板)             ││
+│  │ TaskProgressPanel (内嵌在聊天流中)                     ││
 │  └──────────────────────────────────────────────────────┘│
 └────────────────────────┬────────────────────────────────┘
                     IPC (contextBridge)
@@ -81,7 +104,7 @@
 │  └─────────────────────────────────────────────────────┘ │
 │  ┌─────────────────────────────────────────────────────┐ │
 │  │              StorageLayer (本地存储层)                │ │
-│  │  better-sqlite3: 会话/流程/任务/日志                  │ │
+│  │  better-sqlite3: 会话/流程/任务/日志 (WAL 模式)       │ │
 │  └─────────────────────────────────────────────────────┘ │
 │  ┌─────────────────────────────────────────────────────┐ │
 │  │              LLMProvider (多模型抽象层)               │ │
@@ -105,27 +128,30 @@ packages/
 │   ├── tools/          # Phase 0 已有 (screenshot, uia, input, browser, recorder, dpi)
 │   ├── agent/          # 新增：Agent 调度核心
 │   │   ├── agent-service.ts      # AgentService 主循环
+│   │   ├── task-context.ts       # TaskContext 定义和生命周期
 │   │   ├── task-planner.ts       # 任务规划器（流程执行 + LLM 规划）
 │   │   ├── step-executor.ts      # 步骤执行器
 │   │   ├── state-verifier.ts     # 状态验证器
 │   │   ├── failure-handler.ts    # 失败分级处理
-│   │   └── tool-router.ts        # 工具自动路由
+│   │   └── tool-router.ts        # 工具适配路由
 │   ├── memory/         # 新增：记忆系统
 │   │   ├── memory-store.ts       # SQLite 存储 + 关键词检索
-│   │   ├── workflow-parser.ts    # JSON/YAML 流程解析
-│   │   └── schema.ts             # 数据库 schema
+│   │   ├── workflow-parser.ts    # JSON/YAML 流程解析 + 变量 schema 验证
+│   │   └── schema.ts             # 数据库 schema + 迁移
 │   ├── llm/            # 新增：LLM 抽象层
 │   │   ├── provider.ts           # LLMProvider interface
 │   │   ├── openai-compatible.ts  # OpenAI 格式适配
 │   │   └── prompts.ts            # 系统提示词
 │   ├── safety/         # 新增：安全层
 │   │   ├── risk-classifier.ts    # 风险分级
-│   │   ├── emergency-stop.ts     # 紧急停止
+│   │   ├── abort-manager.ts      # AbortController 管理（纯 Node.js）
 │   │   └── execution-log.ts      # 执行日志
 │   └── types/          # Phase 0 已有，扩展
 │
 ├── desktop/src/
 │   ├── main/           # Phase 0 已有，扩展 IPC
+│   │   ├── global-hotkey.ts      # 新增：Electron globalShortcut 适配
+│   │   └── credential-store.ts   # 新增：OS 凭据管理器适配
 │   ├── renderer/       # 重写：聊天 UI
 │   │   ├── App.tsx
 │   │   ├── pages/ChatPage.tsx
@@ -135,7 +161,7 @@ packages/
 │   │   │   ├── InputBar.tsx
 │   │   │   ├── MessageBubble.tsx
 │   │   │   ├── ToolCallCard.tsx
-│   │   │   └── TaskProgress.tsx
+│   │   │   └── TaskProgressPanel.tsx
 │   │   └── stores/
 │   │       ├── chat-store.ts
 │   │       └── task-store.ts
@@ -146,15 +172,17 @@ packages/
 
 ### 核心设计原则
 
-1. **Agent 不依赖 Electron**：`packages/core/src/agent/` 纯 Node.js，可独立测试。紧急停止在 core 层使用 AbortController/signal 模式，Electron `globalShortcut` 注册在 desktop 层
-2. **工具层零改动**：Phase 0 的 6 个 tools 模块直接复用
-3. **LLM 可切换**：OpenAI 格式兼容层，支持 GPT-4o / Claude / Qwen-VL / DeepSeek
+1. **Agent 不依赖 Electron**：`packages/core/src/agent/` 纯 Node.js，可独立测试。紧急停止在 core 层使用 AbortController/signal 模式（`abort-manager.ts`），Electron `globalShortcut` 注册在 desktop 层（`global-hotkey.ts`）
+2. **工具层零改动**：Phase 0 的 6 个 tools 模块直接复用，ToolRouter 通过适配器模式桥接
+3. **LLM 只规划不执行**：LLM 产出 StepPlan，所有副作用统一经过 SafetyLayer → StepExecutor → ToolRouter → StateVerifier → ExecutionLog
 4. **两条执行路径共享基础设施**：SafetyLayer、StateVerifier、ExecutionLog、ToolRouter
 
 ### 依赖关系
 
 ```
 desktop (Electron 壳)
+  ├── global-hotkey.ts            — globalShortcut → AbortManager (新增)
+  ├── credential-store.ts         — Windows Credential Manager (新增)
   └── core (TypeScript 工具层 + Agent 核心)
         ├── native (Rust napi-rs)       — UIA / 录屏 / DPI (Phase 0)
         ├── @nut-tree/nut-js            — 键鼠控制 (Phase 0)
@@ -170,6 +198,63 @@ desktop (Electron 壳)
 
 ## 4. Agent 执行循环
 
+### TaskContext 定义
+
+所有执行模块共享的运行时上下文：
+
+```typescript
+interface TaskContext {
+  taskRunId: string;
+  sessionId: string;
+  goal: string;
+  mode: 'workflow' | 'llm' | 'hybrid';
+  status: 'pending' | 'running' | 'paused' | 'success' | 'failed' | 'aborted';
+
+  workflowId?: string;
+  workflowVersion?: number;
+  stepIndex: number;
+  retryCountByStep: Map<number, number>;
+
+  browserSession?: BrowserSession;   // Phase 0 的 BrowserSession
+  activeHwnd?: number;
+  activeWindowTitle?: string;
+
+  outputDir: string;                 // logs/{taskRunId}/
+  abortController: AbortController;
+  signal: AbortSignal;               // abortController.signal 的快捷引用
+
+  startedPids: number[];
+  createdTempDirs: string[];
+  lastObservation?: ObservationSnapshot;
+  humanTakeoverEvents: HumanTakeoverEvent[];
+}
+
+interface ObservationSnapshot {
+  screenshot: Buffer;
+  screenshotPath?: string;
+  windowTitle: string;
+  hwnd?: number;
+  uiaTree?: UiaNode;
+  timestamp: string;
+}
+
+interface HumanTakeoverEvent {
+  stepIndex: number;
+  reason: string;
+  pausedAt: string;
+  resumedAt?: string;
+  userAction?: string;
+}
+```
+
+**TaskContext 生命周期规则：**
+- 同一时间默认只允许一个 active task
+- 每个 task 创建独立 `AbortController`，任务结束后释放
+- 任务结束时必须：关闭本任务启动的浏览器、停止录屏、清理临时目录
+- 用户原本打开的浏览器和记事本不能被粗暴关闭
+- `AbortController` 触发后不能复用，恢复任务时必须新建 signal
+- 任务状态流转必须写入数据库
+
 ### 核心执行流程
 
 ```
@@ -180,39 +265,32 @@ AgentService.run(goal)
     │
     ├─── MemoryStore.search(goal)
     │         │
-    │    ┌────┴────┐
-    │    │有匹配记忆│──→ WorkflowExecutor（确定性路径）
-    │    │无匹配    │──→ LLMPlanner（自主规划路径）
-    │    └─────────┘
+    │    ┌────┴──────────────────────┐
+    │    │score >= 0.8  │→ 自动选择最高分流程 → WorkflowExecutor
+    │    │0.5 <= score   │→ 展示候选，用户确认 → WorkflowExecutor
+    │    │score < 0.5   │→ 不自动执行 → LLMPlanner（P1）
+    │    │无匹配         │→ LLMPlanner（P1）
+    │    └───────────────────────────┘
     │
     ▼
-TaskPlanner.plan(goal, memories?)
+执行循环（逐步，两条路径共享）
     │
-    ├─── 流程路径：解析 WorkflowMemory.steps → StepPlan[]
-    │
-    └─── LLM 路径：截图 → LLM 分析 → 生成下一步 StepPlan
-    │
-    ▼
-执行循环（逐步）
-    │
-    ├─── SafetyLayer.check(step)     // 风险分级检查
+    ├─── SafetyLayer.check(step, context)
     │       ├── 低风险 → 直接执行
     │       ├── 中风险 → 展示计划（可配置确认）
     │       ├── 高风险 → 强制弹窗确认
     │       └── 禁止   → 暂停，人工接管
     │
-    ├─── StepExecutor.execute(step)
+    ├─── StepExecutor.execute(step, context)
     │       ├── 截图（执行前）
-    │       ├── ToolRouter.dispatch(step.action)
-    │       │     ├── browser → Playwright
-    │       │     ├── uia     → UIA 控件操作
-    │       │     ├── input   → 键鼠模拟
-    │       │     └── observe → 截图/UIA 树
+    │       ├── ToolRouter.dispatch(step.action, context)
     │       └── 截图（执行后）
     │
-    ├─── StateVerifier.verify(step.expected_state)
+    ├─── StateVerifier.verify(step.expectedState, context)
     │       ├── pass → 继续下一步
     │       └── fail → FailureHandler
+    │
+    ├─── ExecutionLog.write(step, result, verification, context)
     │
     └─── FailureHandler.handle(failure)
             ├── retryable   → 等待后重试（最多 2 次）
@@ -239,18 +317,16 @@ type StepAction =
   | { type: 'scroll'; direction: 'up' | 'down'; amount: number }
   | { type: 'navigate'; url: string }
   | { type: 'wait'; condition: ExpectedState; timeoutMs: number }
-  | { type: 'observe' }             // 截图 + UIA 树，供 LLM 分析
+  | { type: 'observe' }
   | { type: 'takeover'; reason: string }
-  | { type: 'done'; summary: string };  // LLM 判断任务已完成
+  | { type: 'done'; summary: string };
 
-interface TargetDescriptor {
-  hint: string;                      // "顶部搜索框"
-  locator?: {
-    strategy: 'playwright' | 'uia' | 'coordinate';
-    selector?: string;               // CSS selector / UIA query
-    point?: { x: number; y: number; space: CoordinateSpace };
-  };
-}
+// 判别联合类型，每种策略携带自己需要的参数
+type TargetDescriptor =
+  | { strategy: 'playwright'; selector: string; hint?: string }
+  | { strategy: 'uia'; query: ElementQuery; hwnd?: number; hint?: string }
+  | { strategy: 'coordinate'; point: Point; hint?: string }
+  | { strategy: 'human'; hint: string };
 ```
 
 ### 流程执行路径（WorkflowExecutor）
@@ -270,59 +346,108 @@ class WorkflowExecutor {
 
 ### LLM 自主规划路径（LLMPlanner）
 
+LLM 只产出 StepPlan，**不直接执行任何桌面操作**。所有副作用统一由 AgentService.executePlannedStep() 处理。
+
 ```typescript
+interface PlannerOutput {
+  step: StepPlan;
+  confidence: number;
+  rationale: string;
+}
+
 class LLMPlanner {
-  async planNext(context: TaskContext): Promise<StepPlan> {
+  async planNext(context: TaskContext): Promise<PlannerOutput> {
     // 1. 截图当前屏幕
     // 2. 获取活动窗口 UIA 树（可选）
     // 3. 组装 prompt：目标 + 截图 + 已执行步骤 + 当前状态
-    // 4. 调用多模态 LLM（通过 Vercel AI SDK）
-    // 5. 解析 LLM 返回的 tool_call → StepPlan
-    // 6. LLM 判断任务完成 → 返回 done
+    // 4. 调用多模态 LLM（通过 Vercel AI SDK generateText + tools schema）
+    // 5. 解析 LLM 返回的 tool_call → StepPlan（不执行，仅解析）
+    // 6. 返回 PlannerOutput，交由 AgentService 走统一执行链
   }
 }
 ```
 
-LLM 路径使用 Vercel AI SDK 的 `generateText` + `tools` 定义，LLM 通过 tool_call 返回结构化动作。每次只规划一步，执行后再截图给 LLM 看下一步。
+Vercel AI SDK 的 `tool()` 定义只提供 `parameters` schema，**不提供 `execute`**。LLM 通过 tool_call 返回结构化动作意图，LLMPlanner 解析为 StepPlan 后返回。
 
 ### AgentService 主循环
 
 ```typescript
 class AgentService {
   async *run(goal: string, sessionId: string): AsyncGenerator<AgentEvent> {
-    const memories = await this.memoryStore.search(goal);
-    
-    if (memories.length > 0) {
-      // 流程路径
-      const executor = new WorkflowExecutor(memories[0]);
-      for await (const event of executor.execute(taskContext)) {
-        yield event;
-        if (event.type === 'step-failed' && event.failCount > 2) {
-          // 降级到 LLM 路径
-          break;
+    const context = await this.createTaskContext(goal, sessionId);
+
+    try {
+      const searchResults = await this.memoryStore.search(goal);
+      const selected = await this.selectMemory(searchResults, context);
+
+      if (selected) {
+        // 流程路径
+        context.mode = 'workflow';
+        const executor = new WorkflowExecutor(selected.memory);
+        for await (const event of executor.execute(context)) {
+          yield event;
+          if (event.type === 'step-failed' && event.failCount > 2) {
+            context.mode = 'hybrid';
+            break;
+          }
         }
       }
+
+      // LLM 路径（无记忆、流程路径降级、或用户选择）
+      if (!context.isDone && !context.isAborted) {
+        context.mode = context.mode === 'hybrid' ? 'hybrid' : 'llm';
+        while (!context.isDone && !context.isAborted) {
+          const plannerOutput = await this.llmPlanner.planNext(context);
+          if (plannerOutput.step.action.type === 'done') break;
+
+          // 统一执行链：LLM 产出的 StepPlan 和流程路径走同一条管线
+          const result = await this.executePlannedStep(plannerOutput.step, context);
+          yield result;
+        }
+      }
+    } finally {
+      await this.cleanupTaskContext(context);
     }
-    
-    // LLM 路径（无记忆或流程路径降级后）
-    while (!taskContext.isDone && !taskContext.isAborted) {
-      const step = await this.llmPlanner.planNext(taskContext);
-      if (step.action.type === 'done') break;
-      
-      const result = await this.executeStep(step);
-      yield result;
+  }
+
+  async executePlannedStep(step: StepPlan, context: TaskContext): Promise<StepResult> {
+    // 1. SafetyLayer.check(step, context)
+    // 2. StepExecutor.execute(step, context)  — 包含执行前后截图
+    // 3. StateVerifier.verify(step.expectedState, context)
+    // 4. ExecutionLog.write(step, result, verification, context)
+    // 5. 返回 StepResult
+  }
+
+  private async selectMemory(
+    results: MemorySearchResult[],
+    context: TaskContext,
+  ): Promise<MemorySearchResult | null> {
+    if (results.length === 0) return null;
+    const best = results[0];
+    if (best.score >= 0.8) return best;
+    if (best.score >= 0.5) {
+      // 展示候选流程，等待用户确认
+      yield { type: 'memory-candidates', candidates: results };
+      return await this.waitForUserSelection(context);
     }
+    return null; // score < 0.5，不自动执行
   }
 }
 ```
 
-### ToolRouter 分发逻辑
+### ToolRouter 适配层
 
-ToolRouter 根据 `StepAction.type` 和当前上下文选择底层工具：
+ToolRouter 通过适配器模式桥接 StepAction 到 Phase 0 实际工具 API。每个方法接收 `AbortSignal`，所有工具返回 `ToolResult<T>`。
 
 ```typescript
 class ToolRouter {
-  async dispatch(action: StepAction, context: TaskContext): Promise<ActionResult> {
+  constructor(private tools: ToolAdapters) {}
+
+  async dispatch(action: StepAction, context: TaskContext): Promise<ToolResult<unknown>> {
+    if (context.signal.aborted) {
+      return toolErr('TASK_ABORTED', 'Task was aborted', 0);
+    }
+
     switch (action.type) {
       case 'click':
         return this.routeClick(action.target, context);
@@ -333,45 +458,119 @@ class ToolRouter {
       case 'scroll':
         return this.tools.input.scroll(action.direction, action.amount);
       case 'navigate':
-        return this.tools.browser.navigateTo(action.url);
+        return this.routeNavigate(action.url, context);
       case 'wait':
-        return this.waitForCondition(action.condition, action.timeoutMs);
+        return this.waitForCondition(action.condition, action.timeoutMs, context);
       case 'observe':
         return this.captureState(context);
       case 'takeover':
         throw new TakeoverRequest(action.reason);
       case 'done':
-        return { done: true, summary: action.summary };
+        return toolOk({ done: true, summary: action.summary }, 0);
     }
   }
 
-  private async routeClick(target: TargetDescriptor, context: TaskContext): Promise<ActionResult> {
-    const locator = target.locator;
-    if (!locator) {
-      // 无定位器 → 截图 + UIA 分析，尝试自动定位
-      return this.autoLocate(target.hint, context);
+  private async routeClick(target: TargetDescriptor, ctx: TaskContext): Promise<ToolResult<void>> {
+    switch (target.strategy) {
+      case 'playwright': {
+        const page = ctx.browserSession?.page;
+        if (!page) return toolErr('BROWSER_NOT_READY', 'No active browser session', 0);
+        return this.tools.browser.clickElement(page, target.selector);
+      }
+      case 'uia': {
+        const hwnd = target.hwnd ?? ctx.activeHwnd;
+        if (!hwnd) return toolErr('UIA_ELEMENT_NOT_FOUND', 'No active window hwnd', 0);
+        return this.tools.uia.invokeElement(hwnd, target.query);
+      }
+      case 'coordinate': {
+        return this.tools.input.clickPoint(target.point);
+      }
+      case 'human': {
+        throw new TakeoverRequest(`需要人工定位: ${target.hint}`);
+      }
     }
-    switch (locator.strategy) {
-      case 'playwright': return this.tools.browser.click(locator.selector!);
-      case 'uia':        return this.tools.uia.clickElement(locator.selector!);
-      case 'coordinate': return this.tools.input.click(locator.point!);
-    }
+  }
+
+  private async routeNavigate(url: string, ctx: TaskContext): Promise<ToolResult<void>> {
+    const page = ctx.browserSession?.page;
+    if (!page) return toolErr('BROWSER_NOT_READY', 'No active browser session', 0);
+    return this.tools.browser.navigateTo(page, url);
   }
 }
 ```
 
-路由规则：
-- **浏览器内操作**（有 CSS selector）→ Playwright
-- **桌面控件操作**（有 UIA query）→ UIA 模块
-- **坐标点击**（有 point）→ 键鼠模拟（input 模块）
-- **无定位器**（仅 hint 文本）→ 截图 + 分析后自动选择策略
+**ToolAdapters 接口（对齐 Phase 0 实际 API）：**
+
+```typescript
+interface ToolAdapters {
+  browser: {
+    clickElement(page: Page, selector: string): Promise<ToolResult<void>>;
+    fillInput(page: Page, selector: string, value: string): Promise<ToolResult<void>>;
+    navigateTo(page: Page, url: string): Promise<ToolResult<void>>;
+    getPageText(page: Page): Promise<ToolResult<string>>;
+  };
+  uia: {
+    invokeElement(hwnd: number, query: ElementQuery): Promise<ToolResult<void>>;
+    findElement(hwnd: number, query: ElementQuery): Promise<ToolResult<UiaNode | null>>;
+    setElementValue(hwnd: number, query: ElementQuery, value: string): Promise<ToolResult<void>>;
+    getElementValue(hwnd: number, query: ElementQuery): Promise<ToolResult<string>>;
+    getUiTree(hwnd: number): Promise<ToolResult<UiaNode>>;
+  };
+  input: {
+    clickPoint(point: Point): Promise<ToolResult<void>>;
+    typeText(text: string): Promise<ToolResult<void>>;
+    pressKeys(keys: string[]): Promise<ToolResult<void>>;
+    scroll(direction: 'up' | 'down', amount: number): Promise<ToolResult<void>>;
+  };
+  screenshot: {
+    captureScreen(monitorIndex?: number): Promise<ToolResult<ScreenshotResult>>;
+    captureWindow(hwnd: number): Promise<ToolResult<ScreenshotResult>>;
+    getActiveWindow(): Promise<ToolResult<WindowInfo>>;
+  };
+}
+```
+
+> **注意**：Phase 0 的 `input` 模块没有 `scroll` 和 `releaseAllKeys` 函数，需要在阶段 1 前置任务中补充实现。
+
+### 任务状态机
+
+```
+pending ──→ running
+              │
+              ├── needs_takeover ──→ paused
+              │                       │
+              │                       ├── user_resume ──→ observing
+              │                       │                     │
+              │                       │                     ├── observation_pass ──→ running
+              │                       │                     └── observation_mismatch ──→ paused
+              │                       │
+              │                       ├── user_abort ──→ aborted
+              │                       └── timeout (5min) ──→ failed
+              │
+              ├── all_steps_pass ──→ success
+              ├── terminal_failure ──→ failed
+              └── emergency_stop ──→ aborted
+```
+
+**恢复条件：**
+- 用户点击"继续"后必须重新截图和获取活动窗口
+- 如果活动窗口不是预期窗口，继续前要求用户确认
+- 恢复事件写入 `human_takeover_events`
+- 接管期间不执行任何自动输入动作
 
 ### 事件流（Agent → UI）
 
 ```typescript
-type AgentEvent =
+type AgentEventBase = {
+  taskRunId: string;
+  sessionId: string;
+  timestamp: string;
+};
+
+type AgentEvent = AgentEventBase & (
   | { type: 'thinking'; message: string }
   | { type: 'memory-match'; workflow: WorkflowMemory }
+  | { type: 'memory-candidates'; candidates: MemorySearchResult[] }
   | { type: 'step-start'; step: StepPlan; index: number }
   | { type: 'step-screenshot'; before?: string; after?: string }
   | { type: 'step-result'; success: boolean; verification?: VerifyResult }
@@ -381,7 +580,8 @@ type AgentEvent =
   | { type: 'tool-call'; tool: string; args: unknown; result?: unknown }
   | { type: 'task-complete'; summary: string }
   | { type: 'task-failed'; diagnosis: string }
-  | { type: 'message'; role: 'assistant'; content: string };
+  | { type: 'message'; role: 'assistant'; content: string }
+);
 ```
 
 事件通过 IPC 推送到渲染进程，ChatView 将其渲染为消息气泡和工具调用卡片。
@@ -397,17 +597,32 @@ interface WorkflowMemory {
   id: string;
   appName: string;              // "Chrome", "记事本"
   platform: 'desktop' | 'browser' | 'hybrid';
-  topic: string;                // "bilibili/投币"
-  triggerExamples: string[];    // ["帮我投币", "给视频投2个币"]
+  topic: string;                // "local-form/fill"
+  triggerExamples: string[];    // ["帮我填表单", "填写测试表单"]
   summary: string;
   initialState: string;
+  inputs?: WorkflowInput[];     // 变量定义
   steps: WorkflowStep[];
   successCriteria: string;
   riskLevel: 'low' | 'medium' | 'high';
   sourceType: 'manual' | 'text-teach' | 'recording';
   version: number;
+  searchText: string;           // 预计算的搜索文本（为阶段 2 向量检索预留）
+  embeddingStatus: 'not_indexed';  // 阶段 1 固定值
   createdAt: string;
   updatedAt: string;
+}
+
+interface WorkflowInput {
+  name: string;                  // 变量名，如 "searchQuery"
+  type: 'string' | 'number';
+  required: boolean;
+  prompt: string;                // 提示用户的文本
+  secret?: boolean;              // true → 不写入日志/LLM prompt/截图文件名
+  humanOnly?: boolean;           // true → 触发人工接管，Agent 不自动输入
+  minLength?: number;
+  maxLength?: number;
+  defaultValue?: string;
 }
 
 interface WorkflowStep {
@@ -415,25 +630,38 @@ interface WorkflowStep {
   order: number;
   intent: string;               // "点击搜索框"
   targetHint: string;           // "顶部搜索框，placeholder '搜索'"
-  locatorStrategy: 'playwright' | 'uia' | 'vision' | 'coordinate' | 'human';
-  targetLocator?: string;       // CSS selector / UIA query JSON
-  inputHint?: string;           // "非十科技"
+  target: TargetDescriptor;     // 使用判别联合类型
+  inputHint?: string;           // "非十科技" 或 "{{searchQuery}}"
   expectedState?: ExpectedState;
   fallback?: 'retry' | 'degrade' | 'takeover' | 'terminal';
   riskLevel: 'low' | 'medium' | 'high' | 'forbidden';
 }
 ```
 
-### 检索策略（关键词，阶段 1）
+### 变量处理规则
+
+- `secret: true` 的变量不能写入日志、截图文件名、LLM prompt 或 SQLite 明文
+- `humanOnly: true` 的变量必须触发人工接管，Agent 不自动输入
+- 执行前生成 `resolvedInputs`，日志中只保存脱敏值
+- 未提供必填变量时，任务进入 `paused`，等待用户补充
+
+### 检索策略（关键词 + 阈值）
 
 ```typescript
+interface MemorySearchResult {
+  memory: WorkflowMemory;
+  score: number;                 // 0-1，匹配置信度
+  matchedFields: string[];       // ["triggerExamples", "topic"]
+}
+
 class MemoryStore {
-  async search(goal: string): Promise<WorkflowMemory[]> {
+  async search(goal: string): Promise<MemorySearchResult[]> {
     // 1. 分词（简单空格 + 标点分割，中文按字符 bigram）
-    // 2. SQL LIKE 匹配 trigger_examples, summary, topic, app_name
-    // 3. 按匹配度排序，返回 top-3
+    // 2. SQL LIKE 匹配 trigger_examples, summary, topic, app_name, search_text
+    // 3. 计算 score（匹配字段数 / 总字段数 + 匹配 token 覆盖率）
+    // 4. 按 score 排序，返回 top-3
   }
-  
+
   async importWorkflow(filePath: string): Promise<WorkflowMemory>
   async getById(id: string): Promise<WorkflowMemory | null>
   async list(filter?: { appName?: string; topic?: string }): Promise<WorkflowMemory[]>
@@ -442,47 +670,82 @@ class MemoryStore {
 }
 ```
 
+**搜索阈值策略：**
+- `score >= 0.8`：自动选择最高分流程
+- `0.5 <= score < 0.8`：展示候选流程，让用户确认
+- `score < 0.5`：不自动执行，进入 LLM 对照或提示导入流程
+
 ### 手写流程格式（JSON/YAML）
 
 用户通过文件导入流程。示例模板：
 
 ```yaml
-# workflows/bilibili-coin.yaml
+# workflows/form-fill-local.yaml
 appName: Chrome
 platform: browser
-topic: bilibili/投币
+topic: local-form/fill
 triggerExamples:
-  - 帮我给视频投币
-  - 投2个币
-summary: 在B站搜索视频并投币
+  - 帮我填表单
+  - 填写测试表单
+summary: 在本地测试页填写并提交表单
 initialState: 浏览器已打开，当前在任意页面
-riskLevel: medium
+
+inputs:
+  userName:
+    type: string
+    required: true
+    prompt: 请输入用户名
+    minLength: 1
+    maxLength: 50
+  email:
+    type: string
+    required: true
+    prompt: 请输入邮箱
+
+riskLevel: low
+
 steps:
-  - intent: 打开B站
+  - intent: 打开本地测试页
     targetHint: 浏览器地址栏
-    locatorStrategy: playwright
-    targetLocator: "[role='textbox'][name='地址栏']"
-    inputHint: bilibili.com
+    target:
+      strategy: playwright
+      selector: "body"
+    inputHint: "http://127.0.0.1:12827/test-form.html"
     expectedState:
       any:
         - type: page_text_contains
-          value: 搜索
+          value: 测试表单
     riskLevel: low
 
-  - intent: 搜索目标
-    targetHint: 顶部搜索框
-    locatorStrategy: playwright
-    targetLocator: ".nav-search-input"
-    inputHint: "{{searchQuery}}"
+  - intent: 填写用户名
+    targetHint: 用户名输入框
+    target:
+      strategy: playwright
+      selector: "#username"
+    inputHint: "{{userName}}"
+    riskLevel: low
+
+  - intent: 填写邮箱
+    targetHint: 邮箱输入框
+    target:
+      strategy: playwright
+      selector: "#email"
+    inputHint: "{{email}}"
+    riskLevel: low
+
+  - intent: 提交表单
+    targetHint: 提交按钮
+    target:
+      strategy: playwright
+      selector: "button[type='submit']"
     expectedState:
       any:
         - type: page_text_contains
-          value: 搜索结果
-    riskLevel: low
-successCriteria: 投币按钮状态变为已投
+          value: 提交成功
+    riskLevel: medium
+
+successCriteria: 页面显示提交成功消息
 ```
-
-`{{变量}}` 语法支持运行时参数替换，用户在执行前通过对话提供。
 
 ---
 
@@ -495,14 +758,14 @@ interface LLMProvider {
   id: string;                    // "openai", "deepseek", "qwen"
   displayName: string;
   supportsVision: boolean;
-  
+
   generateText(params: {
     messages: Message[];
     tools?: ToolDefinition[];
     maxTokens?: number;
     temperature?: number;
   }): Promise<GenerateResult>;
-  
+
   streamText(params: {
     messages: Message[];
     tools?: ToolDefinition[];
@@ -520,80 +783,70 @@ interface Message {
 ### Vercel AI SDK 集成
 
 ```typescript
-import { generateText, streamText, tool } from 'ai';
+import { generateText, tool } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 
-const providers = {
-  openai: createOpenAI({ apiKey: config.openaiKey }),
-  deepseek: createOpenAI({
-    apiKey: config.deepseekKey,
-    baseURL: 'https://api.deepseek.com',
-  }),
-  qwen: createOpenAI({
-    apiKey: config.qwenKey,
-    baseURL: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
-  }),
-};
+// P0 只承诺一个 OpenAI-compatible provider
+// 多 provider 切换作为 P1
+function createProvider(config: LLMConfig) {
+  return createOpenAI({
+    apiKey: config.apiKey,       // 从 OS 凭据管理器读取
+    baseURL: config.baseURL,     // 可选自定义 baseURL（DeepSeek/Qwen 兼容）
+  });
+}
 ```
 
-### Agent 工具定义（给 LLM 用）
+### Agent 工具 Schema（仅 Schema，无 execute）
 
-LLM 通过 tool_call 返回动作，Vercel AI SDK 的 `tool()` 注册：
+LLM 通过 tool_call 返回动作意图。工具定义**只提供 parameters schema**，不提供 `execute`。LLMPlanner 解析 tool_call 为 StepPlan，交由 AgentService 统一执行。
 
 ```typescript
-const agentTools = {
+const planningTools = {
   click: tool({
     description: '点击屏幕上的目标元素',
     parameters: z.object({
       target: z.string().describe('目标描述，如"搜索按钮"'),
       selector: z.string().optional().describe('CSS selector 或 UIA query'),
     }),
-    execute: async ({ target, selector }) => { /* ToolRouter 分发 */ }
+    // 无 execute — LLM 只产出意图
   }),
-  
+
   type_text: tool({
     description: '在当前焦点位置输入文本',
     parameters: z.object({ text: z.string() }),
-    execute: async ({ text }) => { /* input.typeText */ }
   }),
-  
+
   press_keys: tool({
     description: '按快捷键',
     parameters: z.object({ keys: z.array(z.string()) }),
-    execute: async ({ keys }) => { /* input.pressKeys */ }
   }),
-  
+
   navigate: tool({
     description: '在浏览器中打开URL',
     parameters: z.object({ url: z.string() }),
-    execute: async ({ url }) => { /* browser.navigateTo */ }
   }),
-  
+
   observe: tool({
     description: '截取当前屏幕，观察状态',
     parameters: z.object({}),
-    execute: async () => { /* screenshot + optional UIA tree */ }
   }),
-  
+
   scroll: tool({
     description: '滚动页面',
     parameters: z.object({
       direction: z.enum(['up', 'down']),
       amount: z.number().default(3),
     }),
-    execute: async ({ direction, amount }) => { /* input.scroll */ }
   }),
-  
+
   ask_user: tool({
     description: '遇到密码、验证码或不确定时请求用户接管',
     parameters: z.object({ reason: z.string() }),
-    execute: async ({ reason }) => { /* 触发 takeover */ }
   }),
-  
+
   task_complete: tool({
     description: '任务完成',
     parameters: z.object({ summary: z.string() }),
-    execute: async ({ summary }) => { /* 标记完成 */ }
   }),
 };
 ```
@@ -601,7 +854,7 @@ const agentTools = {
 ### 系统提示词
 
 ```typescript
-const SYSTEM_PROMPT = `你是一个桌面自动化助手。你可以看到用户的屏幕截图，并使用工具操作桌面。
+const SYSTEM_PROMPT = `你是一个桌面自动化助手。你可以看到用户的屏幕截图，并通过工具描述你想要执行的操作。
 
 ## 能力
 - 浏览器操作（通过 Playwright）
@@ -610,7 +863,7 @@ const SYSTEM_PROMPT = `你是一个桌面自动化助手。你可以看到用户
 - 截屏观察
 
 ## 规则
-1. 每次只执行一步操作，执行后观察结果
+1. 每次只建议一步操作，执行后观察结果
 2. 优先使用 Playwright DOM 定位（浏览器）或 UIA 控件定位（桌面应用）
 3. 遇到密码框、验证码、支付页面时必须调用 ask_user
 4. 不确定时先 observe 再决定
@@ -630,27 +883,40 @@ const SYSTEM_PROMPT = `你是一个桌面自动化助手。你可以看到用户
 ### 配置管理
 
 ```typescript
-// ~/.agivar/settings.json
+// ~/.agivar/settings.json — 只存非敏感配置
 interface AppSettings {
   llm: {
-    provider: 'openai' | 'deepseek' | 'qwen' | 'custom';
-    model: string;           // "gpt-4o", "deepseek-chat", "qwen-vl-max"
-    apiKey: string;
-    baseURL?: string;
+    provider: 'openai-compatible';   // P0 只支持一种
+    model: string;                   // "gpt-4o", "deepseek-chat", "qwen-vl-max"
+    baseURL?: string;                // 自定义 API endpoint
     visionModel?: string;
-    maxTokens: number;       // 默认 4096
-    temperature: number;     // 默认 0.1
+    maxTokens: number;               // 默认 4096
+    temperature: number;             // 默认 0.1
+    // apiKey 不在此处 — 存入 OS 凭据管理器
   };
   safety: {
-    emergencyStopHotkey: string;  // 默认 "Ctrl+Alt+Space"
-    confirmMediumRisk: boolean;   // 默认 false
-    maxRetries: number;           // 默认 2
+    emergencyStopHotkey: string;     // 默认 "Ctrl+Alt+Space"
+    confirmMediumRisk: boolean;      // 默认 false
+    maxRetries: number;              // 默认 2
+    takeoverTimeoutMs: number;       // 默认 300000 (5min)
   };
   storage: {
-    dataDir: string;         // 默认 ~/.agivar/
+    dataDir: string;                 // 开发: <repo>/.agivar-dev/  生产: app.getPath('userData')
+    logRetentionDays: number;        // 默认 30
+  };
+  privacy: {
+    screenshotOnlyForTask: boolean;  // 默认 true，只保存任务必要截图
+    logLlmRequests: boolean;         // 默认 true，记录发送时间/provider/用途
+    // API Key 永远不写入日志
   };
 }
 ```
+
+**API Key 存储方案：**
+- 设置页只显示掩码（如 `sk-...abcd`）
+- 读写通过 `desktop/src/main/credential-store.ts` → Windows Credential Manager
+- 日志、错误上报和调试输出必须过滤 API Key
+- 阶段 1 若暂时无法接入系统凭据管理器，使用 DPAPI 本机加密，明确标注为临时方案
 
 ---
 
@@ -681,45 +947,82 @@ class RiskClassifier {
 | high | 强制弹窗确认 | 删除、提交、批量操作 |
 | forbidden | 暂停，人工接管 | 密码、验证码、支付 |
 
-### 紧急停止
+### 紧急停止（core/desktop 分层）
 
 ```typescript
-class EmergencyStop {
-  private abortController: AbortController;
-  
-  register() {
-    globalShortcut.register(settings.emergencyStopHotkey, () => {
-      this.trigger('hotkey');
-    });
+// packages/core/src/safety/abort-manager.ts — 纯 Node.js
+class AbortManager {
+  private controllers = new Map<string, AbortController>();
+
+  createTaskSignal(taskRunId: string): AbortSignal {
+    const controller = new AbortController();
+    this.controllers.set(taskRunId, controller);
+    return controller.signal;
   }
-  
-  trigger(source: 'hotkey' | 'tray' | 'ui') {
-    this.abortController.abort();
-    // 1. 立即停止所有工具操作
+
+  abortTask(taskRunId: string, source: AbortSource): void {
+    const controller = this.controllers.get(taskRunId);
+    if (controller) {
+      controller.abort(source);
+      this.controllers.delete(taskRunId);
+    }
+    // 1. 立即停止所有工具操作（signal 传播）
     // 2. 释放被按住的键（input.releaseAllKeys）
     // 3. 停止所有录屏 session
-    // 4. 关闭 Playwright 浏览器（可选）
-    // 5. 发送事件到 UI
+    // 4. 发送事件到 UI
   }
-  
-  get signal(): AbortSignal { return this.abortController.signal; }
+
+  isAborted(taskRunId: string): boolean {
+    return this.controllers.get(taskRunId)?.signal.aborted ?? true;
+  }
+}
+
+type AbortSource = 'hotkey' | 'tray' | 'ui' | 'timeout';
+
+// packages/desktop/src/main/global-hotkey.ts — Electron 专用
+class GlobalHotkeyAdapter {
+  constructor(private abortManager: AbortManager) {}
+
+  register(hotkey: string, taskRunId: string): void {
+    globalShortcut.register(hotkey, () => {
+      this.abortManager.abortTask(taskRunId, 'hotkey');
+    });
+  }
+
+  unregister(): void {
+    globalShortcut.unregisterAll();
+  }
 }
 ```
 
-每个工具操作前检查 `signal.aborted`，保证 500ms 内响应。
+**紧急停止补充验收要求：**
+- 热键注册失败时降级为 UI 停止按钮，并在环境检查中显示警告
+- `AbortController` 触发后不能复用，恢复任务时必须新建 signal
+- 所有长耗时工具都必须接收 `AbortSignal` 或 timeout
+- `releaseAllKeys()` 若 Phase 0 尚未实现，需要加入阶段 1 前置任务
+- 每个工具操作前检查 `signal.aborted`，保证 500ms 内响应
 
 ### 人工接管
 
 ```typescript
 interface TakeoverRequest {
   reason: string;           // "检测到密码输入框"
-  screenshot: string;       // 当前截图
+  screenshot: string;       // 当前截图路径
   stepIndex: number;
   canResume: boolean;       // 用户处理后是否可继续
 }
 ```
 
-UI 显示：暂停状态 + 原因 + 截图 + "继续"按钮。用户点击"继续"后，AgentService 重新截图观察状态，继续执行。
+**接管状态流转（见第 4 节任务状态机）：**
+
+UI 显示：暂停状态 + 原因 + 截图 + "继续"/"放弃"按钮。
+
+恢复流程：
+1. 用户点击"继续"
+2. AgentService 重新截图 + 获取活动窗口
+3. 如果活动窗口不是预期窗口 → 要求用户确认
+4. 截图匹配 → 继续执行
+5. 截图不匹配 → 再次暂停，展示差异
 
 ### 执行日志
 
@@ -731,17 +1034,23 @@ interface TaskStepLog {
   intent: string;
   action: StepAction;
   locatorStrategy: string;
-  beforeScreenshot: string;      // 文件路径
+  beforeScreenshot: string;          // 文件路径
   afterScreenshot: string;
-  uiaSnapshot?: string;          // UIA 树 JSON 路径
+  uiaSnapshot?: string;              // UIA 树 JSON 路径
   expectedState?: ExpectedState;
   verificationResult: 'pass' | 'fail' | 'skipped';
   errorType?: 'retryable' | 'degradable' | 'takeover' | 'terminal';
+  workflowStepSnapshot?: string;     // JSON: 执行时的流程步骤快照
+  targetSnapshot?: string;           // JSON: 实际解析的 TargetDescriptor
+  toolResult?: string;               // JSON: ToolResult<T> 原始返回
+  failureInfo?: string;              // JSON: 失败详情
   durationMs: number;
 }
 ```
 
-每步日志写入 SQLite + 截图保存到 `~/.agivar/logs/{taskRunId}/`。
+每步日志写入 SQLite + 截图保存到 `{dataDir}/logs/{taskRunId}/`。
+
+> **性能注意**：better-sqlite3 同步写入不要放在高频 UI 事件路径中。执行日志可通过内存队列批量写入（每 5 步或任务结束时 flush）。
 
 ---
 
@@ -757,12 +1066,13 @@ interface ExpectedState {
 
 type StateCondition =
   | { type: 'window_title_contains'; value: string }
-  | { type: 'page_text_contains'; value: string }
-  | { type: 'uia_element_exists'; name: string; controlType?: string }
-  | { type: 'file_exists'; path: string }
-  | { type: 'element_text_equals'; locator: string; value: string }
-  | { type: 'clipboard_contains'; value: string };
+  | { type: 'page_text_contains'; value: string; pageRef?: 'managed' }
+  | { type: 'uia_element_exists'; query: ElementQuery }
+  | { type: 'element_text_equals'; target: TargetDescriptor; value: string }
+  | { type: 'file_exists'; path: string; scope: 'app-data' | 'user-approved' };
 ```
+
+> **阶段 1 不使用 OCR**。所有验证条件通过 DOM 查询（Playwright）或 UIA 控件查询实现。
 
 ### StateVerifier 实现
 
@@ -771,11 +1081,10 @@ class StateVerifier {
   async verify(expected: ExpectedState, context: TaskContext): Promise<VerifyResult> {
     // 对每个条件执行检查：
     // window_title_contains → getActiveWindow().title.includes(value)
-    // page_text_contains → Playwright page.textContent() 或截图 OCR
-    // uia_element_exists → findElement(query)
-    // file_exists → fs.existsSync
-    // element_text_equals → Playwright locator.textContent() 或 UIA getValue
-    // clipboard_contains → clipboard.readText()
+    // page_text_contains → Playwright page.locator('body').textContent()
+    // uia_element_exists → findElement(hwnd, query)
+    // element_text_equals → Playwright locator.textContent() 或 UIA getElementValue
+    // file_exists → fs.existsSync（限定在 scope 目录内）
   }
 }
 
@@ -792,37 +1101,39 @@ interface VerifyResult {
 class FailureHandler {
   async handle(failure: FailureInfo, step: StepPlan, context: TaskContext): Promise<FailureAction> {
     const errorType = failure.errorType ?? this.classify(failure);
-    
+
     switch (errorType) {
       case 'retryable':
         // 页面加载慢、按钮暂不可点击、网络超时
-        if (context.retryCount < settings.maxRetries) {
-          await sleep(1000 * (context.retryCount + 1));
+        const retryCount = context.retryCountByStep.get(context.stepIndex) ?? 0;
+        if (retryCount < context.maxRetries) {
+          context.retryCountByStep.set(context.stepIndex, retryCount + 1);
+          await sleep(1000 * (retryCount + 1));
           return { action: 'retry' };
         }
         return { action: 'degrade' };
-        
+
       case 'degradable':
         // UIA 定位失败但可尝试其他策略
         const nextStrategy = this.getNextStrategy(step.action);
         if (nextStrategy) return { action: 'degrade', newStrategy: nextStrategy };
         return { action: 'takeover', reason: '所有定位策略均失败' };
-        
+
       case 'takeover':
         // 登录页、验证码、权限弹窗
         return { action: 'takeover', reason: failure.message };
-        
+
       case 'terminal':
         // 高风险动作不确定、连续失败
         return { action: 'abort', diagnosis: this.buildDiagnosis(failure, context) };
     }
   }
-  
+
   private getNextStrategy(action: StepAction): string | null {
     // 定位优先级降级链：playwright → uia → coordinate
-    const chain = ['playwright', 'uia', 'coordinate'];
-    const current = action.type === 'click' ? action.target.locator?.strategy : null;
-    if (!current) return null;
+    if (action.type !== 'click') return null;
+    const chain: string[] = ['playwright', 'uia', 'coordinate'];
+    const current = action.target.strategy;
     const idx = chain.indexOf(current);
     return idx >= 0 && idx < chain.length - 1 ? chain[idx + 1] : null;
   }
@@ -849,7 +1160,8 @@ App.tsx
 │   │   ├── MessageBubble        # 用户/助手消息
 │   │   ├── ToolCallCard         # 工具调用卡片（截图预览、UIA 树）
 │   │   ├── StepProgressCard     # 步骤执行进度（before/after 截图）
-│   │   ├── TakeoverCard         # 人工接管提示（原因 + 继续按钮）
+│   │   ├── TakeoverCard         # 人工接管提示（原因 + 继续/放弃按钮）
+│   │   ├── MemoryCandidateCard  # 流程候选列表（用户选择确认）
 │   │   └── TaskSummaryCard      # 任务完成/失败摘要
 │   └── InputBar                 # 底部输入
 │       ├── TextInput            # 文本框（Shift+Enter 换行）
@@ -857,10 +1169,11 @@ App.tsx
 │       └── SendButton           # 发送
 │
 └── SettingsPage                 # 设置页（路由切换）
-    ├── LLMConfig                # 模型配置（provider/key/model）
-    ├── SafetyConfig             # 安全设置（热键/确认级别）
+    ├── LLMConfig                # 模型配置（provider/baseURL/model，API Key 显示掩码）
+    ├── SafetyConfig             # 安全设置（热键/确认级别/接管超时）
     ├── MemoryManager            # 流程记忆管理（导入/列表/删除）
-    └── StorageConfig            # 存储路径
+    ├── StorageConfig            # 存储路径 + 日志保留天数
+    └── PrivacyConfig            # 隐私设置（截图策略/LLM 请求日志）
 ```
 
 ### Zustand Stores
@@ -871,7 +1184,7 @@ interface ChatStore {
   sessions: Session[];
   activeSessionId: string | null;
   messages: Message[];
-  
+
   createSession(): string;
   switchSession(id: string): void;
   deleteSession(id: string): void;
@@ -884,7 +1197,7 @@ interface TaskStore {
   currentTask: TaskRun | null;
   isRunning: boolean;
   isPaused: boolean;
-  
+
   startTask(goal: string): void;
   updateStep(event: AgentEvent): void;
   resumeAfterTakeover(): void;
@@ -906,24 +1219,31 @@ Phase 0 已有 13 个工具 IPC 通道。阶段 1 新增：
 ```typescript
 contextBridge.exposeInMainWorld('agivar', {
   // Phase 0 已有的 screenshot/uia/input/browser/recorder/dpi ...
-  
+
   agent: {
     runTask: (goal: string, sessionId: string) =>
       ipcRenderer.invoke('agent:runTask', goal, sessionId),
     abort: () => ipcRenderer.invoke('agent:abort'),
     resumeTakeover: () => ipcRenderer.invoke('agent:resumeTakeover'),
-    onEvent: (callback: (event: AgentEvent) => void) => {
-      ipcRenderer.on('agent:event', (_, event) => callback(event));
+    selectMemory: (memoryId: string) =>
+      ipcRenderer.invoke('agent:selectMemory', memoryId),
+    onEvent: (taskRunId: string, callback: (event: AgentEvent) => void) => {
+      const handler = (_: unknown, event: AgentEvent) => {
+        if (event.taskRunId === taskRunId) callback(event);
+      };
+      ipcRenderer.on('agent:event', handler);
+      return () => ipcRenderer.removeListener('agent:event', handler);
     },
   },
-  
+
   memory: {
     import: (filePath: string) => ipcRenderer.invoke('memory:import', filePath),
-    list: (filter?: any) => ipcRenderer.invoke('memory:list', filter),
+    list: (filter?: { appName?: string; topic?: string }) =>
+      ipcRenderer.invoke('memory:list', filter),
     get: (id: string) => ipcRenderer.invoke('memory:get', id),
     delete: (id: string) => ipcRenderer.invoke('memory:delete', id),
   },
-  
+
   session: {
     list: () => ipcRenderer.invoke('session:list'),
     create: () => ipcRenderer.invoke('session:create'),
@@ -931,10 +1251,13 @@ contextBridge.exposeInMainWorld('agivar', {
     getMessages: (sessionId: string) =>
       ipcRenderer.invoke('session:getMessages', sessionId),
   },
-  
+
   settings: {
     get: () => ipcRenderer.invoke('settings:get'),
-    update: (patch: any) => ipcRenderer.invoke('settings:update', patch),
+    update: (patch: Partial<AppSettings>) =>
+      ipcRenderer.invoke('settings:update', patch),
+    getApiKeyMask: () => ipcRenderer.invoke('settings:getApiKeyMask'),
+    setApiKey: (key: string) => ipcRenderer.invoke('settings:setApiKey', key),
   },
 });
 ```
@@ -944,6 +1267,27 @@ Agent 事件通过 `mainWindow.webContents.send('agent:event', event)` 推送到
 ---
 
 ## 10. SQLite 数据库 Schema
+
+### 迁移机制
+
+```sql
+-- 迁移版本表
+CREATE TABLE schema_migrations (
+  version INTEGER PRIMARY KEY,
+  name TEXT NOT NULL,
+  applied_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+```
+
+启动时运行 migrations。数据库配置：
+
+```sql
+PRAGMA journal_mode = WAL;
+PRAGMA busy_timeout = 5000;
+PRAGMA foreign_keys = ON;
+```
+
+### 业务表
 
 ```sql
 -- 会话
@@ -974,11 +1318,14 @@ CREATE TABLE workflow_memories (
   trigger_examples TEXT NOT NULL,  -- JSON array
   summary TEXT NOT NULL,
   initial_state TEXT NOT NULL,
+  inputs TEXT,                     -- JSON array of WorkflowInput
   steps TEXT NOT NULL,             -- JSON array of WorkflowStep
   success_criteria TEXT,
   risk_level TEXT NOT NULL DEFAULT 'low',
   source_type TEXT NOT NULL DEFAULT 'manual',
   version INTEGER NOT NULL DEFAULT 1,
+  search_text TEXT NOT NULL DEFAULT '',       -- 预计算搜索文本
+  embedding_status TEXT NOT NULL DEFAULT 'not_indexed',  -- 阶段 2 预留
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -990,7 +1337,12 @@ CREATE TABLE task_runs (
   id TEXT PRIMARY KEY,
   session_id TEXT REFERENCES sessions(id),
   user_goal TEXT NOT NULL,
+  mode TEXT NOT NULL DEFAULT 'workflow'
+    CHECK (mode IN ('workflow', 'llm', 'hybrid')),
   matched_memory_id TEXT REFERENCES workflow_memories(id),
+  selected_memory_ids TEXT,        -- JSON array（多候选场景）
+  plan_json TEXT,                  -- JSON: StepPlan[] 执行时的计划快照
+  run_config TEXT,                 -- JSON: provider/model/safety settings 快照
   status TEXT NOT NULL DEFAULT 'pending'
     CHECK (status IN ('pending', 'running', 'paused', 'success', 'failed', 'aborted')),
   summary TEXT,
@@ -1004,20 +1356,24 @@ CREATE TABLE task_step_logs (
   task_run_id TEXT NOT NULL REFERENCES task_runs(id) ON DELETE CASCADE,
   step_index INTEGER NOT NULL,
   intent TEXT NOT NULL,
-  action TEXT NOT NULL,           -- JSON
+  action TEXT NOT NULL,                -- JSON: StepAction
   locator_strategy TEXT,
-  before_screenshot TEXT,         -- 文件路径
+  before_screenshot TEXT,              -- 文件路径
   after_screenshot TEXT,
-  uia_snapshot TEXT,              -- 文件路径
-  expected_state TEXT,            -- JSON
+  uia_snapshot TEXT,                   -- 文件路径
+  expected_state TEXT,                 -- JSON: ExpectedState
   verification_result TEXT CHECK (verification_result IN ('pass', 'fail', 'skipped')),
   error_type TEXT,
+  workflow_step_snapshot TEXT,          -- JSON: 执行时的 WorkflowStep 快照
+  target_snapshot TEXT,                -- JSON: 实际 TargetDescriptor
+  tool_result TEXT,                    -- JSON: ToolResult<T>
+  failure_info TEXT,                   -- JSON: FailureInfo
   duration_ms INTEGER,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX idx_step_logs_task ON task_step_logs(task_run_id, step_index);
 
--- 设置（KV 存储）
+-- 设置（KV 存储，非敏感配置）
 CREATE TABLE app_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL
@@ -1029,21 +1385,26 @@ CREATE TABLE app_settings (
 ## 11. 本地数据目录
 
 ```
-~/.agivar/
-├── settings.json               # 应用配置
-├── agivar.db                   # SQLite 数据库
-├── workflows/                  # 导入的流程 YAML/JSON
-│   ├── bilibili-coin.yaml
-│   ├── form-fill.yaml
-│   └── notepad-test.yaml
+{dataDir}/                          # 开发: <repo>/.agivar-dev/  生产: app.getPath('userData')
+├── settings.json                   # 应用配置（不含 API Key）
+├── agivar.db                       # SQLite 数据库（WAL 模式）
+├── workflows/                      # 导入的流程 YAML/JSON
+│   ├── form-fill-local.yaml
+│   ├── search-local.yaml
+│   └── notepad-text.yaml
 ├── logs/
 │   └── {taskRunId}/
 │       ├── step-0-before.png
 │       ├── step-0-after.png
 │       ├── step-0-uia.json
 │       └── ...
-└── screenshots/                # 临时截图
+└── screenshots/                    # 临时截图（按 privacy.screenshotOnlyForTask 清理）
 ```
+
+**目录选择：**
+- 开发环境：`<repo>/.agivar-dev/`（gitignore）
+- 生产环境：`app.getPath('userData')`（符合 Windows 用户数据目录习惯，利于卸载/备份/权限处理）
+- 可通过 `settings.storage.dataDir` 自定义
 
 ---
 
@@ -1066,16 +1427,69 @@ CREATE TABLE app_settings (
 
 ---
 
-## 13. 阶段 1 不做的事（明确排除）
+## 13. 阶段 1 范围总结
 
-- 不做 sqlite-vec 向量检索（用关键词匹配）
-- 不做云端同步、用户登录
-- 不做录屏教学（阶段 3）
-- 不做文字教学生成流程（阶段 2）
-- 不做流程编辑器（阶段 2）
-- 不做 Python 脚本执行
-- 不做 macOS 支持
-- 不做自动更新
-- 不做批量执行
-- 不做 OCR 视觉定位（坐标兜底足够）
-- 不做任务进度悬浮窗（内嵌在聊天流中）
+### P0 必做
+
+- Phase 0 遗留补验（输入、紧急停止、录屏帧捕获）
+- 手写 YAML / JSON 流程导入 + 变量 schema 验证
+- MemoryStore 关键词检索 + 阈值选择策略
+- StepPlan 统一模型 + TaskContext 生命周期管理
+- ToolRouter 适配 Phase 0 工具 API
+- StepExecutor 执行前后截图
+- StateVerifier 非 OCR 验证
+- SafetyLayer 风险分级和高风险拦截
+- AbortManager + GlobalHotkey 真实中断交互动作
+- Human Takeover 暂停与恢复状态机
+- SQLite 任务/消息/流程/步骤日志持久化 + 迁移机制
+- 聊天主界面和内嵌任务进度面板
+- 3 条本地可控评测流程
+- API Key 安全存储（OS 凭据管理器或 DPAPI 加密）
+
+### P1 对照（不作为 Go/No-Go）
+
+- LLM 生成 StepPlan（不直接执行工具），走统一执行链
+- 本地测试页上的 LLM 自主规划 3/5 成功率统计
+- 多 provider 配置（P0 只支持一个 OpenAI-compatible provider）
+
+### 明确不做
+
+- 外网站点自动化验收（评测全部用本地 fixture）
+- 账号登录态复用
+- OCR 视觉定位
+- 录屏教学（阶段 3）
+- 文字教学生成流程（阶段 2）
+- 流程编辑器（阶段 2）
+- Python 脚本执行
+- macOS 支持
+- 自动更新
+- 批量执行
+- 独立任务进度悬浮窗（内嵌在聊天流中）
+- 云端同步、用户登录
+- sqlite-vec 向量检索（用关键词匹配，但预留 search_text 和 embedding_status 字段）
+
+---
+
+## 14. 隐私与日志保留
+
+### 截图策略
+
+- 默认只保存任务执行的 before/after 截图
+- 截图路径中不包含用户输入的变量值（尤其是 `secret: true` 的变量）
+- 密码框、验证码、支付页面触发人工接管，接管前的截图需要用户确认后才保存
+
+### LLM 请求日志
+
+- 记录：发送时间、provider、model、用途（plan/observe）、token 用量
+- 不记录：API Key、用户标记为 `secret: true` 的变量值
+- 发送给 LLM 的截图在日志中记录文件路径，不重复存储
+
+### 数据清理
+
+- 日志保留天数可配置（默认 30 天）
+- 用户可以删除某个 TaskRun 的所有截图、UIA 快照和数据库记录
+- 过期日志定期清理（应用启动时检查）
+
+### 向量检索迁移预留（阶段 2）
+
+阶段 1 使用关键词检索，不生成 embedding。但 `workflow_memories` 表已预留 `search_text`（预计算搜索文本）和 `embedding_status`（默认 `not_indexed`）字段，阶段 2 迁移时直接使用。
