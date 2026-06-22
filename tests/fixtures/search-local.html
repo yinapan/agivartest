@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>Agivar — Search Test</title>
+<style>body{font-family:sans-serif;max-width:600px;margin:40px auto;padding:0 20px}#results{margin-top:20px}.result-item{padding:8px;border-bottom:1px solid #eee}</style>
+</head>
+<body>
+<h1>Search Test</h1>
+<input type="text" id="searchInput" placeholder="输入搜索关键词"><button id="searchBtn" onclick="doSearch()">搜索</button>
+<div id="results"></div>
+<script>
+var items=['TypeScript 入门教程','React 组件设计','Node.js 性能优化','Electron 桌面开发','Playwright 自动化测试'];
+function doSearch(){var q=document.getElementById('searchInput').value.toLowerCase();var r=document.getElementById('results');var m=items.filter(function(i){return i.toLowerCase().includes(q)});if(m.length>0){r.innerHTML=m.map(function(i){return '<div class="result-item">'+i+'</div>'}).join('')}else{r.innerHTML='<div class="result-item">无匹配结果</div>'}}
+</script>
+</body>
+</html>

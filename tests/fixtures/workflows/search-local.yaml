@@ -1,0 +1,52 @@
+appName: Chrome
+platform: browser
+topic: local-search/keyword
+triggerExamples:
+  - 搜索关键词
+  - 帮我搜索
+summary: 在本地搜索页搜索关键词并验证结果
+initialState: 浏览器已打开
+
+inputs:
+  keyword:
+    type: string
+    required: true
+    prompt: 请输入搜索关键词
+    minLength: 1
+
+riskLevel: low
+
+steps:
+  - intent: 导航到搜索页
+    targetHint: 地址栏
+    target:
+      strategy: playwright
+      selector: "body"
+    inputHint: "navigate:http://127.0.0.1:12827/search-local.html"
+    expectedState:
+      any:
+        - type: page_text_contains
+          value: Search Test
+    riskLevel: low
+
+  - intent: 输入搜索关键词
+    targetHint: 搜索输入框
+    target:
+      strategy: playwright
+      selector: "#searchInput"
+    inputHint: "{{keyword}}"
+    riskLevel: low
+
+  - intent: 点击搜索按钮
+    targetHint: 搜索按钮
+    target:
+      strategy: playwright
+      selector: "#searchBtn"
+    expectedState:
+      any:
+        - type: page_text_contains
+          value: "{{keyword}}"
+    riskLevel: low
+    fallback: retry
+
+successCriteria: 搜索结果区域出现匹配项

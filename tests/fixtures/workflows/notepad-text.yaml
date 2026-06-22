@@ -1,0 +1,55 @@
+appName: 记事本
+platform: desktop
+topic: notepad/input-text
+triggerExamples:
+  - 在记事本输入文字
+  - 打开记事本写东西
+summary: 打开记事本并输入指定文本
+initialState: 记事本未打开或已打开
+
+inputs:
+  content:
+    type: string
+    required: true
+    prompt: 请输入要写入的文本
+
+riskLevel: low
+
+steps:
+  - intent: 打开记事本
+    targetHint: 系统应用
+    target:
+      strategy: coordinate
+      point:
+        x: 0
+        y: 0
+        space: screen-physical
+    inputHint: "press:LeftSuper,R then type:notepad then press:Return"
+    riskLevel: low
+
+  - intent: 等待记事本窗口出现
+    targetHint: 记事本窗口
+    target:
+      strategy: uia
+      query:
+        controlType: Window
+        name: Notepad
+        nameMatch: contains
+    expectedState:
+      any:
+        - type: window_title_contains
+          value: Notepad
+    riskLevel: low
+    fallback: retry
+
+  - intent: 输入文本
+    targetHint: 记事本编辑区
+    target:
+      strategy: uia
+      query:
+        controlType: Document
+        className: RichEditD2DPT
+    inputHint: "{{content}}"
+    riskLevel: low
+
+successCriteria: 记事本中出现指定文本
