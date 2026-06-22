@@ -13,12 +13,15 @@
     "poc:all": "tsx tests/poc-runner.ts --mode all",
     "poc:clean": "tsx tests/poc-runner.ts --clean",
     "native:doctor": "node packages/native/scripts/doctor.mjs",
-    "desktop:doctor-native": "node packages/desktop/scripts/doctor-native-launcher.cjs"
+    "desktop:doctor-native": "node packages/desktop/scripts/doctor-native-launcher.cjs",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "@agivar/native": "workspace:*",
-    "turbo": "^2.4.0",
     "tsx": "^4.19.0",
-    "typescript": "~5.7.0"
+    "turbo": "^2.4.0",
+    "typescript": "~5.7.0",
+    "vitest": "^3.2.6"
   }
 }

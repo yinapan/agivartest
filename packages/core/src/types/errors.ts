@@ -16,7 +16,8 @@ export type ToolErrorCode =
   | 'BROWSER_ACTION_FAILED'
   | 'RECORDER_BACKEND_UNAVAILABLE'
   | 'RECORDER_RESOURCE_LEAK'
-  | 'DPI_MAPPING_FAILED';
+  | 'DPI_MAPPING_FAILED'
+  | 'TASK_ABORTED';
 
 export interface ToolError {
   code: ToolErrorCode;
