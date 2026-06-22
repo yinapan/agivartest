@@ -132,3 +132,35 @@ export async function clickAndType(target: Point, text: string): Promise<ToolRes
   await timers.setTimeout(200);
   return typeText(text);
 }
+
+export async function scroll(direction: 'up' | 'down', amount: number): Promise<ToolResult<void>> {
+  const start = performance.now();
+  try {
+    await ensureNut();
+    for (let i = 0; i < amount; i++) {
+      if (direction === 'down') {
+        await nutMouse.scrollDown(3);
+      } else {
+        await nutMouse.scrollUp(3);
+      }
+    }
+    return toolOk(undefined, performance.now() - start);
+  } catch (err: any) {
+    return toolErr('INPUT_ABORTED', err.message, performance.now() - start);
+  }
+}
+
+export async function releaseAllKeys(): Promise<ToolResult<void>> {
+  const start = performance.now();
+  try {
+    await ensureNut();
+    const { Key } = await import('@nut-tree-fork/nut-js');
+    const modifiers = [Key.LeftShift, Key.LeftControl, Key.LeftAlt, Key.LeftSuper];
+    for (const key of modifiers) {
+      try { await nutKeyboard.releaseKey(key); } catch { /* best effort */ }
+    }
+    return toolOk(undefined, performance.now() - start);
+  } catch (err: any) {
+    return toolErr('INPUT_ABORTED', err.message, performance.now() - start);
+  }
+}
