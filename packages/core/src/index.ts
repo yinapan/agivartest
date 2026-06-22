@@ -15,13 +15,11 @@ export { runMigrations } from './memory/schema.js';
 export { AbortManager } from './safety/abort-manager.js';
 export type { AbortSource } from './safety/abort-manager.js';
 export { RiskClassifier } from './safety/risk-classifier.js';
-// ExecutionLog not yet created (Task 9) — uncomment when available:
-// export { ExecutionLog } from './safety/execution-log.js';
+export { ExecutionLog } from './safety/execution-log.js';
 export { ToolRouter } from './agent/tool-router.js';
 export type { ToolAdapters } from './agent/tool-router.js';
 export { StateVerifier } from './agent/state-verifier.js';
 export { FailureHandler } from './agent/failure-handler.js';
-// StepExecutor not yet created (Task 9) — uncomment when available:
-// export { StepExecutor } from './agent/step-executor.js';
+export { StepExecutor } from './agent/step-executor.js';
 export { resolveVariables, buildStepPlan, validateInputs, getMissingInputs, getHumanOnlyInputs, getRequiredInputs } from './agent/workflow-executor.js';
 export type { ResolvedInputs } from './agent/workflow-executor.js';

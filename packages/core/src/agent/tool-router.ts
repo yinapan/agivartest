@@ -104,23 +104,27 @@ export class ToolRouter {
   private async withAbort<T>(promise: Promise<ToolResult<T>>, signal: AbortSignal): Promise<ToolResult<T>> {
     if (signal.aborted) return toolErr('TASK_ABORTED', 'Task was aborted', 0);
 
-    const abortPromise = new Promise<ToolResult<T>>((_, reject) => {
-      const handler = () => {
-        signal.removeEventListener('abort', handler);
-        reject(toolErr('TASK_ABORTED', 'Task aborted during tool execution', 0));
-      };
-      signal.addEventListener('abort', handler, { once: true });
-    });
-
-    const timeoutPromise = new Promise<ToolResult<T>>((resolve) => {
-      setTimeout(() => resolve(toolErr('TASK_ABORTED', `Tool timed out after ${TOOL_TIMEOUT_MS}ms`, TOOL_TIMEOUT_MS)), TOOL_TIMEOUT_MS);
-    });
+    const ac = new AbortController();
+    const onAbort = () => ac.abort(new Error('Task aborted'));
+    signal.addEventListener('abort', onAbort, { once: true });
+    const timeout = setTimeout(() => ac.abort(new Error(`Tool timed out after ${TOOL_TIMEOUT_MS}ms`)), TOOL_TIMEOUT_MS);
 
     try {
-      return await Promise.race([promise, abortPromise, timeoutPromise]);
+      const result = await Promise.race([
+        promise,
+        new Promise<ToolResult<T>>((_, reject) => {
+          ac.signal.addEventListener('abort', () => {
+            reject(toolErr('TASK_ABORTED', ac.signal.reason?.message ?? 'Tool aborted', TOOL_TIMEOUT_MS));
+          }, { once: true });
+        }),
+      ]);
+      return result;
     } catch (err: any) {
       if (err && typeof err === 'object' && 'ok' in err && err.ok === false) return err;
       return toolErr('TASK_ABORTED', err?.message ?? 'Aborted', 0);
+    } finally {
+      signal.removeEventListener('abort', onAbort);
+      clearTimeout(timeout);
     }
   }
 }

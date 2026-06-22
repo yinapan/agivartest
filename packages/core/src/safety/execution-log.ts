@@ -1,14 +1,7 @@
-import { createRequire } from 'node:module';
 import { nanoid } from 'nanoid';
 import type { StepPlan, StepResult, TaskContext } from '../types/agent.js';
 import type { DatabaseLike } from '../memory/schema.js';
 import { getDatabase } from '../memory/db.js';
-
-const require = createRequire(import.meta.url);
-const BetterSqlite3: new (
-  path: string,
-  options?: { readonly?: boolean; fileMustExist?: boolean; timeout?: number },
-) => DatabaseLike = require('better-sqlite3');
 
 export interface StepLogEntry {
   step: StepPlan;
