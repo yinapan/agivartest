@@ -1,0 +1,22 @@
+{
+  "name": "@agivar/core",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch"
+  },
+  "dependencies": {
+    "@agivar/native": "workspace:*",
+    "@nut-tree-fork/nut-js": "^4.2.0",
+    "node-screenshots": "^0.2.8",
+    "playwright": "^1.48.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.0.0",
+    "typescript": "~5.7.0"
+  }
+}

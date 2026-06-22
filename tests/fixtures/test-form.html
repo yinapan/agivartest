@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Agivar Phase 0 — Test Form</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; }
+    label { display: block; margin-top: 16px; font-weight: bold; }
+    input, select, textarea { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; }
+    button { margin-top: 20px; padding: 10px 24px; cursor: pointer; }
+    .result { margin-top: 20px; padding: 16px; border-radius: 4px; display: none; }
+    .result.success { display: block; background: #d4edda; color: #155724; }
+    .loading { display: none; margin-top: 12px; color: #666; }
+    .loading.visible { display: block; }
+  </style>
+</head>
+<body>
+  <h1>Test Form</h1>
+  <form id="testForm">
+    <label for="name">Name</label>
+    <input type="text" id="name" name="name" placeholder="Enter your name" required>
+
+    <label for="email">Email</label>
+    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+
+    <label for="category">Category</label>
+    <select id="category" name="category">
+      <option value="">Select...</option>
+      <option value="bug">Bug Report</option>
+      <option value="feature">Feature Request</option>
+      <option value="other">Other</option>
+    </select>
+
+    <label>
+      <input type="checkbox" id="agree" name="agree">
+      I agree to the terms
+    </label>
+
+    <label for="details">Details</label>
+    <textarea id="details" name="details" rows="4" placeholder="Enter details"></textarea>
+
+    <button type="submit">Submit</button>
+  </form>
+
+  <div class="loading" id="loading">Processing...</div>
+  <div class="result" id="result"></div>
+
+  <script>
+    document.getElementById('testForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      var loading = document.getElementById('loading');
+      var result = document.getElementById('result');
+      loading.classList.add('visible');
+      result.classList.remove('success');
+
+      // 模拟动态加载延迟
+      setTimeout(function() {
+        loading.classList.remove('visible');
+        var data = new FormData(e.target);
+        result.textContent = 'Form submitted successfully! Name: ' + data.get('name') + ', Email: ' + data.get('email');
+        result.classList.add('success');
+      }, 500);
+    });
+  </script>
+</body>
+</html>

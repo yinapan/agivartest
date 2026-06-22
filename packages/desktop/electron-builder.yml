@@ -1,0 +1,26 @@
+appId: com.agivar.desktop
+productName: Agivar
+directories:
+  output: release
+asar: true
+files:
+  - dist/**/*
+  - package.json
+  # Exclude all node_modules - workspace symlinks break asar packaging.
+  # Native addon is included via extraResources.
+  - "!node_modules"
+asarUnpack:
+  - "**/*.node"
+npmRebuild: false
+# Copy the native addon files alongside the app (not symlinked)
+extraResources:
+  - from: "../../packages/native/index.js"
+    to: "app.asar.unpacked/node_modules/@agivar/native/index.js"
+  - from: "../../packages/native/index.d.ts"
+    to: "app.asar.unpacked/node_modules/@agivar/native/index.d.ts"
+  - from: "../../packages/native/package.json"
+    to: "app.asar.unpacked/node_modules/@agivar/native/package.json"
+  - from: "../../packages/native/native.win32-x64-msvc.node"
+    to: "app.asar.unpacked/node_modules/@agivar/native/native.win32-x64-msvc.node"
+win:
+  target: dir

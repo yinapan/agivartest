@@ -1,0 +1,24 @@
+{
+  "name": "agivar",
+  "private": true,
+  "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "poc:readonly": "tsx tests/poc-runner.ts --mode readonly",
+    "poc:interactive": "tsx tests/poc-runner.ts --mode interactive",
+    "poc:all": "tsx tests/poc-runner.ts --mode all",
+    "poc:clean": "tsx tests/poc-runner.ts --clean",
+    "native:doctor": "node packages/native/scripts/doctor.mjs",
+    "desktop:doctor-native": "node packages/desktop/scripts/doctor-native-launcher.cjs"
+  },
+  "devDependencies": {
+    "@agivar/native": "workspace:*",
+    "turbo": "^2.4.0",
+    "tsx": "^4.19.0",
+    "typescript": "~5.7.0"
+  }
+}

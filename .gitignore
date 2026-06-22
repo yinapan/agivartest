@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.node
+target/
+tests/output/
+.turbo/
+*.tsbuildinfo
+.DS_Store
+Thumbs.db
