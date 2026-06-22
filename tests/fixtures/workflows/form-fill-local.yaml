@@ -1,0 +1,65 @@
+appName: Chrome
+platform: browser
+topic: local-form/fill
+triggerExamples:
+  - 帮我填表单
+  - 填写测试表单
+summary: 在本地测试页填写并提交表单
+initialState: 浏览器已打开，当前在任意页面
+
+inputs:
+  userName:
+    type: string
+    required: true
+    prompt: 请输入用户名
+    minLength: 1
+    maxLength: 50
+  email:
+    type: string
+    required: true
+    prompt: 请输入邮箱
+
+riskLevel: low
+
+steps:
+  - intent: 导航到测试表单页
+    targetHint: 浏览器地址栏
+    target:
+      strategy: playwright
+      selector: "body"
+    inputHint: "navigate:http://127.0.0.1:12827/test-form.html"
+    expectedState:
+      any:
+        - type: page_text_contains
+          value: Test Form
+    riskLevel: low
+
+  - intent: 填写用户名
+    targetHint: Name 输入框
+    target:
+      strategy: playwright
+      selector: "#name"
+    inputHint: "{{userName}}"
+    riskLevel: low
+
+  - intent: 填写邮箱
+    targetHint: Email 输入框
+    target:
+      strategy: playwright
+      selector: "#email"
+    inputHint: "{{email}}"
+    riskLevel: low
+
+  - intent: 提交表单
+    targetHint: Submit 按钮
+    target:
+      strategy: playwright
+      selector: "button[type='submit']"
+    expectedState:
+      any:
+        - type: page_text_contains
+          value: submitted successfully
+    riskLevel: medium
+    fallback: retry
+
+successCriteria: 页面显示 submitted successfully
