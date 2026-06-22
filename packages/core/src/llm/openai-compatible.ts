@@ -1,6 +1,6 @@
 import { generateText, streamText, tool } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
-import { z } from 'zod/v4';
+import { z } from 'zod';
 import type { LLMProvider, GenerateTextParams, GenerateTextResult, StreamChunk, ToolDefinition } from './provider.js';
 
 export interface OpenAIClientConfig {
@@ -48,7 +48,9 @@ export class OpenAIClient implements LLMProvider {
         type: 'function' as const,
         function: { name: tc.toolName, arguments: JSON.stringify(tc.input) },
       })) ?? [],
-      finishReason: result.finishReason === 'tool-calls' ? 'tool_calls' : 'stop',
+      finishReason: result.finishReason === 'tool-calls' ? 'tool_calls'
+        : result.finishReason === 'length' ? 'length'
+        : 'stop',
       usage: result.usage ? {
         promptTokens: result.usage.inputTokens,
         completionTokens: result.usage.outputTokens,
