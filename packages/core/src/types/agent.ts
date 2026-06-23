@@ -116,6 +116,8 @@ export type AgentEventBase = {
 
 export type AgentEvent = AgentEventBase & (
   | { type: 'thinking'; message: string }
+  | { type: 'memory-match'; workflow: import('../types/workflow.js').WorkflowMemory }
+  | { type: 'memory-candidates'; candidates: import('../memory/memory-store.js').MemorySearchResult[] }
   | { type: 'step-start'; step: StepPlan; index: number }
   | { type: 'step-screenshot'; before?: string; after?: string }
   | { type: 'step-result'; success: boolean; verification?: VerifyResult }

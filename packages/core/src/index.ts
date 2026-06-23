@@ -23,3 +23,9 @@ export { FailureHandler } from './agent/failure-handler.js';
 export { StepExecutor } from './agent/step-executor.js';
 export { resolveVariables, buildStepPlan, validateInputs, getMissingInputs, getHumanOnlyInputs, getRequiredInputs } from './agent/workflow-executor.js';
 export type { ResolvedInputs } from './agent/workflow-executor.js';
+
+// Phase 1B: Agent orchestration
+export { TaskPlanner } from './agent/task-planner.js';
+export type { PlannerOutput } from './agent/task-planner.js';
+export { AgentService } from './agent/agent-service.js';
+export type { AgentServiceDeps } from './agent/agent-service.js';
