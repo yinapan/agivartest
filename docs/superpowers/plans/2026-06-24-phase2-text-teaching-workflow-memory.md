@@ -81,7 +81,7 @@ function makeDraft(overrides: Partial<WorkflowDraft> = {}): WorkflowDraft {
         targetHint: 'Notepad editor',
         inputHint: '{{noteText}}',
         target: { strategy: 'human', hint: 'Notepad editor' },
-        expectedState: { type: 'text_contains', value: '{{noteText}}' },
+        expectedState: { all: [{ type: 'window_title_contains', value: 'Notepad' }] },
         riskLevel: 'low',
       },
     ],
@@ -135,7 +135,7 @@ describe('workflow draft validation', () => {
       steps: [{
         intent: 'Click save',
         targetHint: 'x=10 y=20',
-        target: { strategy: 'coordinates', x: 10, y: 20 },
+        target: { strategy: 'coordinate', point: { x: 10, y: 20, space: 'screen-logical' } },
         riskLevel: 'medium',
       }],
     }));
@@ -248,7 +248,7 @@ export function validateWorkflowDraft(draft: WorkflowDraft): WorkflowValidationR
     if (!step.targetHint?.trim()) errors.push(`step ${n} targetHint is required`);
     if (!step.riskLevel) errors.push(`step ${n} riskLevel is required`);
     if (!step.expectedState) warnings.push(`step ${n} has no expected state`);
-    if (COORDINATE_RE.test(step.targetHint) || step.target?.strategy === 'coordinates') {
+    if (COORDINATE_RE.test(step.targetHint) || step.target?.strategy === 'coordinate') {
       warnings.push(`step ${n} appears to rely on coordinates`);
     }
   });
@@ -927,7 +927,7 @@ const fallbackTeachingProvider: TextTeachingProvider = {
       summary: request.teachingText.trim().slice(0, 240) || topic,
       initialState: `${appName} is ready.`,
       steps: request.teachingText
-        .split(/\r?\n|[。.;]/)
+        .split(/[\r\n。.;]+/)
         .map((line) => line.trim())
         .filter(Boolean)
         .slice(0, 12)
@@ -1354,6 +1354,8 @@ pnpm build
 
 Expected: PASS.
 
+If a native addon build fails, run package-scoped builds such as `pnpm -F @agivar/core build` and `pnpm -F @agivar/desktop build` to isolate whether Phase 2 TypeScript exports and desktop wiring are healthy. Treat that as diagnostic only; do not mark Phase 2 verification complete until `pnpm build` passes.
+
 - [ ] **Step 4: Electron smoke for workflow page**
 
 If Electron native deps were rebuilt for Node, first run:
@@ -1405,6 +1407,12 @@ The architecture and test reviews produced after the first Phase 2 slice identif
 - The workflow editor must cover inputs, input hints, expected state, fallback, workflow risk level, and platform.
 - Rollback needs confirmation and snapshot preview.
 - IPC and workflow-page smoke tests are missing.
+
+The supplemental review in `docs/superpowers/reviews/2026-06-24-phase2-supplemental-review.md` adds the following triage decisions:
+
+- Accepted: regenerate `searchText` on update from accepted fields, reject duplicate workflow ids with a stable error, add request length limits, wrap IPC exceptions, correct `TargetDescriptor` examples, and verify package export completeness.
+- Adjusted before accepting: normalize fallback provider delimiter handling and add coverage, but treat the dot in `[。.;]` as a literal character-class member rather than a wildcard defect.
+- Not accepted as completion criteria: skipping native addon build failures. Package-scoped builds may be used for diagnosis only; full Phase 2 acceptance still requires `pnpm build`.
 
 The next tasks are hardening tasks generated from those reviews.
 
@@ -1568,6 +1576,13 @@ it('updateWithVersion regenerates searchText from edited content', () => {
   expect(updated.searchText).toContain('Search customer by name');
   expect(updated.searchText).not.toBe('old words');
 });
+
+it('saveWithVersion rejects duplicate workflow ids', () => {
+  const mem = makeMemory({ id: 'duplicate-workflow-id' });
+  store.saveWithVersion(mem, { source: 'create' });
+
+  expect(() => store.saveWithVersion(mem, { source: 'create' })).toThrow(/already exists|duplicate/i);
+});
 ```
 
 - [ ] **Step 8: Implement workflow-memory validation for update**
@@ -1612,6 +1627,8 @@ Export these helpers from `packages/core/src/index.ts`.
 
 In `packages/core/src/memory/memory-store.ts`, call `rebuildMemoryForUpdate()` before writing an update.
 
+Do not preserve renderer-provided `searchText` during update. `rebuildMemoryForUpdate()` must derive it from app name, topic, summary, trigger examples, and step intents every time.
+
 - [ ] **Step 9: Add failing schema tests for version uniqueness**
 
 Append to `packages/core/tests/schema.test.ts`:
@@ -1638,9 +1655,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_workflow_memory_versions_unique
 
 - [ ] **Step 11: Force new workflow versions to 1**
 
-Modify `saveWithVersion()` in `packages/core/src/memory/memory-store.ts` so new saves always write version `1`:
+Modify `saveWithVersion()` in `packages/core/src/memory/memory-store.ts` so duplicate ids are rejected and new saves always write version `1`:
 
 ```ts
+if (this.getById(memory.id)) {
+  throw new Error(`workflow memory ${memory.id} already exists`);
+}
+
 const normalized = {
   ...memory,
   version: 1,
@@ -1723,12 +1744,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function assertTextTeachingRequest(value: unknown): asserts value is { goal: string; teachingText: string; appName?: string; platform?: 'desktop' | 'browser' | 'hybrid' } {
   if (!isRecord(value)) throw new Error('request must be an object');
-  if (typeof value.goal !== 'string') throw new Error('goal must be a string');
-  if (typeof value.teachingText !== 'string') throw new Error('teachingText must be a string');
-  if ('appName' in value && typeof value.appName !== 'string') throw new Error('appName must be a string');
+  assertStringField(value.goal, 'goal', { min: 1, max: 500 });
+  assertStringField(value.teachingText, 'teachingText', { min: 1, max: 20000 });
+  if ('appName' in value) assertStringField(value.appName, 'appName', { min: 1, max: 200 });
   if ('platform' in value && value.platform !== 'desktop' && value.platform !== 'browser' && value.platform !== 'hybrid') {
     throw new Error('platform is invalid');
   }
+}
+
+function assertStringField(value: unknown, field: string, limits: { min: number; max: number }): asserts value is string {
+  if (typeof value !== 'string') throw new Error(`${field} must be a string`);
+  const length = value.trim().length;
+  if (length < limits.min) throw new Error(`${field} is required`);
+  if (length > limits.max) throw new Error(`${field} is too long`);
 }
 ```
 
@@ -1757,9 +1785,20 @@ ipcMain.handle('memory:teachText', async (_event, request) => safeIpc(async () =
 }));
 ```
 
-Change `memory:saveDraft`, `memory:update`, and `memory:rollback` similarly so core exceptions become `{ ok: false, error }`.
+Change `memory:saveDraft`, `memory:update`, and `memory:rollback` similarly so core exceptions become `{ ok: false, error }`. Map duplicate workflow ids to a stable code such as `WORKFLOW_ALREADY_EXISTS` so double-clicked save attempts do not surface as rejected invokes.
 
 For `memory:listVersions` and `memory:getVersion`, validate `memoryId` and `version`.
+
+Normalize the fallback provider splitter to group repeated delimiters:
+
+```ts
+const teachingLines = request.teachingText
+  .split(/[\r\n。.;]+/)
+  .map((line) => line.trim())
+  .filter(Boolean);
+```
+
+Add focused coverage for newline, Chinese period, English period, and semicolon input so the fallback provider keeps producing one step per intended instruction.
 
 - [ ] **Step 4: Preserve renderer compatibility**
 
@@ -2011,10 +2050,12 @@ Expected: PASS.
 - [ ] **Step 5: Run build**
 
 ```powershell
+pnpm -F @agivar/core build
+pnpm -F @agivar/desktop build
 pnpm build
 ```
 
-Expected: PASS.
+Expected: PASS. Package-scoped builds verify export completeness and desktop wiring quickly; the repository build remains the acceptance gate.
 
 - [ ] **Step 6: Run Electron workflow smoke**
 

@@ -175,18 +175,26 @@ The architecture and test reviews in `docs/superpowers/reviews/2026-06-24-phase2
 - Every new `memory:*` IPC handler must validate its input at runtime.
 - Every new `memory:*` IPC handler must return a stable `{ ok, data, error }` result shape and must not leak core exceptions as rejected Electron invokes.
 - `memory:teachText`, `memory:saveDraft`, `memory:update`, `memory:listVersions`, `memory:getVersion`, and `memory:rollback` need invalid-payload tests.
+- `memory:teachText` must enforce request shape and bounded string lengths for `goal`, `teachingText`, and `appName` before invoking the provider.
+- `memory:saveDraft` must handle duplicate save attempts deterministically instead of allowing low-level storage exceptions to escape.
 
 ### Workflow Validation Hardening
 
 - `memory:update` must revalidate workflow content before persistence.
 - Update paths must reject empty topic, empty steps, missing step intent, missing target hint, missing risk level, invalid platform, and malformed inputs.
-- Update paths must regenerate `searchText` when topic, summary, trigger examples, app name, or step intents change.
+- Update paths must regenerate `searchText` from the accepted workflow fields when topic, summary, trigger examples, app name, or step intents change. They must not trust stale renderer-provided `searchText`.
 - New workflow creation must force version `1`; import/version preservation requires a separate explicit design.
 
 ### Version Storage Hardening
 
 - `workflow_memory_versions` should enforce uniqueness for `(memory_id, version)`.
 - Version tests must cover missing version rollback, missing memory update, duplicate id behavior, deep snapshot preservation, and multi-workflow isolation.
+- Duplicate workflow ids should be rejected with a stable, user-readable error for Phase 2. Idempotent overwrite semantics are deferred until there is an explicit import/sync design.
+
+### Fallback Provider Boundaries
+
+- The desktop fallback provider is a local temporary line/sentence splitter, not the final workflow-understanding model.
+- Its delimiter handling must group repeated newline, Chinese period, English period, and semicolon delimiters, and it needs focused coverage so punctuation changes do not silently collapse generated steps.
 
 ### Chinese Text And Sensitive Data
 
@@ -207,6 +215,7 @@ The architecture and test reviews in `docs/superpowers/reviews/2026-06-24-phase2
 
 - Add IPC tests for invalid payloads, missing memory store, missing workflow, missing version, provider errors, and validation failures.
 - Add an Electron workflow-page smoke test that opens the workflow page, generates a draft, edits a workflow, saves, lists versions, and rolls back.
+- Validate export completeness by building both `@agivar/core` and `@agivar/desktop`; package-scoped builds are diagnostic, while full Phase 2 acceptance still requires the repository build to pass.
 - Continue treating recorder frame assertions as real-desktop-dependent; recorder success for this phase still requires an interactive PoC or manual smoke in a valid desktop session.
 
 Deferred items:
