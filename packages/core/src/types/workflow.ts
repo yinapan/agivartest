@@ -43,3 +43,54 @@ export interface WorkflowStep {
   fallback?: 'retry' | 'degrade' | 'takeover' | 'terminal';
   riskLevel: RiskLevel;
 }
+
+export type WorkflowDraftInput = WorkflowInput;
+
+export type WorkflowDraftStep = Omit<WorkflowStep, 'id' | 'order'> & {
+  id?: string;
+  order?: number;
+};
+
+export interface WorkflowDraft {
+  appName: string;
+  platform?: 'desktop' | 'browser' | 'hybrid';
+  topic: string;
+  triggerExamples?: string[];
+  summary: string;
+  initialState: string;
+  inputs?: WorkflowDraftInput[];
+  steps: WorkflowDraftStep[];
+  successCriteria?: string;
+  riskLevel: RiskLevel;
+  sourceType?: 'manual' | 'text-teach' | 'recording';
+}
+
+export interface WorkflowValidationResult<T = WorkflowDraft> {
+  ok: boolean;
+  data?: T;
+  errors: string[];
+  warnings: string[];
+}
+
+export interface WorkflowMemoryVersion {
+  id: string;
+  memoryId: string;
+  version: number;
+  snapshot: WorkflowMemory;
+  changeNote?: string;
+  source: 'create' | 'edit' | 'rollback' | 'import' | 'text-teach';
+  createdAt: string;
+}
+
+export interface TextTeachingRequest {
+  goal: string;
+  teachingText: string;
+  appName?: string;
+  platform?: 'desktop' | 'browser' | 'hybrid';
+}
+
+export interface TextTeachingResult {
+  draft: WorkflowDraft;
+  warnings: string[];
+  rawResponse?: unknown;
+}

@@ -10,6 +10,11 @@ export * as recorder from './tools/recorder.js';
 export { MemoryStore } from './memory/memory-store.js';
 export type { MemorySearchResult } from './memory/memory-store.js';
 export { parseWorkflowContent, workflowFileToMemory } from './memory/workflow-parser.js';
+export {
+  validateWorkflowDraft,
+  normalizeWorkflowDraft,
+  draftToMemory,
+} from './memory/workflow-draft.js';
 export { getDatabase, getDatabaseForTest, closeDatabase } from './memory/db.js';
 export { runMigrations } from './memory/schema.js';
 export { AbortManager } from './safety/abort-manager.js';
