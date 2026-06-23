@@ -35,6 +35,11 @@ function mockAdapters(): ToolAdapters {
       captureWindow: vi.fn().mockResolvedValue(toolOk({ buffer: Buffer.from('PNG'), width: 100, height: 100, timestamp: '' }, 5)),
       getActiveWindow: vi.fn().mockResolvedValue(toolOk({ hwnd: 1, title: 'Test', x: 0, y: 0, width: 800, height: 600, isMinimized: false }, 5)),
     },
+    programmatic: {
+      readFile: vi.fn().mockResolvedValue(toolOk('file content', 5)),
+      copyFile: vi.fn().mockResolvedValue(toolOk(undefined, 5)),
+      readTable: vi.fn().mockResolvedValue(toolOk([], 5)),
+    },
   };
 }
 

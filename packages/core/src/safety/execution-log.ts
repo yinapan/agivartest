@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid';
-import type { StepPlan, StepResult, TaskContext } from '../types/agent.js';
+import type { StepPlan, StepResult, TaskContext, StepAction } from '../types/agent.js';
 import type { DatabaseLike } from '../memory/schema.js';
 import { getDatabase } from '../memory/db.js';
 
@@ -7,6 +7,29 @@ export interface StepLogEntry {
   step: StepPlan;
   result: StepResult;
   context: TaskContext;
+}
+
+type ExecutionMode = 'browser' | 'uia' | 'coordinate' | 'programmatic' | 'human' | 'system';
+
+function inferExecutionMode(action: StepAction): ExecutionMode {
+  switch (action.type) {
+    case 'navigate':
+    case 'get_page_text':
+      return 'browser';
+    case 'click':
+      if (action.target.strategy === 'uia') return 'uia';
+      if (action.target.strategy === 'coordinate') return 'coordinate';
+      if (action.target.strategy === 'human') return 'human';
+      return 'browser';
+    case 'read_file':
+    case 'copy_file':
+    case 'read_table':
+      return 'programmatic';
+    case 'takeover':
+      return 'human';
+    default:
+      return 'system';
+  }
 }
 
 export class ExecutionLog {
@@ -39,8 +62,8 @@ export class ExecutionLog {
         id, task_run_id, step_index, intent, action, locator_strategy,
         before_screenshot, after_screenshot, uia_snapshot, expected_state,
         verification_result, error_type, workflow_step_snapshot, target_snapshot,
-        tool_result, failure_info, duration_ms
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        tool_result, failure_info, duration_ms, execution_mode, artifacts, evidence_summary
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const tx = this.db.transaction(() => {
@@ -73,6 +96,9 @@ export class ExecutionLog {
           result.toolResult ? JSON.stringify(result.toolResult) : null,
           result.failure ? JSON.stringify(result.failure) : null,
           result.durationMs,
+          inferExecutionMode(step.action),
+          result.artifacts ? JSON.stringify(result.artifacts) : null,
+          result.evidenceSummary ?? null,
         );
       }
     });

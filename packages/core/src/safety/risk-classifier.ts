@@ -21,6 +21,8 @@ export class RiskClassifier {
         return HIGH_RISK_KEYWORDS.some(k => text.includes(k)) ? 'high' : 'low';
       case 'wait': case 'done': return 'low';
       case 'takeover': return 'forbidden';
+      case 'read_file': case 'read_table': case 'get_page_text': return 'low';
+      case 'copy_file': return 'medium';
       default: return 'medium';
     }
   }
@@ -31,6 +33,9 @@ export class RiskClassifier {
       case 'type': return a.text;
       case 'navigate': return a.url;
       case 'click': return a.target.hint ?? '';
+      case 'read_file': return a.path;
+      case 'copy_file': return `${a.source} → ${a.target}`;
+      case 'read_table': return a.path;
       default: return '';
     }
   }

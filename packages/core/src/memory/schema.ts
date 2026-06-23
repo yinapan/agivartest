@@ -114,6 +114,15 @@ export const MIGRATIONS: Migration[] = [
       );
     `,
   },
+  {
+    version: 2,
+    name: 'add_programmatic_log_fields',
+    up: `
+      ALTER TABLE task_step_logs ADD COLUMN execution_mode TEXT;
+      ALTER TABLE task_step_logs ADD COLUMN artifacts TEXT;
+      ALTER TABLE task_step_logs ADD COLUMN evidence_summary TEXT;
+    `,
+  },
 ];
 
 export function runMigrations(db: DatabaseLike): void {

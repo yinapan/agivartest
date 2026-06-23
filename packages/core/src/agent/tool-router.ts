@@ -12,7 +12,7 @@ export interface ToolAdapters {
     clickElement(page: Page, selector: string): Promise<ToolResult<void>>;
     fillInput(page: Page, selector: string, value: string): Promise<ToolResult<void>>;
     navigateTo(page: Page, url: string): Promise<ToolResult<void>>;
-    getPageText(page: Page): Promise<ToolResult<string>>;
+    getPageText(page: Page, selector?: string): Promise<ToolResult<string>>;
   };
   uia: {
     invokeElement(hwnd: number, query: ElementQuery): Promise<ToolResult<void>>;
@@ -32,6 +32,11 @@ export interface ToolAdapters {
     captureScreen(monitorIndex?: number): Promise<ToolResult<ScreenshotResult>>;
     captureWindow(hwnd: number): Promise<ToolResult<ScreenshotResult>>;
     getActiveWindow(): Promise<ToolResult<WindowInfo>>;
+  };
+  programmatic: {
+    readFile(path: string, scope: 'app-data' | 'user-approved'): Promise<ToolResult<string>>;
+    copyFile(source: string, target: string): Promise<ToolResult<void>>;
+    readTable(path: string, range?: string): Promise<ToolResult<Record<string, string>[]>>;
   };
 }
 
@@ -64,6 +69,17 @@ export class ToolRouter {
         throw new TakeoverRequest(action.reason);
       case 'done':
         return toolOk({ done: true, summary: action.summary }, 0);
+      case 'read_file':
+        return this.tools.programmatic.readFile(action.path, action.scope);
+      case 'copy_file':
+        return this.tools.programmatic.copyFile(action.source, action.target);
+      case 'read_table':
+        return this.tools.programmatic.readTable(action.path, action.range);
+      case 'get_page_text': {
+        const p = context.browserSession?.page;
+        if (!p) return toolErr('BROWSER_ACTION_FAILED', 'No active browser session', 0);
+        return this.tools.browser.getPageText(p, action.selector);
+      }
     }
   }
 

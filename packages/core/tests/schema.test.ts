@@ -59,11 +59,11 @@ describe('Schema migrations', () => {
     // Run again explicitly
     expect(() => runMigrations(db)).not.toThrow();
 
-    // Should still have exactly one migration record
+    // Should still have exactly the same number of migration records (2: v1 + v2)
     const rows = db
       .prepare('SELECT version FROM schema_migrations ORDER BY version')
       .all() as { version: number }[];
-    expect(rows).toHaveLength(1);
+    expect(rows).toHaveLength(2);
   });
 
   it('enforces foreign keys (insert message with bad session_id throws)', () => {

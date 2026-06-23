@@ -17,7 +17,10 @@ export type ToolErrorCode =
   | 'RECORDER_BACKEND_UNAVAILABLE'
   | 'RECORDER_RESOURCE_LEAK'
   | 'DPI_MAPPING_FAILED'
-  | 'TASK_ABORTED';
+  | 'TASK_ABORTED'
+  | 'FILE_NOT_FOUND'
+  | 'FILE_ACCESS_DENIED'
+  | 'TABLE_PARSE_FAILED';
 
 export interface ToolError {
   code: ToolErrorCode;

@@ -85,6 +85,11 @@ function createMockAdapters(): ToolAdapters {
       captureWindow: vi.fn().mockResolvedValue(toolOk(mockScreenshotResult(), 10)),
       getActiveWindow: vi.fn().mockResolvedValue(toolOk(mockWindowInfo(), 10)),
     },
+    programmatic: {
+      readFile: vi.fn().mockResolvedValue(toolOk('file content', 5)),
+      copyFile: vi.fn().mockResolvedValue(toolOk(undefined, 5)),
+      readTable: vi.fn().mockResolvedValue(toolOk([], 10)),
+    },
   };
 }
 

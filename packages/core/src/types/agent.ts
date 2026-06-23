@@ -23,7 +23,11 @@ export type StepAction =
   | { type: 'wait'; condition: ExpectedState; timeoutMs: number }
   | { type: 'observe' }
   | { type: 'takeover'; reason: string }
-  | { type: 'done'; summary: string };
+  | { type: 'done'; summary: string }
+  | { type: 'read_file'; path: string; scope: 'app-data' | 'user-approved' }
+  | { type: 'copy_file'; source: string; target: string }
+  | { type: 'read_table'; path: string; range?: string }
+  | { type: 'get_page_text'; selector?: string };
 
 export type TargetDescriptor =
   | { strategy: 'playwright'; selector: string; hint?: string }
@@ -136,6 +140,8 @@ export interface StepResult {
   beforeScreenshot?: string;
   afterScreenshot?: string;
   durationMs: number;
+  artifacts?: string[];
+  evidenceSummary?: string;
 }
 
 export class TakeoverRequest extends Error {

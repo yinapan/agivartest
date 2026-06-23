@@ -89,6 +89,40 @@ const PLANNING_TOOLS: ToolDefinition[] = [
       required: ['summary'],
     },
   },
+  {
+    name: 'read_file',
+    description: '读取文件内容（仅限授权目录）',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: '文件路径' },
+        scope: { type: 'string', enum: ['app-data', 'user-approved'] },
+      },
+      required: ['path', 'scope'],
+    },
+  },
+  {
+    name: 'read_table',
+    description: '读取 CSV/Excel 表格数据',
+    parameters: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: '表格文件路径' },
+        range: { type: 'string', description: '可选的单元格范围，如 A1:C10' },
+      },
+      required: ['path'],
+    },
+  },
+  {
+    name: 'get_page_text',
+    description: '获取当前浏览器页面的文本内容',
+    parameters: {
+      type: 'object',
+      properties: {
+        selector: { type: 'string', description: '可选的 CSS 选择器，限定提取范围' },
+      },
+    },
+  },
 ];
 
 export class TaskPlanner {
@@ -271,6 +305,27 @@ export class TaskPlanner {
         return {
           intent: '任务完成',
           action: { type: 'done', summary: (args.summary as string) ?? '任务完成' },
+          riskLevel: 'low',
+          source: 'llm',
+        };
+      case 'read_file':
+        return {
+          intent: `读取文件 ${args.path}`,
+          action: { type: 'read_file', path: (args.path as string) ?? '', scope: (args.scope as 'app-data' | 'user-approved') ?? 'user-approved' },
+          riskLevel: 'low',
+          source: 'llm',
+        };
+      case 'read_table':
+        return {
+          intent: `读取表格 ${args.path}`,
+          action: { type: 'read_table', path: (args.path as string) ?? '', range: args.range as string | undefined },
+          riskLevel: 'low',
+          source: 'llm',
+        };
+      case 'get_page_text':
+        return {
+          intent: '获取页面文本',
+          action: { type: 'get_page_text', selector: args.selector as string | undefined },
           riskLevel: 'low',
           source: 'llm',
         };
