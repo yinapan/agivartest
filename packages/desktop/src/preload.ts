@@ -53,6 +53,17 @@ contextBridge.exposeInMainWorld('agivar', {
       ipcRenderer.invoke('memory:list', filter),
     get: (id: string) => ipcRenderer.invoke('memory:get', id),
     delete: (id: string) => ipcRenderer.invoke('memory:delete', id),
+    teachText: (request: any) => ipcRenderer.invoke('memory:teachText', request),
+    validateDraft: (draft: any) => ipcRenderer.invoke('memory:validateDraft', draft),
+    saveDraft: (draft: any, changeNote?: string) =>
+      ipcRenderer.invoke('memory:saveDraft', draft, changeNote),
+    update: (memory: any, changeNote?: string) =>
+      ipcRenderer.invoke('memory:update', memory, changeNote),
+    listVersions: (memoryId: string) => ipcRenderer.invoke('memory:listVersions', memoryId),
+    getVersion: (memoryId: string, version: number) =>
+      ipcRenderer.invoke('memory:getVersion', memoryId, version),
+    rollback: (memoryId: string, version: number, changeNote?: string) =>
+      ipcRenderer.invoke('memory:rollback', memoryId, version, changeNote),
   },
   session: {
     list: () => ipcRenderer.invoke('session:list'),
