@@ -1,5 +1,6 @@
 import type { DatabaseLike } from './schema.js';
-import type { WorkflowMemory } from '../types/workflow.js';
+import { nanoid } from 'nanoid';
+import type { WorkflowMemory, WorkflowMemoryVersion } from '../types/workflow.js';
 
 export interface MemorySearchResult {
   memory: WorkflowMemory;
@@ -85,10 +86,89 @@ export class MemoryStore {
   }
 
   delete(id: string): boolean {
-    const result = this.db
-      .prepare('DELETE FROM workflow_memories WHERE id = ?')
-      .run(id);
+    const tx = this.db.transaction(() => {
+      this.db.prepare('DELETE FROM workflow_memory_versions WHERE memory_id = ?').run(id);
+      return this.db.prepare('DELETE FROM workflow_memories WHERE id = ?').run(id);
+    });
+    const result = tx();
     return result.changes > 0;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Versioned writes
+  // ---------------------------------------------------------------------------
+
+  saveWithVersion(
+    memory: WorkflowMemory,
+    meta: { source: WorkflowMemoryVersion['source']; changeNote?: string },
+  ): void {
+    const now = memory.createdAt || new Date().toISOString();
+    const normalized = {
+      ...memory,
+      version: memory.version || 1,
+      createdAt: now,
+      updatedAt: memory.updatedAt || now,
+    };
+    const tx = this.db.transaction(() => {
+      this.insert(normalized);
+      this.insertVersion(normalized, meta.source, meta.changeNote, normalized.updatedAt);
+    });
+    tx();
+  }
+
+  updateWithVersion(
+    memory: WorkflowMemory,
+    meta: { source: WorkflowMemoryVersion['source']; changeNote?: string },
+  ): WorkflowMemory {
+    const current = this.getById(memory.id);
+    if (!current) throw new Error(`Workflow memory not found: ${memory.id}`);
+    const now = new Date().toISOString();
+    const updated = {
+      ...memory,
+      version: current.version + 1,
+      createdAt: current.createdAt,
+      updatedAt: now,
+    };
+    const tx = this.db.transaction(() => {
+      this.updateRow(updated);
+      this.insertVersion(updated, meta.source, meta.changeNote, now);
+    });
+    tx();
+    return updated;
+  }
+
+  listVersions(memoryId: string): WorkflowMemoryVersion[] {
+    const rows = this.db
+      .prepare('SELECT * FROM workflow_memory_versions WHERE memory_id = ? ORDER BY version DESC')
+      .all(memoryId) as Record<string, unknown>[];
+    return rows.map((row) => this.rowToVersion(row));
+  }
+
+  getVersion(memoryId: string, version: number): WorkflowMemoryVersion | null {
+    const row = this.db
+      .prepare('SELECT * FROM workflow_memory_versions WHERE memory_id = ? AND version = ?')
+      .get(memoryId, version) as Record<string, unknown> | undefined;
+    return row ? this.rowToVersion(row) : null;
+  }
+
+  rollback(memoryId: string, version: number, changeNote?: string): WorkflowMemory {
+    const target = this.getVersion(memoryId, version);
+    const current = this.getById(memoryId);
+    if (!target || !current) throw new Error(`Workflow memory version not found: ${memoryId}@${version}`);
+    const now = new Date().toISOString();
+    const restored = {
+      ...target.snapshot,
+      id: memoryId,
+      version: current.version + 1,
+      createdAt: current.createdAt,
+      updatedAt: now,
+    };
+    const tx = this.db.transaction(() => {
+      this.updateRow(restored);
+      this.insertVersion(restored, 'rollback', changeNote, now);
+    });
+    tx();
+    return restored;
   }
 
   // ---------------------------------------------------------------------------
@@ -242,6 +322,78 @@ export class MemoryStore {
   // ---------------------------------------------------------------------------
   // Row deserialization
   // ---------------------------------------------------------------------------
+
+  private updateRow(memory: WorkflowMemory): void {
+    this.db.prepare(`
+      UPDATE workflow_memories SET
+        app_name = ?,
+        platform = ?,
+        topic = ?,
+        trigger_examples = ?,
+        summary = ?,
+        initial_state = ?,
+        inputs = ?,
+        steps = ?,
+        success_criteria = ?,
+        risk_level = ?,
+        source_type = ?,
+        version = ?,
+        search_text = ?,
+        embedding_status = ?,
+        updated_at = ?
+      WHERE id = ?
+    `).run(
+      memory.appName,
+      memory.platform,
+      memory.topic,
+      JSON.stringify(memory.triggerExamples),
+      memory.summary,
+      memory.initialState,
+      memory.inputs ? JSON.stringify(memory.inputs) : null,
+      JSON.stringify(memory.steps),
+      memory.successCriteria,
+      memory.riskLevel,
+      memory.sourceType,
+      memory.version,
+      memory.searchText,
+      memory.embeddingStatus,
+      memory.updatedAt,
+      memory.id,
+    );
+  }
+
+  private insertVersion(
+    memory: WorkflowMemory,
+    source: WorkflowMemoryVersion['source'],
+    changeNote: string | undefined,
+    createdAt: string,
+  ): void {
+    this.db.prepare(`
+      INSERT INTO workflow_memory_versions (
+        id, memory_id, version, snapshot_json, change_note, source, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      nanoid(),
+      memory.id,
+      memory.version,
+      JSON.stringify(memory),
+      changeNote ?? null,
+      source,
+      createdAt,
+    );
+  }
+
+  private rowToVersion(row: Record<string, unknown>): WorkflowMemoryVersion {
+    return {
+      id: row.id as string,
+      memoryId: row.memory_id as string,
+      version: row.version as number,
+      snapshot: JSON.parse(row.snapshot_json as string) as WorkflowMemory,
+      changeNote: (row.change_note as string | null) ?? undefined,
+      source: row.source as WorkflowMemoryVersion['source'],
+      createdAt: row.created_at as string,
+    };
+  }
 
   private rowToMemory(row: Record<string, unknown>): WorkflowMemory {
     return {

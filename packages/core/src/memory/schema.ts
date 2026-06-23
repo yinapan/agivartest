@@ -123,6 +123,23 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE task_step_logs ADD COLUMN evidence_summary TEXT;
     `,
   },
+  {
+    version: 3,
+    name: 'add_workflow_memory_versions',
+    up: `
+      CREATE TABLE IF NOT EXISTS workflow_memory_versions (
+        id TEXT PRIMARY KEY,
+        memory_id TEXT NOT NULL REFERENCES workflow_memories(id) ON DELETE CASCADE,
+        version INTEGER NOT NULL,
+        snapshot_json TEXT NOT NULL,
+        change_note TEXT,
+        source TEXT NOT NULL CHECK (source IN ('create', 'edit', 'rollback', 'import', 'text-teach')),
+        created_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_workflow_memory_versions_memory_version
+        ON workflow_memory_versions(memory_id, version DESC);
+    `,
+  },
 ];
 
 export function runMigrations(db: DatabaseLike): void {

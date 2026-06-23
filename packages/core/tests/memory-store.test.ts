@@ -374,4 +374,57 @@ describe('MemoryStore', () => {
       expect(results.length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  describe('workflow versions', () => {
+    it('saveWithVersion creates memory and version 1 snapshot', () => {
+      const mem = makeMemory({ id: 'versioned-1', sourceType: 'text-teach' });
+
+      store.saveWithVersion(mem, { source: 'text-teach', changeNote: 'initial teach' });
+
+      const versions = store.listVersions(mem.id);
+      expect(versions).toHaveLength(1);
+      expect(versions[0].version).toBe(1);
+      expect(versions[0].source).toBe('text-teach');
+      expect(versions[0].changeNote).toBe('initial teach');
+      expect(versions[0].snapshot.topic).toBe(mem.topic);
+    });
+
+    it('updateWithVersion increments memory version and records a snapshot', () => {
+      const mem = makeMemory({ id: 'versioned-2' });
+      store.saveWithVersion(mem, { source: 'create' });
+
+      const updated = { ...mem, topic: 'updated topic', summary: 'updated summary' };
+      store.updateWithVersion(updated, { source: 'edit', changeNote: 'rename' });
+
+      const fetched = store.getById(mem.id)!;
+      expect(fetched.version).toBe(2);
+      expect(fetched.topic).toBe('updated topic');
+
+      const versions = store.listVersions(mem.id);
+      expect(versions.map((v) => v.version)).toEqual([2, 1]);
+      expect(versions[0].snapshot.topic).toBe('updated topic');
+    });
+
+    it('rollback creates a new version from an old snapshot', () => {
+      const mem = makeMemory({ id: 'versioned-3', topic: 'original' });
+      store.saveWithVersion(mem, { source: 'create' });
+      store.updateWithVersion({ ...mem, topic: 'changed' }, { source: 'edit' });
+
+      const rolledBack = store.rollback(mem.id, 1, 'restore original');
+
+      expect(rolledBack.version).toBe(3);
+      expect(rolledBack.topic).toBe('original');
+      expect(store.getById(mem.id)!.topic).toBe('original');
+      expect(store.listVersions(mem.id)[0].source).toBe('rollback');
+    });
+
+    it('delete removes workflow versions', () => {
+      const mem = makeMemory({ id: 'versioned-4' });
+      store.saveWithVersion(mem, { source: 'create' });
+
+      expect(store.delete(mem.id)).toBe(true);
+
+      expect(store.listVersions(mem.id)).toEqual([]);
+    });
+  });
 });
