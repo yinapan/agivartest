@@ -1,5 +1,19 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+type IpcResult<T> = { ok: true; data: T } | { ok: false; error: { code: string; message: string } };
+
+type TextTeachingRequestDto = {
+  goal: string;
+  teachingText: string;
+  appName?: string;
+  platform?: 'desktop' | 'browser' | 'hybrid';
+};
+
+type WorkflowMemoryDto = Record<string, unknown>;
+type WorkflowDraftDto = Record<string, unknown>;
+type WorkflowMemoryVersionDto = Record<string, unknown>;
+type TextTeachingResultDto = Record<string, unknown>;
+
 contextBridge.exposeInMainWorld('agivar', {
   platform: process.platform,
   versions: {
@@ -53,16 +67,19 @@ contextBridge.exposeInMainWorld('agivar', {
       ipcRenderer.invoke('memory:list', filter),
     get: (id: string) => ipcRenderer.invoke('memory:get', id),
     delete: (id: string) => ipcRenderer.invoke('memory:delete', id),
-    teachText: (request: any) => ipcRenderer.invoke('memory:teachText', request),
-    validateDraft: (draft: any) => ipcRenderer.invoke('memory:validateDraft', draft),
-    saveDraft: (draft: any, changeNote?: string) =>
+    teachText: (request: TextTeachingRequestDto): Promise<IpcResult<TextTeachingResultDto>> =>
+      ipcRenderer.invoke('memory:teachText', request),
+    validateDraft: (draft: WorkflowDraftDto): Promise<IpcResult<unknown>> =>
+      ipcRenderer.invoke('memory:validateDraft', draft),
+    saveDraft: (draft: WorkflowDraftDto, changeNote?: string): Promise<IpcResult<WorkflowMemoryDto>> =>
       ipcRenderer.invoke('memory:saveDraft', draft, changeNote),
-    update: (memory: any, changeNote?: string) =>
+    update: (memory: WorkflowMemoryDto, changeNote?: string): Promise<IpcResult<WorkflowMemoryDto>> =>
       ipcRenderer.invoke('memory:update', memory, changeNote),
-    listVersions: (memoryId: string) => ipcRenderer.invoke('memory:listVersions', memoryId),
-    getVersion: (memoryId: string, version: number) =>
+    listVersions: (memoryId: string): Promise<IpcResult<WorkflowMemoryVersionDto[]>> =>
+      ipcRenderer.invoke('memory:listVersions', memoryId),
+    getVersion: (memoryId: string, version: number): Promise<IpcResult<WorkflowMemoryVersionDto | null>> =>
       ipcRenderer.invoke('memory:getVersion', memoryId, version),
-    rollback: (memoryId: string, version: number, changeNote?: string) =>
+    rollback: (memoryId: string, version: number, changeNote?: string): Promise<IpcResult<WorkflowMemoryDto>> =>
       ipcRenderer.invoke('memory:rollback', memoryId, version, changeNote),
   },
   session: {

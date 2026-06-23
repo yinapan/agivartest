@@ -10,53 +10,28 @@ import {
   dpi,
   parseWorkflowContent,
   workflowFileToMemory,
-  validateWorkflowDraft,
-  draftToMemory,
-  TextTeachingService,
   type WorkflowDraft,
-  type TextTeachingProvider,
   type ToolResult,
   type AgentService,
   type MemoryStore,
 } from '@agivar/core';
 import { SettingsStore } from './settings-store.js';
+import {
+  createFallbackTeachingProvider,
+  handleMemoryGetVersion,
+  handleMemoryListVersions,
+  handleMemoryRollback,
+  handleMemorySaveDraft,
+  handleMemoryTeachText,
+  handleMemoryUpdate,
+  handleMemoryValidateDraft,
+} from './workflow-ipc.js';
 
 let agentService: AgentService | null = null;
 let memoryStore: MemoryStore | null = null;
 let settingsStore: SettingsStore | null = null;
 
-const fallbackTeachingProvider: TextTeachingProvider = {
-  async generateWorkflowDraft(request) {
-    const topic = request.goal.trim() || 'Untitled workflow';
-    const appName = request.appName?.trim() || 'Desktop';
-    const steps = request.teachingText
-      .split(/\r?\n|[。.;]/)
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .slice(0, 12)
-      .map((line) => ({
-        intent: line,
-        targetHint: line,
-        target: { strategy: 'human' as const, hint: line },
-        riskLevel: 'low' as const,
-      }));
-
-    return {
-      appName,
-      platform: request.platform ?? 'desktop',
-      topic,
-      triggerExamples: [topic],
-      summary: request.teachingText.trim().slice(0, 240) || topic,
-      initialState: `${appName} is ready.`,
-      steps,
-      successCriteria: `${topic} is complete.`,
-      riskLevel: 'low',
-      sourceType: 'text-teach',
-    };
-  },
-};
-
-const textTeachingService = new TextTeachingService(fallbackTeachingProvider);
+const fallbackTeachingProvider = createFallbackTeachingProvider();
 
 export function setAgentService(agent: AgentService): void {
   agentService = agent;
@@ -186,40 +161,31 @@ export function registerAgentIpcHandlers(): void {
   });
 
   ipcMain.handle('memory:teachText', async (_event, request) => {
-    return textTeachingService.teach(request);
+    return handleMemoryTeachText(request, fallbackTeachingProvider);
   });
 
   ipcMain.handle('memory:validateDraft', async (_event, draft: WorkflowDraft) => {
-    return validateWorkflowDraft(draft);
+    return handleMemoryValidateDraft(draft);
   });
 
   ipcMain.handle('memory:saveDraft', async (_event, draft: WorkflowDraft, changeNote?: string) => {
-    if (!memoryStore) return { ok: false, error: { code: 'NO_MEMORY_STORE', message: 'MemoryStore not initialized' } };
-    const memory = draftToMemory(draft);
-    memoryStore.saveWithVersion(memory, { source: 'text-teach', changeNote });
-    return { ok: true, data: memory };
+    return handleMemorySaveDraft(memoryStore, draft, changeNote);
   });
 
   ipcMain.handle('memory:update', async (_event, memory, changeNote?: string) => {
-    if (!memoryStore) return { ok: false, error: { code: 'NO_MEMORY_STORE', message: 'MemoryStore not initialized' } };
-    const updated = memoryStore.updateWithVersion(memory, { source: 'edit', changeNote });
-    return { ok: true, data: updated };
+    return handleMemoryUpdate(memoryStore, memory, changeNote);
   });
 
   ipcMain.handle('memory:listVersions', async (_event, memoryId: string) => {
-    if (!memoryStore) return [];
-    return memoryStore.listVersions(memoryId);
+    return handleMemoryListVersions(memoryStore, memoryId);
   });
 
   ipcMain.handle('memory:getVersion', async (_event, memoryId: string, version: number) => {
-    if (!memoryStore) return null;
-    return memoryStore.getVersion(memoryId, version);
+    return handleMemoryGetVersion(memoryStore, memoryId, version);
   });
 
   ipcMain.handle('memory:rollback', async (_event, memoryId: string, version: number, changeNote?: string) => {
-    if (!memoryStore) return { ok: false, error: { code: 'NO_MEMORY_STORE', message: 'MemoryStore not initialized' } };
-    const restored = memoryStore.rollback(memoryId, version, changeNote);
-    return { ok: true, data: restored };
+    return handleMemoryRollback(memoryStore, memoryId, version, changeNote);
   });
 
   ipcMain.handle('memory:list', async (_event, filter?: { appName?: string; topic?: string }) => {
