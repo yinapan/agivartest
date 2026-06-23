@@ -25,8 +25,8 @@ export type StepAction =
   | { type: 'takeover'; reason: string }
   | { type: 'done'; summary: string }
   | { type: 'read_file'; path: string; scope: 'app-data' | 'user-approved' }
-  | { type: 'copy_file'; source: string; target: string }
-  | { type: 'read_table'; path: string; range?: string }
+  | { type: 'copy_file'; source: string; target: string; scope: 'app-data' | 'user-approved' }
+  | { type: 'read_table'; path: string; range?: string; scope: 'app-data' | 'user-approved' }
   | { type: 'get_page_text'; selector?: string };
 
 export type TargetDescriptor =

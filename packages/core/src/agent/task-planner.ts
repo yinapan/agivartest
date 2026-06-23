@@ -109,8 +109,22 @@ const PLANNING_TOOLS: ToolDefinition[] = [
       properties: {
         path: { type: 'string', description: '表格文件路径' },
         range: { type: 'string', description: '可选的单元格范围，如 A1:C10' },
+        scope: { type: 'string', enum: ['app-data', 'user-approved'] },
       },
-      required: ['path'],
+      required: ['path', 'scope'],
+    },
+  },
+  {
+    name: 'copy_file',
+    description: '复制文件到目标位置',
+    parameters: {
+      type: 'object',
+      properties: {
+        source: { type: 'string', description: '源文件路径' },
+        target: { type: 'string', description: '目标路径' },
+        scope: { type: 'string', enum: ['app-data', 'user-approved'] },
+      },
+      required: ['source', 'target', 'scope'],
     },
   },
   {
@@ -318,8 +332,15 @@ export class TaskPlanner {
       case 'read_table':
         return {
           intent: `读取表格 ${args.path}`,
-          action: { type: 'read_table', path: (args.path as string) ?? '', range: args.range as string | undefined },
+          action: { type: 'read_table', path: (args.path as string) ?? '', range: args.range as string | undefined, scope: (args.scope as 'app-data' | 'user-approved') ?? 'user-approved' },
           riskLevel: 'low',
+          source: 'llm',
+        };
+      case 'copy_file':
+        return {
+          intent: `复制文件 ${args.source} → ${args.target}`,
+          action: { type: 'copy_file', source: (args.source as string) ?? '', target: (args.target as string) ?? '', scope: (args.scope as 'app-data' | 'user-approved') ?? 'user-approved' },
+          riskLevel: 'medium',
           source: 'llm',
         };
       case 'get_page_text':

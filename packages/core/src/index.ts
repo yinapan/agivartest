@@ -29,3 +29,10 @@ export { TaskPlanner } from './agent/task-planner.js';
 export type { PlannerOutput } from './agent/task-planner.js';
 export { AgentService } from './agent/agent-service.js';
 export type { AgentServiceDeps } from './agent/agent-service.js';
+
+// Phase 1B: LLM
+export { OpenAIClient } from './llm/openai-compatible.js';
+export type { OpenAIClientConfig } from './llm/openai-compatible.js';
+export type { LLMProvider, Message, ToolDefinition, GenerateTextResult, StreamChunk } from './llm/provider.js';
+export { buildSystemPrompt, formatStepHistory } from './llm/prompts.js';
+export type { PromptContext } from './llm/prompts.js';

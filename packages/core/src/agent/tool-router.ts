@@ -70,10 +70,13 @@ export class ToolRouter {
       case 'done':
         return toolOk({ done: true, summary: action.summary }, 0);
       case 'read_file':
+        if (action.path.includes('..')) return toolErr('FILE_ACCESS_DENIED', 'Path traversal not allowed', 0);
         return this.tools.programmatic.readFile(action.path, action.scope);
       case 'copy_file':
+        if (action.source.includes('..') || action.target.includes('..')) return toolErr('FILE_ACCESS_DENIED', 'Path traversal not allowed', 0);
         return this.tools.programmatic.copyFile(action.source, action.target);
       case 'read_table':
+        if (action.path.includes('..')) return toolErr('FILE_ACCESS_DENIED', 'Path traversal not allowed', 0);
         return this.tools.programmatic.readTable(action.path, action.range);
       case 'get_page_text': {
         const p = context.browserSession?.page;
