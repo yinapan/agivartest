@@ -35,8 +35,8 @@ export interface ToolAdapters {
   };
   programmatic: {
     readFile(path: string, scope: 'app-data' | 'user-approved'): Promise<ToolResult<string>>;
-    copyFile(source: string, target: string): Promise<ToolResult<void>>;
-    readTable(path: string, range?: string): Promise<ToolResult<Record<string, string>[]>>;
+    copyFile(source: string, target: string, scope: 'app-data' | 'user-approved'): Promise<ToolResult<void>>;
+    readTable(path: string, range: string | undefined, scope: 'app-data' | 'user-approved'): Promise<ToolResult<Record<string, string>[]>>;
   };
 }
 
@@ -74,10 +74,10 @@ export class ToolRouter {
         return this.tools.programmatic.readFile(action.path, action.scope);
       case 'copy_file':
         if (action.source.includes('..') || action.target.includes('..')) return toolErr('FILE_ACCESS_DENIED', 'Path traversal not allowed', 0);
-        return this.tools.programmatic.copyFile(action.source, action.target);
+        return this.tools.programmatic.copyFile(action.source, action.target, action.scope);
       case 'read_table':
         if (action.path.includes('..')) return toolErr('FILE_ACCESS_DENIED', 'Path traversal not allowed', 0);
-        return this.tools.programmatic.readTable(action.path, action.range);
+        return this.tools.programmatic.readTable(action.path, action.range, action.scope);
       case 'get_page_text': {
         const p = context.browserSession?.page;
         if (!p) return toolErr('BROWSER_ACTION_FAILED', 'No active browser session', 0);

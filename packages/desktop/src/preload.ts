@@ -32,4 +32,39 @@ contextBridge.exposeInMainWorld('agivar', {
   dpi: {
     getScaleFactor: (idx?: number) => ipcRenderer.invoke('dpi:getScaleFactor', idx),
   },
+  agent: {
+    runTask: (goal: string, sessionId: string) =>
+      ipcRenderer.invoke('agent:runTask', goal, sessionId),
+    abort: () => ipcRenderer.invoke('agent:abort'),
+    resumeTakeover: () => ipcRenderer.invoke('agent:resumeTakeover'),
+    selectMemory: (memoryId: string) =>
+      ipcRenderer.invoke('agent:selectMemory', memoryId),
+    onEvent: (taskRunId: string, callback: (event: unknown) => void) => {
+      const handler = (_: unknown, event: any) => {
+        if (event.taskRunId === taskRunId) callback(event);
+      };
+      ipcRenderer.on('agent:event', handler);
+      return () => { try { ipcRenderer.removeListener('agent:event', handler); } catch { /* ignore */ } };
+    },
+  },
+  memory: {
+    import: (filePath: string) => ipcRenderer.invoke('memory:import', filePath),
+    list: (filter?: { appName?: string; topic?: string }) =>
+      ipcRenderer.invoke('memory:list', filter),
+    get: (id: string) => ipcRenderer.invoke('memory:get', id),
+    delete: (id: string) => ipcRenderer.invoke('memory:delete', id),
+  },
+  session: {
+    list: () => ipcRenderer.invoke('session:list'),
+    create: () => ipcRenderer.invoke('session:create'),
+    delete: (id: string) => ipcRenderer.invoke('session:delete', id),
+    getMessages: (sessionId: string) =>
+      ipcRenderer.invoke('session:getMessages', sessionId),
+  },
+  settings: {
+    get: () => ipcRenderer.invoke('settings:get'),
+    update: (patch: Record<string, unknown>) => ipcRenderer.invoke('settings:update', patch),
+    getApiKeyMask: () => ipcRenderer.invoke('settings:getApiKeyMask'),
+    setApiKey: (key: string) => ipcRenderer.invoke('settings:setApiKey', key),
+  },
 });
