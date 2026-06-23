@@ -8,18 +8,20 @@
     "dev": "electron-vite dev",
     "package:dir": "electron-builder --dir"
   },
-  "dependencies": {},
+  "dependencies": {
+    "zustand": "^5.0.14"
+  },
   "devDependencies": {
     "@agivar/core": "workspace:*",
     "@agivar/native": "workspace:*",
-    "electron": "^33.0.0",
-    "electron-vite": "^2.3.0",
-    "electron-builder": "^25.1.0",
-    "@vitejs/plugin-react": "^4.3.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.0",
+    "electron-vite": "^2.3.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "typescript": "~5.7.0"
   }
 }
