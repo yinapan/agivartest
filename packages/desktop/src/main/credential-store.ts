@@ -20,8 +20,8 @@ export class CredentialStore {
     }
     const encrypted = safeStorage.encryptString(key);
     const dir = path.dirname(this.storePath);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(this.storePath, encrypted);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
+    fs.writeFileSync(this.storePath, encrypted, { mode: 0o600 });
   }
 
   getApiKey(): string | null {

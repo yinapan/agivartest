@@ -1,4 +1,6 @@
-import { ipcMain } from 'electron';
+import { ipcMain, app } from 'electron';
+import path from 'node:path';
+import fs from 'node:fs';
 import {
   screenshot,
   uia,
@@ -12,7 +14,6 @@ import {
   type AgentService,
   type MemoryStore,
 } from '@agivar/core';
-import fs from 'node:fs';
 import { SettingsStore } from './settings-store.js';
 
 let agentService: AgentService | null = null;
@@ -118,8 +119,27 @@ export function registerAgentIpcHandlers(): void {
   // Memory
   ipcMain.handle('memory:import', async (_event, filePath: string) => {
     if (!memoryStore) throw new Error('MemoryStore not initialized');
-    const content = fs.readFileSync(filePath, 'utf-8');
+
+    // Validate extension before touching FS
+    if (!/\.(yaml|yml|json)$/i.test(filePath)) {
+      return { ok: false, error: { code: 'INVALID_FILE', message: '仅支持 .yaml/.yml/.json 文件' } };
+    }
+
+    // Resolve symlinks and restrict to allowed directories
+    let resolved: string;
+    try {
+      resolved = fs.realpathSync(filePath);
+    } catch {
+      return { ok: false, error: { code: 'FILE_NOT_FOUND', message: '文件不存在' } };
+    }
+
+    const allowed = [app.getPath('documents'), app.getPath('downloads'), app.getPath('desktop')];
+    if (!allowed.some(dir => resolved.startsWith(dir + path.sep))) {
+      return { ok: false, error: { code: 'FILE_ACCESS_DENIED', message: '文件不在允许的目录中' } };
+    }
+
     const ext = filePath.endsWith('.yaml') || filePath.endsWith('.yml') ? 'yaml' : 'json';
+    const content = fs.readFileSync(resolved, 'utf-8');
     const result = await parseWorkflowContent(content, ext);
     if (!result.success) return { ok: false, error: { code: 'PARSE_ERROR', message: result.error || 'Parse failed' } };
     const memory = workflowFileToMemory(result.data!);
