@@ -15,6 +15,8 @@ export {
   normalizeWorkflowDraft,
   draftToMemory,
 } from './memory/workflow-draft.js';
+export { TextTeachingService } from './memory/text-teaching-service.js';
+export type { TextTeachingProvider } from './memory/text-teaching-service.js';
 export { getDatabase, getDatabaseForTest, closeDatabase } from './memory/db.js';
 export { runMigrations } from './memory/schema.js';
 export { AbortManager } from './safety/abort-manager.js';
