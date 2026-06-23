@@ -1,5 +1,6 @@
 import { app, ipcMain } from 'electron';
 import path from 'node:path';
+import * as net from 'node:net';
 import { createMainWindow, getMainWindow } from './windows.js';
 import { registerIpcHandlers, setAgentService, setMemoryStore, setSettingsStore, registerAgentIpcHandlers } from './ipc.js';
 import { GlobalHotkeyAdapter } from './global-hotkey.js';
@@ -111,7 +112,22 @@ const SETTINGS_ALLOWLIST = new Set([
   'privacy.logLlmRequests',
 ]);
 
-const VALID_BASE_URL_PATTERN = /^https?:\/\/[^\s/$.?#].[^\s]*$/i;
+function isSafeBaseURL(raw: string): boolean {
+  let parsed: URL;
+  try { parsed = new URL(raw); } catch { return false; }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
+  const host = parsed.hostname.toLowerCase().replace(/\.+$/, '');
+  if (net.isIP(host)) {
+    const parts = host.split('.').map(Number);
+    if (host === '127.0.0.1' || host === '0.0.0.0' || host === '::1') return false;
+    if (parts[0] === 10) return false;
+    if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return false;
+    if (parts[0] === 192 && parts[1] === 168) return false;
+    if (parts[0] === 169 && parts[1] === 254) return false;
+  }
+  return true;
+}
+
 const VALID_MODEL_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9_.\-:@]{0,127}$/;
 const VALID_HOTKEY_PATTERN = /^[A-Za-z]+(\+[A-Za-z]+){0,3}$/;
 
@@ -143,7 +159,7 @@ function validateSettingValue(key: string, value: unknown): unknown {
 
   switch (key) {
     case 'llm.baseURL':
-      if (typeof value === 'string' && VALID_BASE_URL_PATTERN.test(value)) return value;
+      if (typeof value === 'string' && isSafeBaseURL(value)) return value;
       return undefined;
     case 'llm.model':
       if (typeof value === 'string' && VALID_MODEL_PATTERN.test(value)) return value;
