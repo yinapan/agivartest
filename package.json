@@ -6,7 +6,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "turbo run build",
+    "build": "turbo run build --env-mode=loose",
     "dev": "turbo run dev",
     "poc:readonly": "tsx tests/poc-runner.ts --mode readonly",
     "poc:interactive": "tsx tests/poc-runner.ts --mode interactive",
