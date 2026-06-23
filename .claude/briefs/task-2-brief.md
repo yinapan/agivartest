@@ -1,3 +1,12 @@
+# Task 2: TaskPlanner — LLM 规划 + 流程编排
+
+**Files:**
+- Create: `packages/core/src/agent/task-planner.ts`
+- Test: `packages/core/tests/task-planner.test.ts`
+
+## Step 1: Create task-planner.ts
+
+```typescript
 // packages/core/src/agent/task-planner.ts
 import type { StepPlan, TaskContext, ExpectedState } from '../types/agent.js';
 import type { LLMProvider, Message, ToolDefinition } from '../llm/provider.js';
@@ -89,54 +98,6 @@ const PLANNING_TOOLS: ToolDefinition[] = [
       required: ['summary'],
     },
   },
-  {
-    name: 'read_file',
-    description: '读取文件内容（仅限授权目录）',
-    parameters: {
-      type: 'object',
-      properties: {
-        path: { type: 'string', description: '文件路径' },
-        scope: { type: 'string', enum: ['app-data', 'user-approved'] },
-      },
-      required: ['path', 'scope'],
-    },
-  },
-  {
-    name: 'read_table',
-    description: '读取 CSV/Excel 表格数据',
-    parameters: {
-      type: 'object',
-      properties: {
-        path: { type: 'string', description: '表格文件路径' },
-        range: { type: 'string', description: '可选的单元格范围，如 A1:C10' },
-        scope: { type: 'string', enum: ['app-data', 'user-approved'] },
-      },
-      required: ['path', 'scope'],
-    },
-  },
-  {
-    name: 'copy_file',
-    description: '复制文件到目标位置',
-    parameters: {
-      type: 'object',
-      properties: {
-        source: { type: 'string', description: '源文件路径' },
-        target: { type: 'string', description: '目标路径' },
-        scope: { type: 'string', enum: ['app-data', 'user-approved'] },
-      },
-      required: ['source', 'target', 'scope'],
-    },
-  },
-  {
-    name: 'get_page_text',
-    description: '获取当前浏览器页面的文本内容',
-    parameters: {
-      type: 'object',
-      properties: {
-        selector: { type: 'string', description: '可选的 CSS 选择器，限定提取范围' },
-      },
-    },
-  },
 ];
 
 export class TaskPlanner {
@@ -188,7 +149,12 @@ export class TaskPlanner {
     step: WorkflowStep,
     resolvedInputs: Record<string, string>,
   ): StepPlan {
-    let action = this.inferAction(step);
+    const strategy = step.target.strategy;
+
+    let action = step.action as StepPlan['action'];
+    if (!action || !('type' in action)) {
+      action = this.inferAction(step);
+    }
 
     // Apply variable substitution to input text
     if (action.type === 'type' && step.inputHint) {
@@ -317,34 +283,6 @@ export class TaskPlanner {
           riskLevel: 'low',
           source: 'llm',
         };
-      case 'read_file':
-        return {
-          intent: `读取文件 ${args.path}`,
-          action: { type: 'read_file', path: (args.path as string) ?? '', scope: (args.scope as 'app-data' | 'user-approved') ?? 'user-approved' },
-          riskLevel: 'low',
-          source: 'llm',
-        };
-      case 'read_table':
-        return {
-          intent: `读取表格 ${args.path}`,
-          action: { type: 'read_table', path: (args.path as string) ?? '', range: args.range as string | undefined, scope: (args.scope as 'app-data' | 'user-approved') ?? 'user-approved' },
-          riskLevel: 'low',
-          source: 'llm',
-        };
-      case 'copy_file':
-        return {
-          intent: `复制文件 ${args.source} → ${args.target}`,
-          action: { type: 'copy_file', source: (args.source as string) ?? '', target: (args.target as string) ?? '', scope: (args.scope as 'app-data' | 'user-approved') ?? 'user-approved' },
-          riskLevel: 'medium',
-          source: 'llm',
-        };
-      case 'get_page_text':
-        return {
-          intent: '获取页面文本',
-          action: { type: 'get_page_text', selector: args.selector as string | undefined },
-          riskLevel: 'low',
-          source: 'llm',
-        };
       default:
         return {
           intent: '未知动作',
@@ -353,19 +291,6 @@ export class TaskPlanner {
           source: 'llm',
         };
     }
-  }
-
-  async summarizeHistory(goal: string, steps: StepPlan[]): Promise<string> {
-    const lines = steps.map((s, i) => `${i + 1}. [${s.source}] ${s.intent} → ${s.action.type}`).join('\n');
-    const result = await this.llm.generateText({
-      messages: [
-        { role: 'system', content: '你是任务执行摘要器。将已执行的步骤压缩为简洁的进度摘要，保留关键操作和结果。用中文回答。' },
-        { role: 'user', content: `目标: ${goal}\n\n已执行步骤:\n${lines}\n\n请用 2-3 句话总结进度。` },
-      ],
-      maxTokens: 256,
-      temperature: 0,
-    });
-    return result.text || '已执行若干步骤';
   }
 
   private inferRiskLevel(toolName: string, args: Record<string, unknown>): StepPlan['riskLevel'] {
@@ -381,3 +306,146 @@ export class TaskPlanner {
     return template.replace(/\{\{(\w+)\}\}/g, (_, name) => inputs[name] ?? `{{${name}}}`);
   }
 }
+```
+
+## Step 2: Write task-planner.test.ts
+
+```typescript
+// packages/core/tests/task-planner.test.ts
+import { describe, it, expect, vi } from 'vitest';
+import { TaskPlanner } from '../src/agent/task-planner.js';
+import type { LLMProvider, GenerateTextResult } from '../src/llm/provider.js';
+import type { TaskContext, StepPlan } from '../src/types/agent.js';
+import type { WorkflowStep } from '../src/types/workflow.js';
+
+function mockLLM(response: Partial<GenerateTextResult> = {}): LLMProvider {
+  return {
+    id: 'test',
+    displayName: 'Test',
+    supportsVision: false,
+    generateText: vi.fn().mockResolvedValue({ text: '', toolCalls: [], finishReason: 'stop', ...response }),
+    streamText: vi.fn().mockReturnValue((async function* () { yield { type: 'finish' as const }; })()),
+  };
+}
+
+function makeContext(): TaskContext {
+  const ctrl = new AbortController();
+  return {
+    taskRunId: 'tr-1', sessionId: 's-1', goal: 'test', mode: 'llm', status: 'running',
+    stepIndex: 0, retryCountByStep: new Map(), maxRetries: 2, outputDir: '/tmp/test',
+    abortController: ctrl, signal: ctrl.signal, startedPids: [], createdTempDirs: [], humanTakeoverEvents: [],
+  };
+}
+
+describe('TaskPlanner', () => {
+  it('builds StepPlan from workflow step with navigate hint', () => {
+    const planner = new TaskPlanner(mockLLM());
+    const step: WorkflowStep = {
+      id: 's1', order: 0, intent: '打开页面', targetHint: '地址栏',
+      target: { strategy: 'playwright', selector: 'body' },
+      inputHint: 'http://localhost/test', riskLevel: 'low',
+    };
+    const result = planner.buildStepPlanFromWorkflow(step, {});
+    expect(result.action.type).toBe('navigate');
+    expect((result.action as any).url).toBe('http://localhost/test');
+  });
+
+  it('builds StepPlan from workflow step with variable substitution', () => {
+    const planner = new TaskPlanner(mockLLM());
+    const step: WorkflowStep = {
+      id: 's1', order: 0, intent: '输入文本', targetHint: '输入框',
+      target: { strategy: 'playwright', selector: '#input' },
+      inputHint: '{{userName}}', riskLevel: 'low',
+    };
+    const result = planner.buildStepPlanFromWorkflow(step, { userName: 'Alice' });
+    expect(result.action.type).toBe('type');
+    expect((result.action as any).text).toBe('Alice');
+  });
+
+  it('builds StepPlan with human strategy → takeover', () => {
+    const planner = new TaskPlanner(mockLLM());
+    const step: WorkflowStep = {
+      id: 's1', order: 0, intent: '打开应用', targetHint: '开始菜单',
+      target: { strategy: 'human', hint: '按 Win 键搜索' }, riskLevel: 'low',
+    };
+    const result = planner.buildStepPlanFromWorkflow(step, {});
+    expect(result.action.type).toBe('takeover');
+  });
+
+  it('planNextFromLLM returns done step when no tool calls', async () => {
+    const llm = mockLLM({ text: '任务已完成' });
+    const planner = new TaskPlanner(llm);
+    const result = await planner.planNextFromLLM(makeContext(), []);
+    expect(result.step.action.type).toBe('done');
+  });
+
+  it('planNextFromLLM parses click tool call', async () => {
+    const llm = mockLLM({
+      toolCalls: [{
+        id: 'tc1', type: 'function',
+        function: { name: 'click', arguments: '{"strategy":"playwright","selector":"#btn"}' },
+      }],
+      finishReason: 'tool_calls',
+    });
+    const planner = new TaskPlanner(llm);
+    const result = await planner.planNextFromLLM(makeContext(), []);
+    expect(result.step.action.type).toBe('click');
+    if (result.step.action.type === 'click') {
+      expect(result.step.action.target.strategy).toBe('playwright');
+    }
+  });
+
+  it('planNextFromLLM infers forbidden risk for password', async () => {
+    const llm = mockLLM({
+      toolCalls: [{
+        id: 'tc1', type: 'function',
+        function: { name: 'type_text', arguments: '{"text":"password123"}' },
+      }],
+      finishReason: 'tool_calls',
+    });
+    const planner = new TaskPlanner(llm);
+    const result = await planner.planNextFromLLM(makeContext(), []);
+    expect(result.step.riskLevel).toBe('forbidden');
+  });
+});
+```
+
+## Step 3: Run tests
+
+```bash
+cd f:/agivar && pnpm test -- --run packages/core/tests/task-planner.test.ts
+```
+Expected: 6 tests PASS
+
+## Step 4: Commit
+
+```bash
+git add packages/core/src/agent/task-planner.ts packages/core/tests/task-planner.test.ts
+git commit -m "feat(core): add TaskPlanner for LLM-driven and workflow-driven step planning"
+```
+
+## Global Constraints
+
+- **ESM strict**: `type: "module"`, all relative imports use `.js` extension
+- **Agent does NOT depend on Electron**: pure Node.js
+- **LLM plans only, never executes**: LLM produces StepPlan only
+- **Phase 1A interfaces zero-change**: Do NOT modify existing Phase 1A files
+- **Test DB uses `:memory:`**
+- **UI components don't get unit tests**: Unit tests only for core layer
+
+## Context
+
+Task 2 of 12. The LLM provider layer (Task 1) is complete at `packages/core/src/llm/`:
+- `provider.ts` — LLMProvider, Message, ToolCall, ToolDefinition, GenerateTextResult, StreamChunk
+- `openai-compatible.ts` — OpenAIClient implementing LLMProvider
+- `prompts.ts` — buildSystemPrompt, formatStepHistory, PromptContext
+
+The TaskPlanner depends on these LLM types. Existing Phase 1A types used:
+- `types/agent.ts` — StepPlan, StepAction, TaskContext, ExpectedState, TargetDescriptor
+- `types/workflow.ts` — WorkflowMemory, WorkflowStep
+
+The `buildStepPlanFromWorkflow` method duplicates some logic from Phase 1A's `workflow-executor.ts` `buildStepPlan`. This is intentional — TaskPlanner is the unified planner that replaces it. The Phase 1A function remains untouched (global constraint).
+
+## Report
+
+Write full report to: `f:/agivar/.claude/briefs/task-2-report.md`

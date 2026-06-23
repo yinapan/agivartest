@@ -8,7 +8,7 @@ export interface DatabaseLike {
   pragma(pragma: string, options?: { simple?: boolean }): unknown;
   exec(sql: string): this;
   prepare(sql: string): StatementLike;
-  transaction<F extends (...args: unknown[]) => unknown>(fn: F): F;
+  transaction<F extends (...args: unknown[]) => unknown>(fn: F): (...args: Parameters<F>) => ReturnType<F>;
 }
 
 export interface StatementLike {

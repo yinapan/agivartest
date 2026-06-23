@@ -52,8 +52,8 @@ export class OpenAIClient implements LLMProvider {
         : result.finishReason === 'length' ? 'length'
         : 'stop',
       usage: result.usage ? {
-        promptTokens: result.usage.inputTokens,
-        completionTokens: result.usage.outputTokens,
+        promptTokens: result.usage.inputTokens ?? 0,
+        completionTokens: result.usage.outputTokens ?? 0,
       } : undefined,
     };
   }

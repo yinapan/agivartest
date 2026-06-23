@@ -13,17 +13,23 @@ import { RiskClassifier } from '../safety/risk-classifier.js';
 import { ExecutionLog } from '../safety/execution-log.js';
 import { AbortManager } from '../safety/abort-manager.js';
 import type { LLMProvider } from '../llm/provider.js';
-import type Database from 'better-sqlite3';
+import type { DatabaseLike } from '../memory/schema.js';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 export interface AgentServiceDeps {
-  db: Database.Database;
+  db: DatabaseLike;
   llm: LLMProvider;
   tools: ToolAdapters;
   abortManager: AbortManager;
   memoryStore: MemoryStore;
 }
+
+type AgentEventPayload = AgentEvent extends infer E
+  ? E extends AgentEvent
+    ? Omit<E, 'taskRunId' | 'sessionId' | 'timestamp'>
+    : never
+  : never;
 
 const MEMORY_AUTO_SELECT_THRESHOLD = 0.8;
 const MEMORY_SHOW_CANDIDATES_THRESHOLD = 0.5;
@@ -226,7 +232,7 @@ export class AgentService {
   private evt(
     taskRunId: string,
     sessionId: string,
-    payload: Omit<AgentEvent, 'taskRunId' | 'sessionId' | 'timestamp'>,
+    payload: AgentEventPayload,
   ): AgentEvent {
     return { taskRunId, sessionId, timestamp: new Date().toISOString(), ...payload } as AgentEvent;
   }

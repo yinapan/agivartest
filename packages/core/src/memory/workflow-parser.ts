@@ -12,7 +12,7 @@ const RiskLevelSchema = z.enum(['low', 'medium', 'high', 'forbidden']);
 const PointSchema = z.object({
   x: z.number(),
   y: z.number(),
-  space: z.string(),
+  space: z.enum(['screen-logical', 'screen-physical', 'window-logical', 'image-pixel']),
 });
 
 export const TargetDescriptorSchema = z.discriminatedUnion('strategy', [
@@ -23,7 +23,7 @@ export const TargetDescriptorSchema = z.discriminatedUnion('strategy', [
   }),
   z.object({
     strategy: z.literal('uia'),
-    query: z.record(z.unknown()),
+    query: z.record(z.string(), z.unknown()),
     hwnd: z.number().optional(),
     hint: z.string().optional(),
   }),
@@ -50,7 +50,7 @@ export const StateConditionSchema = z.discriminatedUnion('type', [
   }),
   z.object({
     type: z.literal('uia_element_exists'),
-    query: z.record(z.unknown()),
+    query: z.record(z.string(), z.unknown()),
   }),
   z.object({
     type: z.literal('element_text_equals'),
@@ -104,7 +104,7 @@ export const WorkflowFileSchema = z.object({
   triggerExamples: z.array(z.string()),
   summary: z.string(),
   initialState: z.string(),
-  inputs: z.record(WorkflowInputSchema).optional(),
+  inputs: z.record(z.string(), WorkflowInputSchema).optional(),
   steps: z.array(WorkflowStepSchema),
   successCriteria: z.string(),
   riskLevel: RiskLevelSchema,
@@ -174,9 +174,9 @@ export function workflowFileToMemory(data: WorkflowFileData): WorkflowMemory {
     order: index,
     intent: step.intent,
     targetHint: step.targetHint,
-    target: step.target,
+    target: step.target as WorkflowStep['target'],
     inputHint: step.inputHint,
-    expectedState: step.expectedState,
+    expectedState: step.expectedState as WorkflowStep['expectedState'],
     fallback: step.fallback,
     riskLevel: step.riskLevel,
   }));
