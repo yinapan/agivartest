@@ -10,6 +10,7 @@ const EXPECTED_TABLES = [
   'sessions',
   'messages',
   'workflow_memories',
+  'workflow_memory_versions',
   'task_runs',
   'task_step_logs',
   'app_settings',
@@ -32,7 +33,7 @@ describe('Schema migrations', () => {
     }
   });
 
-  it('creates all 7 expected tables', () => {
+  it('creates all expected tables', () => {
     db = getDatabaseForTest();
     const tables = getTableNames(db);
 
@@ -59,11 +60,11 @@ describe('Schema migrations', () => {
     // Run again explicitly
     expect(() => runMigrations(db)).not.toThrow();
 
-    // Should still have exactly the same number of migration records (2: v1 + v2)
+    // Should still have exactly the same number of migration records.
     const rows = db
       .prepare('SELECT version FROM schema_migrations ORDER BY version')
       .all() as { version: number }[];
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(MIGRATIONS.length);
   });
 
   it('enforces foreign keys (insert message with bad session_id throws)', () => {

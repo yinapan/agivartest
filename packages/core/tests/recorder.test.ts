@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { recorder } from '../src/index.js';
+import { recorder, screenshot } from '../src/index.js';
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -10,6 +10,12 @@ function sleep(ms: number): Promise<void> {
 
 describe('recorder tool wrapper', () => {
   it('starts a desktop recording when targetHwnd is omitted', async () => {
+    const screenProbe = await screenshot.captureScreen();
+    if (!screenProbe.ok) {
+      console.warn(`Skipping frame assertions: screen capture unavailable (${screenProbe.error.message})`);
+      return;
+    }
+
     const outputDir = join(tmpdir(), `agivar-recorder-test-${Date.now()}`);
 
     const started = await recorder.startRecording({
