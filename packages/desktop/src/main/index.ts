@@ -112,18 +112,25 @@ const SETTINGS_ALLOWLIST = new Set([
   'privacy.logLlmRequests',
 ]);
 
+const BLOCKED_HOSTNAMES = new Set(['localhost', 'metadata.google.internal']);
+
 function isSafeBaseURL(raw: string): boolean {
   let parsed: URL;
   try { parsed = new URL(raw); } catch { return false; }
   if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return false;
   const host = parsed.hostname.toLowerCase().replace(/\.+$/, '');
-  if (net.isIP(host)) {
+  if (BLOCKED_HOSTNAMES.has(host)) return false;
+  const ipVersion = net.isIP(host);
+  if (ipVersion === 4) {
     const parts = host.split('.').map(Number);
-    if (host === '127.0.0.1' || host === '0.0.0.0' || host === '::1') return false;
+    if (parts[0] === 127 || parts[0] === 0) return false;
     if (parts[0] === 10) return false;
     if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return false;
     if (parts[0] === 192 && parts[1] === 168) return false;
     if (parts[0] === 169 && parts[1] === 254) return false;
+  }
+  if (ipVersion === 6) {
+    return false;
   }
   return true;
 }
