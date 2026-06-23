@@ -152,7 +152,7 @@ describe('workflow draft validation', () => {
 Run:
 
 ```powershell
-pnpm test -- --run packages/core/tests/workflow-draft.test.ts
+pnpm test -- packages/core/tests/workflow-draft.test.ts
 ```
 
 Expected: FAIL because `workflow-draft.ts` and new types are missing.
@@ -348,7 +348,7 @@ export {
 Run:
 
 ```powershell
-pnpm test -- --run packages/core/tests/workflow-draft.test.ts
+pnpm test -- packages/core/tests/workflow-draft.test.ts
 ```
 
 Expected: PASS.
@@ -450,7 +450,7 @@ describe('TextTeachingService', () => {
 - [ ] **Step 2: Run service tests and verify RED**
 
 ```powershell
-pnpm test -- --run packages/core/tests/text-teaching-service.test.ts
+pnpm test -- packages/core/tests/text-teaching-service.test.ts
 ```
 
 Expected: FAIL because `text-teaching-service.ts` is missing.
@@ -518,7 +518,7 @@ export type { TextTeachingProvider } from './memory/text-teaching-service.js';
 - [ ] **Step 5: Run service tests and verify GREEN**
 
 ```powershell
-pnpm test -- --run packages/core/tests/text-teaching-service.test.ts
+pnpm test -- packages/core/tests/text-teaching-service.test.ts
 ```
 
 Expected: PASS.
@@ -601,7 +601,7 @@ describe('workflow versions', () => {
 - [ ] **Step 2: Run version tests and verify RED**
 
 ```powershell
-pnpm test -- --run packages/core/tests/memory-store.test.ts
+pnpm test -- packages/core/tests/memory-store.test.ts
 ```
 
 Expected: FAIL because version methods and table are missing.
@@ -798,7 +798,7 @@ delete(id: string): boolean {
 - [ ] **Step 5: Run version tests and verify GREEN**
 
 ```powershell
-pnpm test -- --run packages/core/tests/memory-store.test.ts
+pnpm test -- packages/core/tests/memory-store.test.ts
 ```
 
 Expected: PASS.
@@ -855,7 +855,7 @@ describe('text-taught workflow reuse', () => {
 - [ ] **Step 2: Run retrieval tests and verify RED or current behavior**
 
 ```powershell
-pnpm test -- --run packages/core/tests/memory-store.test.ts
+pnpm test -- packages/core/tests/memory-store.test.ts
 ```
 
 Expected: PASS if Task 3 already covers behavior, or FAIL if search/update behavior needs correction. If PASS immediately, document that existing keyword search already satisfies this part and keep the tests.
@@ -867,7 +867,7 @@ If search fails, adjust `MemoryStore.FIELD_WEIGHTS` or `getFieldText` so `trigge
 - [ ] **Step 4: Run full core memory tests**
 
 ```powershell
-pnpm test -- --run packages/core/tests/memory-store.test.ts packages/core/tests/workflow-draft.test.ts packages/core/tests/text-teaching-service.test.ts
+pnpm test -- packages/core/tests/memory-store.test.ts packages/core/tests/workflow-draft.test.ts packages/core/tests/text-teaching-service.test.ts
 ```
 
 Expected: PASS.
@@ -1327,7 +1327,7 @@ git commit -m "feat(desktop): add workflow memory editor"
 - [ ] **Step 1: Run focused core tests**
 
 ```powershell
-pnpm test -- --run packages/core/tests/workflow-draft.test.ts packages/core/tests/text-teaching-service.test.ts packages/core/tests/memory-store.test.ts
+pnpm test -- packages/core/tests/workflow-draft.test.ts packages/core/tests/text-teaching-service.test.ts packages/core/tests/memory-store.test.ts
 ```
 
 Expected: PASS.
@@ -1391,3 +1391,646 @@ git log --oneline -5
 ```
 
 Expected: working tree clean except intentional generated output ignored by git, branch ahead includes Phase 2 commits.
+
+---
+
+## Review Integration Notes
+
+The architecture and test reviews produced after the first Phase 2 slice identified several items that should be pulled back into this plan before Phase 2 is considered complete:
+
+- IPC handlers need runtime input validation and stable error results.
+- `memory:update` must validate workflow content and regenerate `searchText`.
+- Chinese CJK tokenization and sensitive-term detection must use real UTF-8 samples.
+- Version storage should enforce `(memory_id, version)` uniqueness and force new workflows to start at version 1.
+- The workflow editor must cover inputs, input hints, expected state, fallback, workflow risk level, and platform.
+- Rollback needs confirmation and snapshot preview.
+- IPC and workflow-page smoke tests are missing.
+
+The next tasks are hardening tasks generated from those reviews.
+
+---
+
+## Task 8: Core Validation, Chinese Handling, And Version Constraints
+
+**Files:**
+- Modify: `packages/core/src/memory/workflow-draft.ts`
+- Modify: `packages/core/src/memory/text-teaching-service.ts`
+- Modify: `packages/core/src/memory/memory-store.ts`
+- Modify: `packages/core/src/memory/schema.ts`
+- Modify: `packages/core/tests/workflow-draft.test.ts`
+- Modify: `packages/core/tests/text-teaching-service.test.ts`
+- Modify: `packages/core/tests/memory-store.test.ts`
+- Modify: `packages/core/tests/schema.test.ts`
+
+- [ ] **Step 1: Add failing tests for Chinese sensitive terms**
+
+Append to `packages/core/tests/text-teaching-service.test.ts`:
+
+```ts
+it('warns for Chinese sensitive terms', async () => {
+  const provider: TextTeachingProvider = {
+    generateWorkflowDraft: async () => validDraft,
+  };
+
+  const result = await new TextTeachingService(provider).teach({
+    goal: '登录系统',
+    teachingText: '输入密码、验证码和银行卡信息。',
+  });
+
+  expect(result.ok).toBe(true);
+  expect(result.data!.warnings).toContain('teaching text may contain sensitive instructions');
+});
+```
+
+- [ ] **Step 2: Run text teaching test and verify RED**
+
+```powershell
+pnpm test -- packages/core/tests/text-teaching-service.test.ts
+```
+
+Expected: FAIL until the sensitive-term matcher handles real UTF-8 Chinese terms.
+
+- [ ] **Step 3: Replace sensitive regex with UTF-8 keyword matching**
+
+Modify `packages/core/src/memory/text-teaching-service.ts`:
+
+```ts
+const SENSITIVE_TERMS = [
+  'password',
+  'passcode',
+  'token',
+  '2fa',
+  'otp',
+  'verification code',
+  'payment',
+  'bank card',
+  'identity card',
+  '密码',
+  '验证码',
+  '银行卡',
+  '支付',
+  '身份证',
+];
+
+function containsSensitiveTerm(text: string): boolean {
+  const lower = text.toLowerCase();
+  return SENSITIVE_TERMS.some((term) => lower.includes(term.toLowerCase()));
+}
+```
+
+Replace:
+
+```ts
+if (SENSITIVE_RE.test(request.teachingText)) {
+```
+
+with:
+
+```ts
+if (containsSensitiveTerm(request.teachingText)) {
+```
+
+- [ ] **Step 4: Add failing tests for real Chinese retrieval**
+
+Append to `packages/core/tests/memory-store.test.ts`:
+
+```ts
+it('matches real UTF-8 Chinese trigger examples', () => {
+  store.insert(
+    makeMemory({
+      id: 'utf8-chinese-search',
+      triggerExamples: ['填写客户表单'],
+      topic: '客户资料录入',
+      summary: '在 CRM 中填写客户资料',
+      searchText: '填写 客户 表单 CRM',
+    }),
+  );
+
+  const results = store.search('帮我填写客户表单');
+
+  expect(results[0].memory.id).toBe('utf8-chinese-search');
+  expect(results[0].matchedFields).toContain('triggerExamples');
+});
+```
+
+- [ ] **Step 5: Run memory-store test and verify RED if current CJK regex is broken**
+
+```powershell
+pnpm test -- packages/core/tests/memory-store.test.ts
+```
+
+Expected: FAIL if the current mojibake CJK regex cannot tokenize real Chinese correctly.
+
+- [ ] **Step 6: Replace CJK tokenizer regex**
+
+Modify `packages/core/src/memory/memory-store.ts`:
+
+```ts
+/** Matches Han characters for Chinese/Japanese/Korean ideographs. */
+const HAN_RE = /\p{Script=Han}/u;
+```
+
+Replace cleanup:
+
+```ts
+const cleaned = text.replace(/[^\w\p{Script=Han}\s]/gu, ' ');
+```
+
+Replace `CJK_RE.test(ch)` with `HAN_RE.test(ch)`.
+
+- [ ] **Step 7: Add failing tests for update validation and regenerated searchText**
+
+Append to `packages/core/tests/memory-store.test.ts`:
+
+```ts
+it('updateWithVersion rejects invalid workflow memory', () => {
+  const mem = makeMemory({ id: 'invalid-update' });
+  store.saveWithVersion(mem, { source: 'create' });
+
+  expect(() => {
+    store.updateWithVersion({ ...mem, topic: '', steps: [] }, { source: 'edit' });
+  }).toThrow(/topic is required|at least one step is required/);
+});
+
+it('updateWithVersion regenerates searchText from edited content', () => {
+  const mem = makeMemory({ id: 'searchtext-update', searchText: 'old words' });
+  store.saveWithVersion(mem, { source: 'create' });
+
+  const updated = store.updateWithVersion({
+    ...mem,
+    topic: 'Updated customer search',
+    summary: 'Find a customer record',
+    triggerExamples: ['find customer'],
+    steps: [{ ...mem.steps[0], intent: 'Search customer by name' }],
+  }, { source: 'edit' });
+
+  expect(updated.searchText).toContain('Updated customer search');
+  expect(updated.searchText).toContain('Search customer by name');
+  expect(updated.searchText).not.toBe('old words');
+});
+```
+
+- [ ] **Step 8: Implement workflow-memory validation for update**
+
+In `packages/core/src/memory/workflow-draft.ts`, export a helper:
+
+```ts
+export function memoryToDraft(memory: WorkflowMemory): WorkflowDraft {
+  return {
+    appName: memory.appName,
+    platform: memory.platform,
+    topic: memory.topic,
+    triggerExamples: memory.triggerExamples,
+    summary: memory.summary,
+    initialState: memory.initialState,
+    inputs: memory.inputs,
+    steps: memory.steps.map(({ id, order, ...step }) => step),
+    successCriteria: memory.successCriteria,
+    riskLevel: memory.riskLevel,
+    sourceType: memory.sourceType,
+  };
+}
+
+export function rebuildMemoryForUpdate(memory: WorkflowMemory, now = new Date().toISOString()): WorkflowMemory {
+  const normalized = normalizeWorkflowDraft(memoryToDraft(memory), {
+    id: memory.id,
+    now: memory.createdAt,
+  });
+  if (!normalized.ok || !normalized.data) {
+    throw new Error(normalized.errors.join('; '));
+  }
+  return {
+    ...normalized.data,
+    version: memory.version,
+    createdAt: memory.createdAt,
+    updatedAt: now,
+  };
+}
+```
+
+Export these helpers from `packages/core/src/index.ts`.
+
+In `packages/core/src/memory/memory-store.ts`, call `rebuildMemoryForUpdate()` before writing an update.
+
+- [ ] **Step 9: Add failing schema tests for version uniqueness**
+
+Append to `packages/core/tests/schema.test.ts`:
+
+```ts
+it('creates a unique index for workflow memory versions', () => {
+  db = getDatabaseForTest();
+  const rows = db
+    .prepare("PRAGMA index_list('workflow_memory_versions')")
+    .all() as { name: string; unique: number }[];
+
+  expect(rows.some((row) => row.name === 'idx_workflow_memory_versions_unique' && row.unique === 1)).toBe(true);
+});
+```
+
+- [ ] **Step 10: Add unique index migration**
+
+Modify migration 3 in `packages/core/src/memory/schema.ts`:
+
+```sql
+CREATE UNIQUE INDEX IF NOT EXISTS idx_workflow_memory_versions_unique
+  ON workflow_memory_versions(memory_id, version);
+```
+
+- [ ] **Step 11: Force new workflow versions to 1**
+
+Modify `saveWithVersion()` in `packages/core/src/memory/memory-store.ts` so new saves always write version `1`:
+
+```ts
+const normalized = {
+  ...memory,
+  version: 1,
+  createdAt: now,
+  updatedAt: memory.updatedAt || now,
+};
+```
+
+Add a regression test:
+
+```ts
+it('saveWithVersion forces initial version to 1', () => {
+  const mem = makeMemory({ id: 'forced-version', version: 7 });
+
+  store.saveWithVersion(mem, { source: 'create' });
+
+  expect(store.getById(mem.id)!.version).toBe(1);
+  expect(store.listVersions(mem.id)[0].version).toBe(1);
+});
+```
+
+- [ ] **Step 12: Run core hardening tests**
+
+```powershell
+pnpm test -- packages/core/tests/text-teaching-service.test.ts packages/core/tests/memory-store.test.ts packages/core/tests/schema.test.ts packages/core/tests/workflow-draft.test.ts
+```
+
+Expected: PASS.
+
+- [ ] **Step 13: Commit Task 8**
+
+```powershell
+git add packages/core/src/memory/workflow-draft.ts packages/core/src/memory/text-teaching-service.ts packages/core/src/memory/memory-store.ts packages/core/src/memory/schema.ts packages/core/src/index.ts packages/core/tests/workflow-draft.test.ts packages/core/tests/text-teaching-service.test.ts packages/core/tests/memory-store.test.ts packages/core/tests/schema.test.ts
+git commit -m "fix(core): harden phase2 workflow validation"
+```
+
+---
+
+## Task 9: IPC Contract Hardening
+
+**Files:**
+- Modify: `packages/desktop/src/main/ipc.ts`
+- Modify: `packages/desktop/src/preload.ts`
+- Create: `packages/desktop/src/main/workflow-ipc-types.ts` if IPC DTOs become too large for `ipc.ts`.
+
+- [ ] **Step 1: Define stable IPC result helpers**
+
+In `packages/desktop/src/main/ipc.ts`, add helpers near `wrapHandler`:
+
+```ts
+type IpcOk<T> = { ok: true; data: T };
+type IpcErr = { ok: false; error: { code: string; message: string } };
+type IpcResult<T> = IpcOk<T> | IpcErr;
+
+function ipcOk<T>(data: T): IpcOk<T> {
+  return { ok: true, data };
+}
+
+function ipcErr(code: string, message: string): IpcErr {
+  return { ok: false, error: { code, message } };
+}
+
+async function safeIpc<T>(fn: () => Promise<T> | T): Promise<IpcResult<T>> {
+  try {
+    return ipcOk(await fn());
+  } catch (err: any) {
+    return ipcErr('IPC_HANDLER_FAILED', err?.message || String(err));
+  }
+}
+```
+
+- [ ] **Step 2: Add request guards**
+
+Add guards in `packages/desktop/src/main/ipc.ts`:
+
+```ts
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function assertTextTeachingRequest(value: unknown): asserts value is { goal: string; teachingText: string; appName?: string; platform?: 'desktop' | 'browser' | 'hybrid' } {
+  if (!isRecord(value)) throw new Error('request must be an object');
+  if (typeof value.goal !== 'string') throw new Error('goal must be a string');
+  if (typeof value.teachingText !== 'string') throw new Error('teachingText must be a string');
+  if ('appName' in value && typeof value.appName !== 'string') throw new Error('appName must be a string');
+  if ('platform' in value && value.platform !== 'desktop' && value.platform !== 'browser' && value.platform !== 'hybrid') {
+    throw new Error('platform is invalid');
+  }
+}
+```
+
+Add similar guards for `memoryId` and `version`:
+
+```ts
+function assertMemoryId(value: unknown): asserts value is string {
+  if (typeof value !== 'string' || value.trim() === '') throw new Error('memoryId must be a non-empty string');
+}
+
+function assertVersion(value: unknown): asserts value is number {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) throw new Error('version must be a positive integer');
+}
+```
+
+- [ ] **Step 3: Wrap new memory IPC handlers**
+
+Change `memory:teachText`:
+
+```ts
+ipcMain.handle('memory:teachText', async (_event, request) => safeIpc(async () => {
+  assertTextTeachingRequest(request);
+  const result = await textTeachingService.teach(request);
+  if (!result.ok || !result.data) throw new Error(result.errors.join('; '));
+  return result.data;
+}));
+```
+
+Change `memory:saveDraft`, `memory:update`, and `memory:rollback` similarly so core exceptions become `{ ok: false, error }`.
+
+For `memory:listVersions` and `memory:getVersion`, validate `memoryId` and `version`.
+
+- [ ] **Step 4: Preserve renderer compatibility**
+
+Because the renderer already expects `result.ok`, ensure every new memory IPC handler returns:
+
+```ts
+{ ok: true, data: ... }
+```
+
+or:
+
+```ts
+{ ok: false, error: { code: string, message: string } }
+```
+
+Do not return bare arrays or null for the new version handlers; wrap them in `ok`.
+
+- [ ] **Step 5: Update preload DTO comments or types**
+
+Keep `packages/desktop/src/preload.ts` API names unchanged, but if TypeScript types are introduced, expose:
+
+```ts
+teachText: (request: TextTeachingRequestDto) => Promise<IpcResult<TextTeachingResultDto>>
+```
+
+Do not change renderer call sites until Task 10.
+
+- [ ] **Step 6: Build desktop**
+
+```powershell
+pnpm build
+```
+
+Expected: PASS.
+
+- [ ] **Step 7: Commit Task 9**
+
+```powershell
+git add packages/desktop/src/main/ipc.ts packages/desktop/src/preload.ts packages/desktop/src/main/workflow-ipc-types.ts
+git commit -m "fix(desktop): harden workflow memory ipc"
+```
+
+---
+
+## Task 10: Workflow Editor Completeness And Safety UX
+
+**Files:**
+- Modify: `packages/desktop/src/renderer/pages/WorkflowsPage.tsx`
+- Optionally create: `packages/desktop/src/renderer/components/workflows/WorkflowStepsEditor.tsx`
+- Optionally create: `packages/desktop/src/renderer/components/workflows/WorkflowInputsEditor.tsx`
+- Optionally create: `packages/desktop/src/renderer/components/workflows/WorkflowVersionsPanel.tsx`
+
+- [ ] **Step 1: Replace broad `any` with local DTO types**
+
+Add explicit result and version types in `WorkflowsPage.tsx` or a nearby helper file:
+
+```ts
+type IpcResult<T> = { ok: true; data: T } | { ok: false; error: { code: string; message: string } };
+
+type WorkflowMemoryVersion = {
+  id: string;
+  memoryId: string;
+  version: number;
+  snapshot: WorkflowDraft;
+  changeNote?: string;
+  source: 'create' | 'edit' | 'rollback' | 'import' | 'text-teach';
+  createdAt: string;
+};
+```
+
+Change state:
+
+```ts
+const [memories, setMemories] = useState<WorkflowDraft[]>([]);
+const [selected, setSelected] = useState<WorkflowDraft | null>(null);
+const [versions, setVersions] = useState<WorkflowMemoryVersion[]>([]);
+```
+
+- [ ] **Step 2: Add workflow-level platform and risk controls**
+
+Add controls near topic/trigger fields:
+
+```tsx
+<select value={draft.platform ?? 'desktop'} onChange={(e) => setDraft({ ...draft, platform: e.target.value as WorkflowDraft['platform'] })}>
+  <option value="desktop">desktop</option>
+  <option value="browser">browser</option>
+  <option value="hybrid">hybrid</option>
+</select>
+
+<select value={draft.riskLevel} onChange={(e) => setDraft({ ...draft, riskLevel: e.target.value as RiskLevel })}>
+  <option value="low">low</option>
+  <option value="medium">medium</option>
+  <option value="high">high</option>
+  <option value="forbidden">forbidden</option>
+</select>
+```
+
+- [ ] **Step 3: Add inputs editor**
+
+Support adding/removing/editing:
+
+- `name`
+- `type`
+- `required`
+- `prompt`
+- `secret`
+- `humanOnly`
+- `defaultValue`
+
+Represent unchecked booleans as `false` or omit them consistently.
+
+- [ ] **Step 4: Expand step editor**
+
+For each step, expose:
+
+- `intent`
+- `targetHint`
+- `inputHint`
+- `riskLevel`
+- `fallback`
+- expected state type and value
+
+Use a minimal expected-state shape first:
+
+```ts
+expectedState: { all: [{ type: 'window_title_contains', value }] }
+```
+
+or:
+
+```ts
+expectedState: { all: [{ type: 'page_text_contains', value }] }
+```
+
+- [ ] **Step 5: Validate before save/update**
+
+Before `saveDraft()` and `updateSelected()`, call:
+
+```ts
+const validation = await window.agivar.memory.validateDraft(draft);
+```
+
+If validation returns errors, show them and stop.
+
+If validation returns warnings, show them above the save button and still allow save.
+
+- [ ] **Step 6: Add high-risk save confirmation**
+
+Before saving when `draft.riskLevel` is `high` or `forbidden`, require:
+
+```ts
+window.confirm('This workflow is marked high risk. Save anyway?')
+```
+
+Use the same confirmation when any step has `riskLevel` `high` or `forbidden`.
+
+- [ ] **Step 7: Add rollback preview and confirmation**
+
+When a version is selected, show:
+
+- version number
+- source
+- change note
+- snapshot topic
+- snapshot summary
+- first 5 step intents
+
+Before rollback:
+
+```ts
+window.confirm(`Rollback to version ${version}? This creates a new version.`)
+```
+
+- [ ] **Step 8: Add loading states**
+
+Use a state value:
+
+```ts
+const [busyAction, setBusyAction] = useState<'teach' | 'save' | 'update' | 'rollback' | null>(null);
+```
+
+Disable relevant buttons while busy.
+
+- [ ] **Step 9: Build desktop**
+
+```powershell
+pnpm build
+```
+
+Expected: PASS.
+
+- [ ] **Step 10: Commit Task 10**
+
+```powershell
+git add packages/desktop/src/renderer/pages/WorkflowsPage.tsx packages/desktop/src/renderer/components/workflows
+git commit -m "feat(desktop): complete workflow editor fields"
+```
+
+---
+
+## Task 11: IPC And Workflow Page Verification
+
+**Files:**
+- Create or modify: `packages/desktop/tests/workflow-ipc.test.ts` if desktop tests are already supported.
+- Otherwise create: `tests/e2e/phase2-workflow-memory-smoke.test.ts` or a documented smoke script under `tests/`.
+- Modify: `docs/superpowers/reviews/2026-06-24-phase2-test-review.md` only if test commands change.
+
+- [ ] **Step 1: Add IPC contract tests where practical**
+
+Cover at least:
+
+- `memory:teachText` with `{}` returns `{ ok: false }`
+- `memory:saveDraft` with invalid draft returns `{ ok: false }`
+- `memory:update` with empty steps returns `{ ok: false }`
+- `memory:rollback` with missing version returns `{ ok: false }`
+
+If Electron IPC tests are not practical in the current harness, add a small main-process handler helper that can be unit-tested without Electron and route IPC through it.
+
+- [ ] **Step 2: Add workflow page smoke**
+
+The smoke should verify:
+
+1. App opens chat page.
+2. `Ctrl+Shift+W` opens workflow page.
+3. Teaching text generates a draft.
+4. User edits topic and first step.
+5. Save creates version 1.
+6. Edit creates version 2.
+7. Version preview is visible.
+8. Rollback confirmation appears.
+9. Confirmed rollback creates version 3.
+
+- [ ] **Step 3: Run focused Phase 2 tests**
+
+```powershell
+pnpm test -- packages/core/tests/workflow-draft.test.ts packages/core/tests/text-teaching-service.test.ts packages/core/tests/memory-store.test.ts packages/core/tests/schema.test.ts
+```
+
+Expected: PASS.
+
+- [ ] **Step 4: Run full tests**
+
+```powershell
+pnpm test
+```
+
+Expected: PASS.
+
+- [ ] **Step 5: Run build**
+
+```powershell
+pnpm build
+```
+
+Expected: PASS.
+
+- [ ] **Step 6: Run Electron workflow smoke**
+
+If the smoke is automated, run its command and capture output.
+
+If the smoke is manual for now, record the exact manual result in the final report:
+
+- workflow page opened
+- draft generated
+- save version 1
+- edit version 2
+- rollback version 3
+
+- [ ] **Step 7: Commit Task 11**
+
+```powershell
+git add tests packages/desktop/tests docs/superpowers/reviews/2026-06-24-phase2-test-review.md
+git commit -m "test(desktop): add workflow memory smoke coverage"
+```

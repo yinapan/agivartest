@@ -166,6 +166,55 @@ The editor should not expose raw JSON as the only editing path. A structured for
 - Risk levels are preserved and visible in the editor.
 - Save and rollback actions are logged through local workflow version records.
 
+## Review Addendum
+
+The architecture and test reviews in `docs/superpowers/reviews/2026-06-24-phase2-architect-review.md` and `docs/superpowers/reviews/2026-06-24-phase2-test-review.md` are accepted as Phase 2 hardening input. The following items are now part of the Phase 2 completion scope:
+
+### IPC Contract Hardening
+
+- Every new `memory:*` IPC handler must validate its input at runtime.
+- Every new `memory:*` IPC handler must return a stable `{ ok, data, error }` result shape and must not leak core exceptions as rejected Electron invokes.
+- `memory:teachText`, `memory:saveDraft`, `memory:update`, `memory:listVersions`, `memory:getVersion`, and `memory:rollback` need invalid-payload tests.
+
+### Workflow Validation Hardening
+
+- `memory:update` must revalidate workflow content before persistence.
+- Update paths must reject empty topic, empty steps, missing step intent, missing target hint, missing risk level, invalid platform, and malformed inputs.
+- Update paths must regenerate `searchText` when topic, summary, trigger examples, app name, or step intents change.
+- New workflow creation must force version `1`; import/version preservation requires a separate explicit design.
+
+### Version Storage Hardening
+
+- `workflow_memory_versions` should enforce uniqueness for `(memory_id, version)`.
+- Version tests must cover missing version rollback, missing memory update, duplicate id behavior, deep snapshot preservation, and multi-workflow isolation.
+
+### Chinese Text And Sensitive Data
+
+- CJK tokenization must use a reliable Unicode-aware Han matcher rather than corrupted source text.
+- Sensitive-term detection must include real UTF-8 Chinese samples such as `密码`, `验证码`, `银行卡`, `支付`, and `身份证`.
+- Existing mojibake in tests or regex literals must not be used as evidence that Chinese handling works.
+
+### Renderer Completeness
+
+- The workflow editor must expose structured editing for `inputs`, `inputHint`, `expectedState`, `fallback`, workflow-level `riskLevel`, and `platform`.
+- Save actions must display validation errors and warnings before persistence.
+- High-risk and forbidden-risk workflows must show explicit warnings before save.
+- Rollback must require confirmation and provide a readable version snapshot preview.
+- Generate/save/update/rollback actions must have loading or disabled states to avoid duplicate writes.
+- Renderer and preload should use explicit DTO/result types instead of broad `any` for workflow memory operations.
+
+### Testing And Smoke
+
+- Add IPC tests for invalid payloads, missing memory store, missing workflow, missing version, provider errors, and validation failures.
+- Add an Electron workflow-page smoke test that opens the workflow page, generates a draft, edits a workflow, saves, lists versions, and rolls back.
+- Continue treating recorder frame assertions as real-desktop-dependent; recorder success for this phase still requires an interactive PoC or manual smoke in a valid desktop session.
+
+Deferred items:
+
+- Full LLM-based workflow understanding beyond the provider interface.
+- Recording/video-to-workflow parsing.
+- Cloud sync and vector retrieval.
+
 ## Testing Strategy
 
 Core tests:
@@ -200,6 +249,9 @@ Manual smoke:
 - The same workflow can be reused through the existing workflow execution path.
 - Workflow edits create version history.
 - Rollback restores prior workflow content by creating a new version.
+- Invalid IPC payloads and invalid workflow updates return stable user-visible errors instead of rejected invokes.
+- Chinese sensitive terms and Chinese retrieval examples are covered by real UTF-8 tests.
+- Workflow rollback requires user confirmation and exposes the target snapshot before rollback.
 - Cloud sync and vector retrieval are absent from the Phase 2 implementation.
 
 ## Implementation Order
@@ -211,4 +263,4 @@ Manual smoke:
 5. Add desktop IPC.
 6. Add renderer workflow memory UI.
 7. Add integration and smoke verification.
-
+8. Apply review hardening: IPC contracts, update validation, CJK/sensitive terms, version constraints, editor completeness, and workflow-page smoke tests.
