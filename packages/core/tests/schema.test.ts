@@ -90,4 +90,13 @@ describe('Schema migrations', () => {
       try { unlinkSync(tmpPath + '-shm'); } catch { /* best effort */ }
     }
   });
+
+  it('creates a unique index for workflow memory versions', () => {
+    db = getDatabaseForTest();
+    const rows = db
+      .prepare("PRAGMA index_list('workflow_memory_versions')")
+      .all() as { name: string; unique: number }[];
+
+    expect(rows.some((row) => row.name === 'idx_workflow_memory_versions_unique' && row.unique === 1)).toBe(true);
+  });
 });

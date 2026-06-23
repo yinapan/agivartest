@@ -337,6 +337,23 @@ describe('MemoryStore', () => {
       // Should match triggerExamples, topic, and searchText
       expect(results[0].score).toBeGreaterThan(0);
     });
+
+    it('matches real UTF-8 Chinese trigger examples', () => {
+      store.insert(
+        makeMemory({
+          id: 'utf8-chinese-search',
+          triggerExamples: ['填写客户表单'],
+          topic: '客户资料录入',
+          summary: '在 CRM 中填写客户资料',
+          searchText: '填写 客户 表单 CRM',
+        }),
+      );
+
+      const results = store.search('帮我填写客户表单');
+
+      expect(results[0].memory.id).toBe('utf8-chinese-search');
+      expect(results[0].matchedFields).toContain('triggerExamples');
+    });
   });
 
   // -----------------------------------------------------------------------
@@ -456,6 +473,48 @@ describe('MemoryStore', () => {
 
       expect(updated.createdAt).toBe('2026-01-01T00:00:00.000Z');
       expect(updated.updatedAt).not.toBe(mem.updatedAt);
+    });
+
+    it('updateWithVersion rejects invalid workflow memory', () => {
+      const mem = makeMemory({ id: 'invalid-update' });
+      store.saveWithVersion(mem, { source: 'create' });
+
+      expect(() => {
+        store.updateWithVersion({ ...mem, topic: '', steps: [] }, { source: 'edit' });
+      }).toThrow(/topic is required|at least one step is required/);
+    });
+
+    it('updateWithVersion regenerates searchText from edited content', () => {
+      const mem = makeMemory({ id: 'searchtext-update', searchText: 'old words' });
+      store.saveWithVersion(mem, { source: 'create' });
+
+      const updated = store.updateWithVersion({
+        ...mem,
+        topic: 'Updated customer search',
+        summary: 'Find a customer record',
+        triggerExamples: ['find customer'],
+        steps: [{ ...mem.steps[0], intent: 'Search customer by name' }],
+      }, { source: 'edit' });
+
+      expect(updated.searchText).toContain('Updated customer search');
+      expect(updated.searchText).toContain('Search customer by name');
+      expect(updated.searchText).not.toBe('old words');
+    });
+
+    it('saveWithVersion rejects duplicate workflow ids', () => {
+      const mem = makeMemory({ id: 'duplicate-workflow-id' });
+      store.saveWithVersion(mem, { source: 'create' });
+
+      expect(() => store.saveWithVersion(mem, { source: 'create' })).toThrow(/already exists|duplicate/i);
+    });
+
+    it('saveWithVersion forces initial version to 1', () => {
+      const mem = makeMemory({ id: 'forced-version', version: 7 });
+
+      store.saveWithVersion(mem, { source: 'create' });
+
+      expect(store.getById(mem.id)!.version).toBe(1);
+      expect(store.listVersions(mem.id)[0].version).toBe(1);
     });
   });
 });

@@ -138,6 +138,8 @@ export const MIGRATIONS: Migration[] = [
       );
       CREATE INDEX IF NOT EXISTS idx_workflow_memory_versions_memory_version
         ON workflow_memory_versions(memory_id, version DESC);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_workflow_memory_versions_unique
+        ON workflow_memory_versions(memory_id, version);
     `,
   },
 ];

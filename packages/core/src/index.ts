@@ -14,6 +14,8 @@ export {
   validateWorkflowDraft,
   normalizeWorkflowDraft,
   draftToMemory,
+  memoryToDraft,
+  rebuildMemoryForUpdate,
 } from './memory/workflow-draft.js';
 export { TextTeachingService } from './memory/text-teaching-service.js';
 export type { TextTeachingProvider } from './memory/text-teaching-service.js';

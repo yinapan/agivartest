@@ -10,7 +10,27 @@ export interface TextTeachingProvider {
   generateWorkflowDraft(request: TextTeachingRequest): Promise<WorkflowDraft>;
 }
 
-const SENSITIVE_RE = /\b(password|passcode|token|2fa|otp|verification code|payment|bank card|identity card|身份证|验证码|银行卡|支付|密码)\b/i;
+const SENSITIVE_TERMS = [
+  'password',
+  'passcode',
+  'token',
+  '2fa',
+  'otp',
+  'verification code',
+  'payment',
+  'bank card',
+  'identity card',
+  '身份证',
+  '验证码',
+  '银行卡',
+  '支付',
+  '密码',
+];
+
+function containsSensitiveTerm(text: string): boolean {
+  const lower = text.toLowerCase();
+  return SENSITIVE_TERMS.some((term) => lower.includes(term.toLowerCase()));
+}
 
 export class TextTeachingService {
   constructor(private provider: TextTeachingProvider) {}
@@ -26,7 +46,7 @@ export class TextTeachingService {
 
     const validation = validateWorkflowDraft(normalizedDraft);
     const warnings = [...validation.warnings];
-    if (SENSITIVE_RE.test(request.teachingText)) {
+    if (containsSensitiveTerm(request.teachingText)) {
       warnings.push('teaching text may contain sensitive instructions');
     }
 

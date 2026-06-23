@@ -68,4 +68,18 @@ describe('TextTeachingService', () => {
     expect(result.ok).toBe(true);
     expect(result.data!.warnings).toContain('teaching text may contain sensitive instructions');
   });
+
+  it('warns when teaching text mentions Chinese sensitive terms', async () => {
+    const provider: TextTeachingProvider = {
+      generateWorkflowDraft: async () => validDraft,
+    };
+
+    const result = await new TextTeachingService(provider).teach({
+      goal: '登录系统',
+      teachingText: '输入密码、验证码和银行卡信息。',
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data!.warnings).toContain('teaching text may contain sensitive instructions');
+  });
 });

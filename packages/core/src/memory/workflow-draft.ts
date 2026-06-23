@@ -95,6 +95,43 @@ export function draftToMemory(draft: WorkflowDraft, options: NormalizeOptions = 
   return result.data;
 }
 
+export function memoryToDraft(memory: WorkflowMemory): WorkflowDraft {
+  return {
+    appName: memory.appName,
+    platform: memory.platform,
+    topic: memory.topic,
+    triggerExamples: memory.triggerExamples,
+    summary: memory.summary,
+    initialState: memory.initialState,
+    inputs: memory.inputs,
+    steps: memory.steps.map(({ id, order, ...step }) => step),
+    successCriteria: memory.successCriteria,
+    riskLevel: memory.riskLevel,
+    sourceType: memory.sourceType,
+  };
+}
+
+export function rebuildMemoryForUpdate(
+  memory: WorkflowMemory,
+  now = new Date().toISOString(),
+): WorkflowMemory {
+  const normalized = normalizeWorkflowDraft(memoryToDraft(memory), {
+    id: memory.id,
+    now: memory.createdAt,
+  });
+
+  if (!normalized.ok || !normalized.data) {
+    throw new Error(normalized.errors.join('; '));
+  }
+
+  return {
+    ...normalized.data,
+    version: memory.version,
+    createdAt: memory.createdAt,
+    updatedAt: now,
+  };
+}
+
 function normalizeStringList(values: string[]): string[] {
   return [...new Set(values.map((v) => v.trim()).filter(Boolean))];
 }

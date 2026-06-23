@@ -1,6 +1,7 @@
 import type { DatabaseLike } from './schema.js';
 import { nanoid } from 'nanoid';
 import type { WorkflowMemory, WorkflowMemoryVersion } from '../types/workflow.js';
+import { rebuildMemoryForUpdate } from './workflow-draft.js';
 
 export interface MemorySearchResult {
   memory: WorkflowMemory;
@@ -8,8 +9,8 @@ export interface MemorySearchResult {
   matchedFields: string[];
 }
 
-/** Matches characters in the CJK Unified Ideographs blocks. */
-const CJK_RE = /[一-鿿㐀-䶿]/;
+/** Matches Han characters for Chinese/Japanese/Korean ideographs. */
+const HAN_RE = /\p{Script=Han}/u;
 
 export class MemoryStore {
   constructor(private db: DatabaseLike) {}
@@ -102,10 +103,13 @@ export class MemoryStore {
     memory: WorkflowMemory,
     meta: { source: WorkflowMemoryVersion['source']; changeNote?: string },
   ): void {
+    if (this.getById(memory.id)) {
+      throw new Error(`workflow memory ${memory.id} already exists`);
+    }
     const now = memory.createdAt || new Date().toISOString();
     const normalized = {
       ...memory,
-      version: memory.version || 1,
+      version: 1,
       createdAt: now,
       updatedAt: memory.updatedAt || now,
     };
@@ -124,7 +128,7 @@ export class MemoryStore {
     if (!current) throw new Error(`Workflow memory not found: ${memory.id}`);
     const now = new Date().toISOString();
     const updated = {
-      ...memory,
+      ...rebuildMemoryForUpdate(memory, now),
       version: current.version + 1,
       createdAt: current.createdAt,
       updatedAt: now,
@@ -203,8 +207,8 @@ export class MemoryStore {
   // ---------------------------------------------------------------------------
 
   private tokenize(text: string): string[] {
-    // Remove punctuation, keep alphanumeric + CJK + whitespace.
-    const cleaned = text.replace(/[^\w一-鿿㐀-䶿\s]/g, ' ');
+    // Remove punctuation, keep alphanumeric + Han ideographs + whitespace.
+    const cleaned = text.replace(/[^\w\p{Script=Han}\s]/gu, ' ');
     const segments = cleaned.split(/\s+/).filter((s) => s.length > 0);
 
     const tokens: string[] = [];
@@ -215,7 +219,7 @@ export class MemoryStore {
       let buf = '';
 
       for (const ch of segment) {
-        if (CJK_RE.test(ch)) {
+        if (HAN_RE.test(ch)) {
           if (buf) {
             nonCjkParts.push(buf.toLowerCase());
             buf = '';
