@@ -97,6 +97,85 @@ app.whenReady().then(async () => {
   createMainWindow();
 });
 
+const SETTINGS_ALLOWLIST = new Set([
+  'llm.model',
+  'llm.baseURL',
+  'llm.maxTokens',
+  'llm.temperature',
+  'safety.emergencyStopHotkey',
+  'safety.confirmMediumRisk',
+  'safety.maxRetries',
+  'safety.takeoverTimeoutMs',
+  'storage.logRetentionDays',
+  'privacy.screenshotOnlyForTask',
+  'privacy.logLlmRequests',
+]);
+
+const VALID_BASE_URL_PATTERN = /^https?:\/\/[^\s/$.?#].[^\s]*$/i;
+const VALID_MODEL_PATTERN = /^[a-zA-Z0-9][a-zA-Z0-9_.\-:@]{0,127}$/;
+const VALID_HOTKEY_PATTERN = /^[A-Za-z]+(\+[A-Za-z]+){0,3}$/;
+
+function validateSettingsPatch(patch: Record<string, unknown>): Record<string, unknown> {
+  const safe: Record<string, unknown> = {};
+
+  for (const [k, v] of Object.entries(patch)) {
+    if (k === '__proto__' || k === 'constructor' || k === 'prototype') continue;
+
+    if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
+      const sub = v as Record<string, unknown>;
+      for (const [sk, sv] of Object.entries(sub)) {
+        const fullKey = `${k}.${sk}`;
+        if (!SETTINGS_ALLOWLIST.has(fullKey)) continue;
+        const valid = validateSettingValue(fullKey, sv);
+        if (valid !== undefined) {
+          if (!safe[k]) safe[k] = {};
+          (safe[k] as Record<string, unknown>)[sk] = valid;
+        }
+      }
+    }
+  }
+
+  return safe;
+}
+
+function validateSettingValue(key: string, value: unknown): unknown {
+  if (value === undefined || value === null) return undefined;
+
+  switch (key) {
+    case 'llm.baseURL':
+      if (typeof value === 'string' && VALID_BASE_URL_PATTERN.test(value)) return value;
+      return undefined;
+    case 'llm.model':
+      if (typeof value === 'string' && VALID_MODEL_PATTERN.test(value)) return value;
+      return undefined;
+    case 'llm.maxTokens':
+      if (typeof value === 'number' && value >= 256 && value <= 131072) return value;
+      return undefined;
+    case 'llm.temperature':
+      if (typeof value === 'number' && value >= 0 && value <= 2) return value;
+      return undefined;
+    case 'safety.emergencyStopHotkey':
+      if (typeof value === 'string' && VALID_HOTKEY_PATTERN.test(value)) return value;
+      return undefined;
+    case 'safety.maxRetries':
+      if (typeof value === 'number' && value >= 0 && value <= 10) return value;
+      return undefined;
+    case 'safety.takeoverTimeoutMs':
+      if (typeof value === 'number' && value >= 5000 && value <= 3600000) return value;
+      return undefined;
+    case 'safety.confirmMediumRisk':
+    case 'privacy.screenshotOnlyForTask':
+    case 'privacy.logLlmRequests':
+      if (typeof value === 'boolean') return value;
+      return undefined;
+    case 'storage.logRetentionDays':
+      if (typeof value === 'number' && value >= 1 && value <= 365) return value;
+      return undefined;
+  }
+
+  return undefined;
+}
+
 function wireAgentEvents(
   agent: AgentService,
   settingsStore: SettingsStore,
@@ -141,7 +220,7 @@ function wireAgentEvents(
 
   ipcMain.removeHandler('settings:update');
   ipcMain.handle('settings:update', async (_event, patch: Record<string, unknown>) => {
-    return settingsStore.update(patch);
+    return settingsStore.update(validateSettingsPatch(patch));
   });
 
   ipcMain.removeHandler('settings:getApiKeyMask');
