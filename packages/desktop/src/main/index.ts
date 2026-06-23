@@ -1,8 +1,9 @@
 import { app, ipcMain } from 'electron';
+import fs from 'node:fs';
 import path from 'node:path';
 import * as net from 'node:net';
 import { createMainWindow, getMainWindow } from './windows.js';
-import { registerIpcHandlers, setAgentService, setMemoryStore, setSettingsStore, registerAgentIpcHandlers } from './ipc.js';
+import { registerIpcHandlers, setAgentService, setMemoryStore, setSettingsStore } from './ipc.js';
 import { GlobalHotkeyAdapter } from './global-hotkey.js';
 import { CredentialStore } from './credential-store.js';
 import { SettingsStore } from './settings-store.js';
@@ -23,8 +24,15 @@ function getDataDir(): string {
   return process.env.AGIVAR_DATA_DIR ?? path.join(app.getAppPath(), '.agivar-dev');
 }
 
+function ensureDataDir(dataDir: string): void {
+  if (!fs.existsSync(dataDir)) {
+    fs.mkdirSync(dataDir, { recursive: true });
+  }
+}
+
 app.whenReady().then(async () => {
   const dataDir = getDataDir();
+  ensureDataDir(dataDir);
   const db = getDatabase(path.join(dataDir, 'agivar.db'));
   const memoryStore = new MemoryStore(db);
   const abortManager = new AbortManager();
@@ -88,7 +96,6 @@ app.whenReady().then(async () => {
   globalHotkey = new GlobalHotkeyAdapter(abortManager);
 
   registerIpcHandlers();
-  registerAgentIpcHandlers();
   setAgentService(agentService);
   setMemoryStore(memoryStore);
   setSettingsStore(settingsStore);
@@ -96,6 +103,9 @@ app.whenReady().then(async () => {
   wireAgentEvents(agentService, settingsStore, credentialStore, globalHotkey);
 
   createMainWindow();
+}).catch((err) => {
+  console.error('[main] Failed to initialize app:', err);
+  app.quit();
 });
 
 const SETTINGS_ALLOWLIST = new Set([

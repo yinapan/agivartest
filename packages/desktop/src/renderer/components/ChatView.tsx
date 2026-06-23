@@ -7,11 +7,14 @@ import { TakeoverCard } from './TakeoverCard.js';
 import { MemoryCandidateCard } from './MemoryCandidateCard.js';
 import { TaskSummaryCard } from './TaskSummaryCard.js';
 import { useTaskStore } from '../stores/task-store.js';
+import type { AgentEvent } from '@agivar/core';
+
+const EMPTY_TASK_EVENTS: AgentEvent[] = [];
 
 export function ChatView() {
   const messages = useChatStore((s) => s.messages);
   const isLoading = useChatStore((s) => s.isLoading);
-  const taskEvents = useTaskStore((s) => s.currentTask?.events ?? []);
+  const taskEvents = useTaskStore((s) => s.currentTask?.events ?? EMPTY_TASK_EVENTS);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
