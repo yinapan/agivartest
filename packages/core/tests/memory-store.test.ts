@@ -427,4 +427,35 @@ describe('MemoryStore', () => {
       expect(store.listVersions(mem.id)).toEqual([]);
     });
   });
+
+  describe('text-taught workflow reuse', () => {
+    it('saved text-taught workflows are searchable by trigger examples', () => {
+      const mem = makeMemory({
+        id: 'text-teach-search',
+        sourceType: 'text-teach',
+        triggerExamples: ['write a quick notepad memo'],
+        topic: 'Notepad memo',
+        searchText: 'Notepad memo write quick note',
+      });
+
+      store.saveWithVersion(mem, { source: 'text-teach' });
+
+      const results = store.search('please write a quick notepad memo');
+      expect(results[0].memory.id).toBe(mem.id);
+      expect(results[0].matchedFields).toContain('triggerExamples');
+    });
+
+    it('updateWithVersion preserves createdAt and regenerates updatedAt only', () => {
+      const mem = makeMemory({
+        id: 'text-teach-update',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      });
+      store.saveWithVersion(mem, { source: 'create' });
+
+      const updated = store.updateWithVersion({ ...mem, summary: 'new summary' }, { source: 'edit' });
+
+      expect(updated.createdAt).toBe('2026-01-01T00:00:00.000Z');
+      expect(updated.updatedAt).not.toBe(mem.updatedAt);
+    });
+  });
 });
