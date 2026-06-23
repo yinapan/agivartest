@@ -14,6 +14,8 @@ import { ExecutionLog } from '../safety/execution-log.js';
 import { AbortManager } from '../safety/abort-manager.js';
 import type { LLMProvider } from '../llm/provider.js';
 import type Database from 'better-sqlite3';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 
 export interface AgentServiceDeps {
   db: Database.Database;
@@ -26,6 +28,8 @@ export interface AgentServiceDeps {
 const MEMORY_AUTO_SELECT_THRESHOLD = 0.8;
 const MEMORY_SHOW_CANDIDATES_THRESHOLD = 0.5;
 const MAX_FAILURES_BEFORE_LLM = 2;
+const MAX_TOTAL_STEPS = 30;
+const SUMMARIZE_THRESHOLD = 10;
 
 export class AgentService {
   private toolRouter: ToolRouter;
@@ -143,6 +147,21 @@ export class AgentService {
     consecutiveFailures: number,
   ): AsyncGenerator<AgentEvent> {
     while (!context.signal.aborted) {
+      if (context.stepIndex >= MAX_TOTAL_STEPS) {
+        yield this.evt(context.taskRunId, context.sessionId, { type: 'task-failed', diagnosis: `步骤预算耗尽 (${MAX_TOTAL_STEPS} 步)` });
+        return;
+      }
+
+      if (executedSteps.length > SUMMARIZE_THRESHOLD) {
+        const summary = await this.taskPlanner.summarizeHistory(context.goal, executedSteps);
+        executedSteps.splice(0, executedSteps.length - 3, {
+          intent: summary,
+          action: { type: 'observe' },
+          riskLevel: 'low',
+          source: 'llm',
+        } as StepPlan);
+      }
+
       yield this.evt(context.taskRunId, context.sessionId, { type: 'thinking', message: 'LLM 正在规划下一步...' });
 
       const output = await this.taskPlanner.planNextFromLLM(context, executedSteps);
@@ -199,7 +218,7 @@ export class AgentService {
     return {
       taskRunId, sessionId, goal, mode: 'workflow', status: 'running',
       stepIndex: 0, retryCountByStep: new Map(), maxRetries: 2,
-      outputDir: '', abortController: new AbortController(), signal,
+      outputDir: join(tmpdir(), 'agivar-' + taskRunId), abortController: new AbortController(), signal,
       startedPids: [], createdTempDirs: [], humanTakeoverEvents: [],
     };
   }

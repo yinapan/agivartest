@@ -284,6 +284,19 @@ export class TaskPlanner {
     }
   }
 
+  async summarizeHistory(goal: string, steps: StepPlan[]): Promise<string> {
+    const lines = steps.map((s, i) => `${i + 1}. [${s.source}] ${s.intent} → ${s.action.type}`).join('\n');
+    const result = await this.llm.generateText({
+      messages: [
+        { role: 'system', content: '你是任务执行摘要器。将已执行的步骤压缩为简洁的进度摘要，保留关键操作和结果。用中文回答。' },
+        { role: 'user', content: `目标: ${goal}\n\n已执行步骤:\n${lines}\n\n请用 2-3 句话总结进度。` },
+      ],
+      maxTokens: 256,
+      temperature: 0,
+    });
+    return result.text || '已执行若干步骤';
+  }
+
   private inferRiskLevel(toolName: string, args: Record<string, unknown>): StepPlan['riskLevel'] {
     const text = JSON.stringify(args).toLowerCase();
     const forbidden = ['密码', 'password', '验证码', 'captcha', '支付', 'pay', 'otp'];

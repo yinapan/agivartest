@@ -94,4 +94,15 @@ describe('TaskPlanner', () => {
     const result = await planner.planNextFromLLM(makeContext(), []);
     expect(result.step.riskLevel).toBe('forbidden');
   });
+
+  it('summarizeHistory calls LLM and returns summary text', async () => {
+    const llm = mockLLM({ text: '已完成前5步操作' });
+    const planner = new TaskPlanner(llm);
+    const steps: StepPlan[] = Array.from({ length: 5 }, (_, i) => ({
+      intent: `步骤${i}`, action: { type: 'observe' as const }, riskLevel: 'low' as const, source: 'llm' as const,
+    }));
+    const result = await planner.summarizeHistory('打开浏览器', steps);
+    expect(result).toBe('已完成前5步操作');
+    expect(llm.generateText).toHaveBeenCalled();
+  });
 });

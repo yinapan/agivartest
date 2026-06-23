@@ -58,6 +58,7 @@ describe('AgentService', () => {
 
   beforeEach(() => {
     db = getDatabaseForTest(':memory:');
+    db.pragma('foreign_keys = OFF');
     db.prepare("INSERT INTO sessions (id, title) VALUES ('s-1', 'test')").run();
     db.prepare("INSERT INTO task_runs (id, session_id, user_goal, status) VALUES ('tr-1', 's-1', 'test', 'running')").run();
 
@@ -92,5 +93,29 @@ describe('AgentService', () => {
   it('resumeWithMemory returns null for non-existent id', async () => {
     const result = await agent.resumeWithMemory('nonexistent', {} as any);
     expect(result).toBeNull();
+  });
+
+  it('emits task-failed when step budget exceeded', async () => {
+    let callCount = 0;
+    const llm = mockLLM();
+    (llm.generateText as ReturnType<typeof vi.fn>).mockImplementation(async () => {
+      callCount++;
+      return {
+        text: `step ${callCount}`,
+        toolCalls: [{ id: `t${callCount}`, type: 'function', function: { name: 'type_text', arguments: '{"text":"a"}' } }],
+        finishReason: 'tool_calls',
+      };
+    });
+    const budgetAgent = new AgentService({
+      db, llm, tools: mockAdapters(), abortManager, memoryStore,
+    });
+    const events: AgentEvent[] = [];
+    for await (const ev of budgetAgent.run('infinite task', 's-1')) {
+      events.push(ev);
+      if (events.length > 500) break;
+    }
+    const failEvent = events.find(e => e.type === 'task-failed');
+    expect(failEvent).toBeDefined();
+    expect((failEvent as any).diagnosis).toContain('步骤预算');
   });
 });
