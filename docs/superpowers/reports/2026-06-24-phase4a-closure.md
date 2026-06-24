@@ -45,6 +45,15 @@ git status --short --branch
 
 说明：`@agivar/desktop build` 仍会输出既有 Vite / Rollup external 与 eval 警告，构建退出码为 0。
 
+已新增并通过 renderer 级别 smoke：
+
+```bash
+node packages/desktop/scripts/phase4a-recording-ui-smoke.mjs
+pnpm vitest run packages/desktop/tests/phase4a-recording-ui-smoke.test.ts
+```
+
+覆盖范围：打开构建后的 renderer、通过 `Ctrl+Shift+W` 进入 Workflows、验证录屏教学面板和导入入口可见、验证 detailed 隐私确认门禁。
+
 ## 手工 smoke 状态
 
 Phase 4A 计划要求真实 Electron 窗口手工 smoke：
@@ -60,7 +69,7 @@ Phase 4A 计划要求真实 Electron 窗口手工 smoke：
 - 验证 detailed 模式未确认隐私提示前不能启动。
 - 验证保存后的 recording-generated version 来源为 `recording-teach`。
 
-当前记录：未在本次会话中声明已完成手工 smoke。原因是仓库尚无 Electron UI 自动 smoke 脚本，且该项需要真实桌面窗口交互。进入 Phase 4B 前建议补做一次人工确认，或新增 Electron 自动化 smoke 后再闭环。
+当前记录：已补 renderer 级别自动 smoke，但未声明完成真实 Electron 主进程录屏手工 smoke。原因是真实 start / stop 仍依赖当前桌面窗口、active-window 捕获和本机权限状态。进入 Phase 4B 前建议补做一次人工确认，或在后续 hardening 中修复构建产物直接由 Electron CLI 启动时的 `require('electron')` 解析问题后，再升级为完整 Electron smoke。
 
 ## Phase 4A+ / Phase 4C Follow-up
 

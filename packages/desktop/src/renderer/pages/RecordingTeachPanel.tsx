@@ -120,7 +120,7 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
   const recentEvents = useMemo(() => state.timeline?.events.slice(0, 5) ?? [], [state.timeline]);
 
   return (
-    <section className="border border-border rounded p-3 space-y-3">
+    <section data-testid="recording-teach-panel" className="border border-border rounded p-3 space-y-3">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-sm font-semibold">Recording teaching</h2>
         <span className="text-xs text-text-secondary">
@@ -139,6 +139,7 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
           <option value="fullscreen">fullscreen</option>
         </select>
         <select
+          data-testid="recording-privacy-mode"
           disabled={isBusy}
           value={state.privacyMode}
           onChange={(event) => {
@@ -171,6 +172,7 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
       {state.privacyMode === 'detailed' && (
         <label className="flex items-center gap-2 text-xs text-text-secondary">
           <input
+            data-testid="recording-detailed-ack"
             type="checkbox"
             checked={detailedModeAcknowledged}
             onChange={(event) => setDetailedModeAcknowledged(event.target.checked)}
@@ -182,6 +184,7 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
 
       <div className="flex flex-wrap gap-2">
         <button
+          data-testid="recording-start"
           disabled={isBusy || state.phase === 'recording' || requiresDetailedAck}
           onClick={startRecording}
           className="bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm py-2 px-3 rounded"

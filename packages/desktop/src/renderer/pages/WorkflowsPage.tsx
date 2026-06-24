@@ -277,13 +277,14 @@ export function WorkflowsPage() {
   const isBusy = busyAction !== null;
 
   return (
-    <div className="h-[calc(100vh-2rem)] grid grid-cols-[260px_1fr_320px] bg-bg-primary text-text-primary">
+    <div data-testid="workflows-page" className="h-[calc(100vh-2rem)] grid grid-cols-[260px_1fr_320px] bg-bg-primary text-text-primary">
       <aside className="border-r border-border p-3 overflow-y-auto">
         <button disabled={isBusy} onClick={startNewWorkflow} className="w-full bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm py-2 px-3 rounded">
           New workflow
         </button>
         <div className="mt-3 space-y-2 border border-border rounded p-2">
           <input
+            data-testid="workflow-import-path"
             value={importPath}
             onChange={(e) => setImportPath(e.target.value)}
             className="w-full bg-bg-secondary border border-border rounded px-2 py-1 text-xs"
