@@ -36,11 +36,16 @@ function buildRecordingProviderSystemPrompt(): string {
   ].join('\n');
 }
 
-function sanitizePayloadForPrompt(payload: RecordingProviderPayload): RecordingProviderPayload {
-  if (payload.privacyMode === 'detailed' && payload.containsRawText) return payload;
+function sanitizePayloadForPrompt(payload: RecordingProviderPayload): unknown {
+  const withoutLocalPaths = {
+    ...payload,
+    keyframes: payload.keyframes.map(({ imagePath, ...keyframe }) => keyframe),
+  };
+
+  if (payload.privacyMode === 'detailed' && payload.containsRawText) return withoutLocalPaths;
 
   return {
-    ...payload,
+    ...withoutLocalPaths,
     events: payload.events.map(({ rawPayload, ...event }) => event),
   };
 }

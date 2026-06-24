@@ -18,13 +18,17 @@ import {
   OpenAICompatibleRecordingProvider,
 } from '@agivar/core';
 import type { ToolAdapters } from '@agivar/core';
-import { screenshot, uia, input, browser, recorder } from '@agivar/core';
+import { screenshot, uia, input, browser, recorder, eventCapture } from '@agivar/core';
 import { handleRecordingTeachCleanupOrphans, scanRecordingKeyframeFiles, setRecordingTeachProvider, type RecordingTeachDeps } from './recording-teach-ipc.js';
 
 let agentService: AgentService | null = null;
 let globalHotkey: GlobalHotkeyAdapter | null = null;
 let recordingStoreForCleanup: RecordingStore | null = null;
 let recordingTeachDepsForCleanup: RecordingTeachDeps | undefined;
+let quitCleanupStarted = false;
+
+const RECORDING_ARTIFACT_WARNING_BYTES = 20 * 1024 * 1024 * 1024;
+const QUIT_CLEANUP_TIMEOUT_MS = 3000;
 
 function ensureDataDir(dataDir: string): void {
   if (!fs.existsSync(dataDir)) {
@@ -119,6 +123,8 @@ app.whenReady().then(async () => {
     recorder,
     screenshot,
     frameScanner: scanRecordingKeyframeFiles,
+    eventCapture,
+    preflight: () => preflightRecordingTeach(path.join(dataDir, 'recordings')),
     artifactRoot: path.join(dataDir, 'recordings'),
   };
   setRecordingTeachDeps(recordingTeachDeps);
@@ -307,11 +313,91 @@ app.on('window-all-closed', () => {
   app.quit();
 });
 
-app.on('before-quit', () => {
-  if (recordingStoreForCleanup) {
-    void handleRecordingTeachCleanupOrphans(recordingStoreForCleanup, recordingTeachDepsForCleanup);
-  }
-  void recorder.forceStopAllRecordings();
+app.on('before-quit', (event) => {
+  if (quitCleanupStarted) return;
+  quitCleanupStarted = true;
+  event.preventDefault();
+  void runRecordingQuitCleanup().finally(() => app.quit());
 });
 
 export { agentService, globalHotkey };
+
+async function preflightRecordingTeach(artifactRoot: string): Promise<{
+  ok: true;
+  data: { canRecord: boolean; warnings: string[]; artifactBytes: number };
+  durationMs: number;
+} | {
+  ok: false;
+  error: { code: string; message: string };
+  durationMs: number;
+}> {
+  const startedAt = Date.now();
+  const warnings: string[] = [];
+
+  try {
+    ensureDataDir(artifactRoot);
+    const probePath = path.join(artifactRoot, `.preflight-${Date.now()}.tmp`);
+    await fs.promises.writeFile(probePath, 'ok', 'utf8');
+    await fs.promises.rm(probePath, { force: true });
+  } catch (err) {
+    return {
+      ok: false,
+      error: {
+        code: 'RECORDING_ARTIFACT_DIR_UNAVAILABLE',
+        message: err instanceof Error ? err.message : String(err),
+      },
+      durationMs: Date.now() - startedAt,
+    };
+  }
+
+  let artifactBytes = 0;
+  try {
+    artifactBytes = await getDirectorySize(artifactRoot);
+    if (artifactBytes > RECORDING_ARTIFACT_WARNING_BYTES) {
+      warnings.push('recording artifact directory is larger than 20 GB');
+    }
+  } catch (err) {
+    warnings.push(`failed to inspect recording artifact directory: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  const activeWindow = await screenshot.getActiveWindow();
+  if (!activeWindow.ok) warnings.push(`active window probe failed: ${activeWindow.error.message}`);
+
+  return {
+    ok: true,
+    data: {
+      canRecord: true,
+      warnings,
+      artifactBytes,
+    },
+    durationMs: Date.now() - startedAt,
+  };
+}
+
+async function getDirectorySize(dir: string): Promise<number> {
+  const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+  let total = 0;
+  for (const entry of entries) {
+    const entryPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) {
+      total += await getDirectorySize(entryPath);
+    } else if (entry.isFile()) {
+      total += (await fs.promises.stat(entryPath)).size;
+    }
+  }
+  return total;
+}
+
+async function runRecordingQuitCleanup(): Promise<void> {
+  const cleanupTasks: Array<Promise<unknown>> = [
+    recorder.forceStopAllRecordings(),
+  ];
+  if (recordingStoreForCleanup) {
+    cleanupTasks.push(handleRecordingTeachCleanupOrphans(recordingStoreForCleanup, recordingTeachDepsForCleanup));
+  }
+
+  await Promise.race([
+    Promise.allSettled(cleanupTasks),
+    new Promise((resolve) => setTimeout(resolve, QUIT_CLEANUP_TIMEOUT_MS)),
+  ]);
+}

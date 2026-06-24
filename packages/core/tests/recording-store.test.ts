@@ -205,6 +205,24 @@ describe('RecordingStore', () => {
     expect((await store.getTimeline(session.id))!.events).toHaveLength(1);
   });
 
+  it('preserves omitted metadata fields during partial rename', async () => {
+    await store.saveSession(session);
+
+    const notesOnly = await store.updateSessionMetadata(session.id, {
+      notes: 'Only notes changed',
+      updatedAt: '2026-06-24T10:03:00.000Z',
+    });
+    const goalOnly = await store.updateSessionMetadata(session.id, {
+      goal: 'Only goal changed',
+      updatedAt: '2026-06-24T10:04:00.000Z',
+    });
+
+    expect(notesOnly!.goal).toBe('Save a note');
+    expect(notesOnly!.notes).toBe('Only notes changed');
+    expect(goalOnly!.goal).toBe('Only goal changed');
+    expect(goalOnly!.notes).toBe('Only notes changed');
+  });
+
   it('discards a recording idempotently and removes local artifacts best-effort', async () => {
     const root = await mkdtemp(join(tmpdir(), 'agivar-recording-discard-'));
     const artifactDir = join(root, 'rec-1');
@@ -221,8 +239,8 @@ describe('RecordingStore', () => {
       });
       await store.saveDraftLink(draftLink);
 
-      const first = await store.discardSession(session.id, { now: '2026-06-24T10:04:00.000Z' });
-      const second = await store.discardSession(session.id, { now: '2026-06-24T10:05:00.000Z' });
+      const first = await store.discardSession(session.id, { now: '2026-06-24T10:04:00.000Z', artifactRoot: root });
+      const second = await store.discardSession(session.id, { now: '2026-06-24T10:05:00.000Z', artifactRoot: root });
 
       expect(first.session?.status).toBe('discarded');
       expect(second.session?.status).toBe('discarded');
@@ -231,6 +249,31 @@ describe('RecordingStore', () => {
       expect(await store.getDraftLink(session.id)).toMatchObject({ status: 'discarded' });
     } finally {
       await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('refuses to delete discard paths outside the artifact root', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'agivar-recording-root-'));
+    const outside = await mkdtemp(join(tmpdir(), 'agivar-recording-outside-'));
+    const outsideFrame = join(outside, 'do-not-delete.png');
+    await writeFile(outsideFrame, 'outside');
+    try {
+      await store.saveSession({ ...session, artifactDir: root });
+      await store.saveTimeline({
+        ...timeline,
+        keyframes: [{ ...timeline.keyframes[0], imagePath: outsideFrame }],
+      });
+
+      const result = await store.discardSession(session.id, {
+        now: '2026-06-24T10:04:00.000Z',
+        artifactRoot: root,
+      });
+
+      await expect(access(outsideFrame)).resolves.toBeUndefined();
+      expect(result.warnings.join('\n')).toContain('outside artifact root');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+      await rm(outside, { recursive: true, force: true });
     }
   });
 

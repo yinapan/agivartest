@@ -182,6 +182,24 @@ describe('RecordingTeachingService', () => {
     expect(payload.context.map((context) => context.id)).toEqual(['ctx-1']);
   });
 
+  it('does not include provider-disabled keyframes even if a manifest selects them', () => {
+    const disabledTimeline: RecordingTimeline = {
+      ...happyTimeline,
+      keyframes: [
+        { ...happyTimeline.keyframes[0], id: 'kf-disabled', includedInProvider: false },
+      ],
+    };
+
+    const payload = buildRecordingProviderPayload(disabledTimeline, {
+      ...manifest,
+      selectedArtifactIds: ['kf-disabled', 'ev-1', 'ctx-1'],
+      status: 'confirmed',
+    });
+
+    expect(payload.keyframes).toEqual([]);
+    expect(payload.events.map((event) => event.id)).toEqual(['ev-1']);
+  });
+
   it('includes raw event payload only when a confirmed detailed manifest allows raw text', () => {
     const timeline: RecordingTimeline = {
       ...happyTimeline,

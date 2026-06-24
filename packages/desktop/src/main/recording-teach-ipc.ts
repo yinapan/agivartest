@@ -142,6 +142,7 @@ let recordingTeachProviderSelection: RecordingTeachProviderSelection = {
   provider: createDeterministicRecordingProvider(deterministicProviderName),
 };
 const generationStates = new Map<string, RecordingTeachGenerationState>();
+const generationRequestIds = new Map<string, string>();
 const generationRequests = new Map<string, StoredGenerationRequest>();
 
 export function setRecordingTeachProvider(name: string, provider: RecordingWorkflowProvider): void {
@@ -154,6 +155,7 @@ export function resetRecordingTeachProvider(): void {
     provider: createDeterministicRecordingProvider(deterministicProviderName),
   };
   generationStates.clear();
+  generationRequestIds.clear();
   generationRequests.clear();
 }
 
@@ -195,11 +197,12 @@ export async function handleRecordingTeachUpdateSessionMetadata(
 
   return safeIpc(async () => {
     assertUpdateSessionMetadataRequest(request);
-    const updated = await repo.updateSessionMetadata(request.sessionId, {
-      goal: request.goal?.trim(),
-      notes: request.notes?.trim(),
+    const patch: { goal?: string; notes?: string; updatedAt: string } = {
       updatedAt: new Date().toISOString(),
-    });
+    };
+    if (Object.prototype.hasOwnProperty.call(request, 'goal')) patch.goal = request.goal?.trim();
+    if (Object.prototype.hasOwnProperty.call(request, 'notes')) patch.notes = request.notes?.trim();
+    const updated = await repo.updateSessionMetadata(request.sessionId, patch);
     if (!updated) {
       throw new RecordingTeachIpcError('RECORDING_SESSION_NOT_FOUND', 'Recording session not found');
     }
@@ -210,12 +213,16 @@ export async function handleRecordingTeachUpdateSessionMetadata(
 export async function handleRecordingTeachDiscard(
   repo: RecordingRepository | null,
   sessionId: unknown,
+  deps?: RecordingTeachDeps,
 ): Promise<IpcResult<{ session: RecordingSession | null; warnings: string[] }>> {
   if (!repo) return ipcErr('NO_RECORDING_STORE', 'RecordingStore not initialized');
 
   return safeIpc(async () => {
     assertSessionId(sessionId);
-    const result = await repo.discardSession(sessionId, { now: new Date().toISOString() });
+    const result = await repo.discardSession(sessionId, {
+      now: new Date().toISOString(),
+      artifactRoot: deps?.artifactRoot,
+    });
     if (!result.session) {
       throw new RecordingTeachIpcError('RECORDING_SESSION_NOT_FOUND', 'Recording session not found');
     }
@@ -537,6 +544,7 @@ export async function handleRecordingTeachGenerateDraft(
     const providerName = request.manifest.providerName || recordingTeachProviderSelection.name;
     const previous = generationStates.get(sessionId);
     const attempts = (previous?.attempts ?? 0) + 1;
+    const requestId = nanoid();
     generationStates.set(sessionId, {
       sessionId,
       status: 'running',
@@ -544,6 +552,7 @@ export async function handleRecordingTeachGenerateDraft(
       canRetry: false,
       attempts,
     });
+    generationRequestIds.set(sessionId, requestId);
     generationRequests.set(sessionId, {
       sessionId,
       manifest: request.manifest,
@@ -571,6 +580,17 @@ export async function handleRecordingTeachGenerateDraft(
         error: err instanceof Error ? err.message : String(err),
       });
       throw new RecordingTeachIpcError('RECORDING_PROVIDER_FAILED', err instanceof Error ? err.message : String(err));
+    }
+    if (generationRequestIds.get(sessionId) !== requestId || generationStates.get(sessionId)?.status !== 'running') {
+      generationStates.set(sessionId, {
+        sessionId,
+        status: 'cancelled',
+        providerName,
+        canRetry: true,
+        attempts,
+      });
+      generationRequestIds.delete(sessionId);
+      throw new RecordingTeachIpcError('RECORDING_GENERATION_CANCELLED', 'Recording draft generation was cancelled');
     }
     if (!result.ok || !result.data) {
       const message = result.errors.join('; ');
@@ -603,6 +623,7 @@ export async function handleRecordingTeachGenerateDraft(
       canRetry: true,
       attempts,
     });
+    generationRequestIds.delete(sessionId);
     return link;
   });
 }
@@ -636,6 +657,7 @@ export async function handleRecordingTeachCancelDraftGeneration(
       attempts: previous?.attempts ?? 0,
     };
     generationStates.set(sessionId, state);
+    generationRequestIds.delete(sessionId);
     return state;
   });
 }

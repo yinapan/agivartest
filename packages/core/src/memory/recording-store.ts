@@ -1,4 +1,5 @@
 import { rm } from 'node:fs/promises';
+import { isAbsolute, relative, resolve } from 'node:path';
 import type { DatabaseLike } from './schema.js';
 import type {
   RecordingArtifactStatus,
@@ -111,8 +112,8 @@ export class RecordingStore implements RecordingRepository {
 
     const updated: RecordingSession = {
       ...current,
-      goal: patch.goal,
-      notes: patch.notes,
+      goal: Object.prototype.hasOwnProperty.call(patch, 'goal') ? patch.goal : current.goal,
+      notes: Object.prototype.hasOwnProperty.call(patch, 'notes') ? patch.notes : current.notes,
       updatedAt: patch.updatedAt,
     };
     await this.updateSession(updated);
@@ -311,7 +312,7 @@ export class RecordingStore implements RecordingRepository {
 
   async discardSession(
     sessionId: string,
-    options: { now: string },
+    options: { now: string; artifactRoot?: string },
   ): Promise<{ session: RecordingSession | null; warnings: string[] }> {
     const session = await this.getSession(sessionId);
     if (!session) return { session: null, warnings: [] };
@@ -320,7 +321,7 @@ export class RecordingStore implements RecordingRepository {
     const warnings: string[] = [];
 
     for (const keyframe of timeline?.keyframes ?? []) {
-      await removeLocalPath(keyframe.imagePath, warnings);
+      await removeLocalPath(keyframe.imagePath, warnings, options.artifactRoot);
       await this.markArtifactStatus(sessionId, 'keyframe', keyframe.id, 'deleted', options.now);
     }
     for (const event of timeline?.events ?? []) {
@@ -330,8 +331,8 @@ export class RecordingStore implements RecordingRepository {
       await this.markArtifactStatus(sessionId, 'context', context.id, 'deleted', options.now);
     }
 
-    await removeLocalPath(session.videoPath, warnings);
-    await removeLocalPath(session.artifactDir, warnings);
+    await removeLocalPath(session.videoPath, warnings, options.artifactRoot);
+    await removeLocalPath(session.artifactDir, warnings, options.artifactRoot);
 
     const link = await this.getDraftLink(sessionId);
     if (link) {
@@ -437,10 +438,27 @@ export class RecordingStore implements RecordingRepository {
   }
 }
 
-async function removeLocalPath(value: string | undefined, warnings: string[]): Promise<void> {
+async function removeLocalPath(
+  value: string | undefined,
+  warnings: string[],
+  artifactRoot?: string,
+): Promise<void> {
   if (!value || value.startsWith('artifact://')) return;
+  if (!artifactRoot) {
+    warnings.push(`skipped ${value}: artifact root is required`);
+    return;
+  }
+
+  const root = resolve(artifactRoot);
+  const target = resolve(value);
+  const pathFromRoot = relative(root, target);
+  if (pathFromRoot.startsWith('..') || isAbsolute(pathFromRoot)) {
+    warnings.push(`skipped ${value}: outside artifact root`);
+    return;
+  }
+
   try {
-    await rm(value, { recursive: true, force: true });
+    await rm(target, { recursive: true, force: true });
   } catch (err) {
     warnings.push(`failed to remove ${value}: ${err instanceof Error ? err.message : String(err)}`);
   }

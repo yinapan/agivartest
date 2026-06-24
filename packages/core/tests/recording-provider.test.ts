@@ -56,6 +56,9 @@ describe('OpenAICompatibleRecordingProvider', () => {
     expect(userContent).toContain('"keyframes"');
     expect(userContent).toContain('"events"');
     expect(userContent).not.toContain('secret raw text');
+    expect(userContent).not.toContain('C:\\Users\\admin\\recordings\\frame.png');
+    const sentPayload = JSON.parse(userContent) as RecordingProviderPayload;
+    expect(sentPayload.keyframes[0]).not.toHaveProperty('imagePath');
   });
 
   it('wraps malformed LLM JSON in a stable provider error', async () => {
@@ -95,7 +98,7 @@ function summaryPayload(): RecordingProviderPayload {
     keyframes: [{
       id: 'kf-1',
       timestampMs: 1000,
-      imagePath: 'artifact://rec-1/keyframes/kf-1.png',
+      imagePath: 'C:\\Users\\admin\\recordings\\frame.png',
       reason: 'event',
       redacted: true,
       hash: 'sha256-a',

@@ -74,10 +74,21 @@ class FakeRecordingRepository {
   async updateSessionMetadata(sessionId: string, patch: { goal?: string; notes?: string; updatedAt: string }): Promise<RecordingSession | null> {
     const session = this.sessions.get(sessionId);
     if (!session) return null;
-    const updated = { ...session, goal: patch.goal, notes: patch.notes, updatedAt: patch.updatedAt };
+    const updated = {
+      ...session,
+      goal: 'goal' in patch ? patch.goal : session.goal,
+      notes: 'notes' in patch ? patch.notes : session.notes,
+      updatedAt: patch.updatedAt,
+    };
     this.sessions.set(sessionId, updated);
     const timeline = this.timelines.get(sessionId);
-    if (timeline) this.timelines.set(sessionId, { ...timeline, goal: patch.goal, notes: patch.notes ?? '' });
+    if (timeline) {
+      this.timelines.set(sessionId, {
+        ...timeline,
+        goal: 'goal' in patch ? patch.goal : timeline.goal,
+        notes: 'notes' in patch ? patch.notes ?? '' : timeline.notes,
+      });
+    }
     return updated;
   }
 
@@ -601,6 +612,66 @@ describe('recordingTeach IPC helpers', () => {
     expect(afterCancel.canRetry).toBe(true);
   });
 
+  it('does not persist provider results that resolve after cancellation', async () => {
+    const repo = new FakeRecordingRepository();
+    await repo.saveSession(makeActiveSession({ status: 'ready' }));
+    await repo.saveTimeline({
+      sessionId: 'rec-active',
+      goal: 'Save note',
+      notes: 'Saved a note',
+      scope: 'fullscreen',
+      privacyMode: 'summary',
+      startedAt: '2026-06-24T10:00:00.000Z',
+      stoppedAt: '2026-06-24T10:00:05.000Z',
+      keyframes: [],
+      events: [{
+        id: 'evt-1',
+        sessionId: 'rec-active',
+        timestampMs: 100,
+        type: 'click',
+        summary: 'Clicked Save',
+        redactionLevel: 'summary',
+        status: 'active',
+      }],
+      context: [],
+      warnings: [],
+    });
+    let resolveProvider!: (value: unknown) => void;
+    const providerResult = new Promise((resolve) => { resolveProvider = resolve; });
+    const manifest = ok(await handleRecordingTeachBuildManifest(repo as never, 'rec-active', 'test-provider'));
+    const generation = handleRecordingTeachGenerateDraft(repo as never, {
+      sessionId: 'rec-active',
+      manifest: { ...manifest, status: 'confirmed' },
+    }, {
+      async generateWorkflowDraft() {
+        return await providerResult as never;
+      },
+    });
+
+    await handleRecordingTeachCancelDraftGeneration('rec-active');
+    resolveProvider({
+      draft: {
+        appName: 'Notepad',
+        platform: 'desktop',
+        topic: 'Late result',
+        triggerExamples: ['late result'],
+        summary: 'Should not persist.',
+        initialState: 'Notepad is open',
+        steps: [{ id: 'step-1', intent: 'Click Save', targetHint: 'Save', target: { strategy: 'human', hint: 'Save' }, riskLevel: 'low' }],
+        successCriteria: 'The note is saved.',
+        riskLevel: 'low',
+        sourceType: 'recording',
+      },
+      evidence: [],
+      warnings: [],
+    });
+    const result = await generation;
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('RECORDING_GENERATION_CANCELLED');
+    expect(await repo.getDraftLink('rec-active')).toBeNull();
+  });
+
   it('lists and edits non-active recording history sessions', async () => {
     const repo = new FakeRecordingRepository();
     await repo.saveSession(makeActiveSession({ id: 'rec-active', status: 'recording', updatedAt: '2026-06-24T10:04:00.000Z' }));
@@ -610,12 +681,11 @@ describe('recordingTeach IPC helpers', () => {
     const history = ok(await handleRecordingTeachListSessions(repo as never, { includeActive: false }));
     const updated = ok(await handleRecordingTeachUpdateSessionMetadata(repo as never, {
       sessionId: 'rec-old',
-      goal: 'Updated old',
       notes: 'Updated notes',
     }));
 
     expect(history.map((session) => session.id)).toEqual(['rec-new', 'rec-old']);
-    expect(updated.goal).toBe('Updated old');
+    expect(updated.goal).toBe('Old');
     expect(updated.notes).toBe('Updated notes');
   });
 

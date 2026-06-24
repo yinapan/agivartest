@@ -148,7 +148,7 @@ export function buildRecordingProviderPayload(
     containsRawText: manifest.containsRawText,
     containsPreciseCoordinates: manifest.containsPreciseCoordinates,
     keyframes: timeline.keyframes
-      .filter((keyframe) => selected.has(keyframe.id) && keyframe.status === 'active')
+      .filter((keyframe) => selected.has(keyframe.id) && keyframe.status === 'active' && keyframe.includedInProvider)
       .map((keyframe) => ({
         id: keyframe.id,
         timestampMs: keyframe.timestampMs,

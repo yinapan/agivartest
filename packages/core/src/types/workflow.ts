@@ -292,6 +292,6 @@ export interface RecordingRepository {
   getDraftLink(sessionId: string): Promise<RecordingDraftLink | null>;
   discardSession(
     sessionId: string,
-    options: { now: string },
+    options: { now: string; artifactRoot?: string },
   ): Promise<{ session: RecordingSession | null; warnings: string[] }>;
 }

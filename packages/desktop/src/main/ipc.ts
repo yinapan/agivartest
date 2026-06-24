@@ -288,7 +288,7 @@ export function registerAgentIpcHandlers(): void {
   });
 
   ipcMain.handle('recordingTeach:discard', async (_event, sessionId: string) => {
-    return handleRecordingTeachDiscard(recordingStore, sessionId);
+    return handleRecordingTeachDiscard(recordingStore, sessionId, recordingTeachDeps);
   });
 
   ipcMain.handle('recordingTeach:preflight', async () => {
