@@ -95,11 +95,9 @@ export async function handleRecordingTeachStart(
 
   return safeIpc(async () => {
     assertStartRequest(request);
-    if (request.activeSessionId) {
-      const active = await repo.getSession(request.activeSessionId);
-      if (active && (active.status === 'recording' || active.status === 'stopping')) {
-        throw new RecordingTeachIpcError('RECORDING_ALREADY_ACTIVE', 'A recording session is already active');
-      }
+    const activeSession = await findActiveRecordingSession(repo, request.activeSessionId);
+    if (activeSession) {
+      throw new RecordingTeachIpcError('RECORDING_ALREADY_ACTIVE', 'A recording session is already active');
     }
 
     const now = new Date().toISOString();
@@ -358,6 +356,7 @@ export async function handleRecordingTeachGenerateDraft(
     if (!timeline) {
       throw new RecordingTeachIpcError('RECORDING_TIMELINE_NOT_FOUND', 'Recording timeline not found');
     }
+    verifySubmittedManifest(timeline, request.manifest);
 
     const result = await new RecordingTeachingService(provider).generateDraft({
       timeline,
@@ -405,6 +404,52 @@ class RecordingTeachIpcError extends Error {
   ) {
     super(message);
   }
+}
+
+async function findActiveRecordingSession(
+  repo: RecordingRepository,
+  activeSessionId?: string,
+): Promise<RecordingSession | null> {
+  if (typeof repo.listActiveSessions === 'function') {
+    const activeSessions = await repo.listActiveSessions();
+    return activeSessions.find((session) =>
+      session.status === 'recording' || session.status === 'stopping') ?? null;
+  }
+
+  if (!activeSessionId) return null;
+  const active = await repo.getSession(activeSessionId);
+  if (!active) return null;
+  return active.status === 'recording' || active.status === 'stopping' ? active : null;
+}
+
+function verifySubmittedManifest(
+  timeline: RecordingTimeline,
+  manifest: ProviderPayloadManifest,
+): void {
+  const expected = buildProviderPayloadManifest(timeline, {
+    id: manifest.id,
+    providerName: manifest.providerName,
+    createdAt: manifest.createdAt,
+  });
+  const expectedConfirmed = { ...expected, status: 'confirmed' as const };
+  const normalizedExpected = normalizeManifestForComparison(expectedConfirmed);
+  const normalizedSubmitted = normalizeManifestForComparison(manifest);
+
+  if (JSON.stringify(normalizedExpected) !== JSON.stringify(normalizedSubmitted)) {
+    throw new RecordingTeachIpcError('PROVIDER_MANIFEST_TAMPERED', 'Provider payload manifest no longer matches recording timeline');
+  }
+}
+
+function normalizeManifestForComparison(manifest: ProviderPayloadManifest): ProviderPayloadManifest {
+  return {
+    ...manifest,
+    selectedArtifactIds: [...manifest.selectedArtifactIds].sort(),
+    redactionPolicy: sortRecord(manifest.redactionPolicy),
+  };
+}
+
+function sortRecord(value: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)));
 }
 
 function assertStartRequest(value: unknown): asserts value is RecordingTeachStartRequest {

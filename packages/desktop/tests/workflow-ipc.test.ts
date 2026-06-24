@@ -123,6 +123,23 @@ describe('workflow IPC helpers', () => {
     }
   });
 
+  it('saves recording drafts with recording-teach version source', async () => {
+    let savedSource = '';
+    const store = {
+      saveWithVersion: (_memory: unknown, meta: { source: string }) => {
+        savedSource = meta.source;
+      },
+    };
+
+    const result = await handleMemorySaveDraft(store as never, {
+      ...draft,
+      sourceType: 'recording',
+    }, 'recording teaching');
+
+    expect(result.ok).toBe(true);
+    expect(savedSource).toBe('recording-teach');
+  });
+
   it('wraps listVersions and rollback results in the IPC result shape', async () => {
     const store = {
       listVersions: () => [],

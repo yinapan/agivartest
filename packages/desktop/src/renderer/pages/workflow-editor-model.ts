@@ -53,7 +53,7 @@ export type WorkflowMemoryVersion = {
   version: number;
   snapshot: WorkflowDraft;
   changeNote?: string;
-  source: 'create' | 'edit' | 'rollback' | 'import' | 'text-teach';
+  source: 'create' | 'edit' | 'rollback' | 'import' | 'text-teach' | 'recording-teach';
   createdAt: string;
 };
 

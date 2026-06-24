@@ -48,6 +48,13 @@ export class RecordingStore implements RecordingRepository {
     return row ? this.rowToSession(row) : null;
   }
 
+  async listActiveSessions(): Promise<RecordingSession[]> {
+    const rows = this.db
+      .prepare("SELECT * FROM recording_sessions WHERE status IN ('recording', 'stopping') ORDER BY updated_at DESC")
+      .all() as Array<Record<string, unknown>>;
+    return rows.map((row) => this.rowToSession(row));
+  }
+
   async updateSession(session: RecordingSession): Promise<void> {
     this.db.prepare(`
       UPDATE recording_sessions SET

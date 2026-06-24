@@ -47,6 +47,11 @@ class FakeRecordingRepository {
   }
 
   draftLinks = new Map<string, RecordingDraftLink>();
+
+  async listActiveSessions(): Promise<RecordingSession[]> {
+    return [...this.sessions.values()].filter((session) =>
+      session.status === 'recording' || session.status === 'stopping');
+  }
 }
 
 function makeDeps() {
@@ -340,6 +345,19 @@ describe('recordingTeach IPC helpers', () => {
     if (!result.ok) expect(result.error.code).toBe('RECORDING_ALREADY_ACTIVE');
   });
 
+  it('rejects concurrent starts from repository state without renderer activeSessionId', async () => {
+    const repo = new FakeRecordingRepository();
+    await repo.saveSession(makeActiveSession());
+
+    const result = await handleRecordingTeachStart(repo as never, {
+      scope: 'fullscreen',
+      privacyMode: 'summary',
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('RECORDING_ALREADY_ACTIVE');
+  });
+
   it('returns stable missing-session errors for status and timeline reads', async () => {
     const repo = new FakeRecordingRepository();
 
@@ -421,5 +439,55 @@ describe('recordingTeach IPC helpers', () => {
     expect(generated.status).toBe('draft_ready');
     expect(generated.draftJson.sourceType).toBe('recording');
     expect(resumed).toEqual(generated);
+  });
+
+  it('rejects tampered provider manifests before provider invocation', async () => {
+    const repo = new FakeRecordingRepository();
+    await repo.saveSession(makeActiveSession({ status: 'ready' }));
+    await repo.saveTimeline({
+      sessionId: 'rec-active',
+      goal: 'Save note',
+      notes: 'Saved a note',
+      scope: 'fullscreen',
+      privacyMode: 'summary',
+      startedAt: '2026-06-24T10:00:00.000Z',
+      stoppedAt: '2026-06-24T10:00:05.000Z',
+      keyframes: [{
+        id: 'kf-1',
+        sessionId: 'rec-active',
+        timestampMs: 0,
+        imagePath: 'artifact://kf-1.png',
+        reason: 'interval',
+        redacted: false,
+        status: 'active',
+        hash: 'sha256-kf-1',
+        fileSize: 1234,
+        mimeType: 'image/png',
+        includedInProvider: true,
+      }],
+      events: [],
+      context: [],
+      warnings: [],
+    });
+    const manifest = ok(await handleRecordingTeachBuildManifest(repo as never, 'rec-active', 'test-provider'));
+    let providerInvoked = false;
+
+    const result = await handleRecordingTeachGenerateDraft(repo as never, {
+      sessionId: 'rec-active',
+      manifest: {
+        ...manifest,
+        status: 'confirmed',
+        selectedArtifactIds: [],
+      },
+    }, {
+      async generateWorkflowDraft() {
+        providerInvoked = true;
+        throw new Error('should not invoke provider');
+      },
+    });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error.code).toBe('PROVIDER_MANIFEST_TAMPERED');
+    expect(providerInvoked).toBe(false);
   });
 });

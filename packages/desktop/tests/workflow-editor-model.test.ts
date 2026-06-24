@@ -88,6 +88,20 @@ describe('workflow editor model', () => {
     expect(preview.stepIntents).toEqual(['Step 1', 'Step 2', 'Step 3', 'Step 4', 'Step 5']);
   });
 
+  it('previews recording-created workflow versions', () => {
+    const preview = versionPreview({
+      id: 'version-recording',
+      memoryId: 'mem-recording',
+      version: 1,
+      source: 'recording-teach',
+      changeNote: 'recording teaching',
+      createdAt: '2026-06-24T00:00:00.000Z',
+      snapshot: { ...draft, sourceType: 'recording', topic: 'Recorded workflow' },
+    });
+
+    expect(preview.topic).toBe('Recorded workflow');
+  });
+
   it('normalizes IPC error messages', () => {
     expect(getIpcErrorMessage({ ok: false, error: { code: 'INVALID', message: 'Bad payload' } })).toBe('Bad payload');
     expect(getIpcErrorMessage({ ok: false, error: 'legacy error' })).toBe('legacy error');

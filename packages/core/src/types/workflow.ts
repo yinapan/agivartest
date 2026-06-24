@@ -238,6 +238,7 @@ export interface RecordingDraftLink {
 export interface RecordingRepository {
   saveSession(session: RecordingSession): Promise<void>;
   getSession(sessionId: string): Promise<RecordingSession | null>;
+  listActiveSessions(): Promise<RecordingSession[]>;
   updateSession(session: RecordingSession): Promise<void>;
   saveTimeline(timeline: RecordingTimeline): Promise<void>;
   getTimeline(sessionId: string): Promise<RecordingTimeline | null>;

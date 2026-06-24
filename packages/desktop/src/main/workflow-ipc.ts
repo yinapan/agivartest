@@ -98,7 +98,8 @@ export async function handleMemorySaveDraft(
 
   return safeIpc(() => {
     const memory = draftToMemory(draft);
-    store.saveWithVersion(memory, { source: 'text-teach', changeNote });
+    const source = draft.sourceType === 'recording' ? 'recording-teach' : 'text-teach';
+    store.saveWithVersion(memory, { source, changeNote });
     return memory;
   });
 }
