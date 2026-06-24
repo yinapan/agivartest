@@ -5,7 +5,11 @@
   "main": "dist/main/index.js",
   "scripts": {
     "build": "electron-vite build",
-    "dev": "electron-vite dev",
+    "dev": "node scripts/dev-launcher.cjs",
+    "dev:raw": "electron-vite dev",
+    "rebuild:sqlite:electron": "node scripts/rebuild-better-sqlite3.cjs electron",
+    "rebuild:sqlite:node": "node scripts/rebuild-better-sqlite3.cjs node",
+    "smoke:recording:real": "node scripts/phase4c-real-recording-smoke.mjs",
     "package:dir": "electron-builder --dir"
   },
   "dependencies": {

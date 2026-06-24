@@ -14,6 +14,9 @@
     "poc:clean": "tsx tests/poc-runner.ts --clean",
     "native:doctor": "node packages/native/scripts/doctor.mjs",
     "desktop:doctor-native": "node packages/desktop/scripts/doctor-native-launcher.cjs",
+    "desktop:rebuild-sqlite:electron": "node packages/desktop/scripts/rebuild-better-sqlite3.cjs electron",
+    "desktop:rebuild-sqlite:node": "node packages/desktop/scripts/rebuild-better-sqlite3.cjs node",
+    "desktop:smoke-recording-real": "pnpm --filter @agivar/desktop smoke:recording:real",
     "test": "vitest run",
     "test:watch": "vitest"
   },
