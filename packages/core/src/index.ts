@@ -5,6 +5,7 @@ export * as browser from './tools/browser.js';
 export * as uia from './tools/uia.js';
 export * as dpi from './tools/dpi.js';
 export * as recorder from './tools/recorder.js';
+export * as eventCapture from './tools/event-capture.js';
 
 // Phase 1A: Agent execution engine
 export { MemoryStore } from './memory/memory-store.js';

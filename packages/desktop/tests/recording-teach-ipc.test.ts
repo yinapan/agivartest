@@ -82,6 +82,36 @@ function makeDeps() {
         mimeType: 'image/png',
       },
     ],
+    eventCapture: {
+      startEventCapture: async (sessionId: string, config: unknown) => {
+        calls.push(`events:start:${sessionId}:${JSON.stringify(config)}`);
+        return { ok: true as const, data: undefined, durationMs: 1 };
+      },
+      stopEventCapture: async (sessionId: string) => {
+        calls.push(`events:stop:${sessionId}`);
+        return { ok: true as const, data: undefined, durationMs: 1 };
+      },
+      drainEvents: async (sessionId: string) => {
+        calls.push(`events:drain:${sessionId}`);
+        return {
+          ok: true as const,
+          data: [
+            {
+              id: 'evt-1',
+              sessionId,
+              timestampMs: 120,
+              type: 'click' as const,
+              summary: 'Clicked primary action',
+              redactionLevel: 'summary' as const,
+              windowTitle: 'Notepad',
+              processName: 'notepad.exe',
+              status: 'active' as const,
+            },
+          ],
+          durationMs: 1,
+        };
+      },
+    },
   };
 }
 
@@ -151,6 +181,20 @@ describe('recordingTeach IPC helpers - real recorder orchestration', () => {
     expect(deps.calls[0]).toContain('"outputDir"');
   });
 
+  it('starts passive event capture with privacy and scope metadata', async () => {
+    const repo = new FakeRecordingRepository();
+    const deps = makeDeps();
+
+    const session = ok(await handleRecordingTeachStart(repo as never, {
+      scope: 'fullscreen',
+      privacyMode: 'summary',
+    }, deps as never));
+
+    expect(deps.calls).toContainEqual(expect.stringContaining(`events:start:${session.id}`));
+    expect(deps.calls.find((call) => call.startsWith('events:start'))).toContain('"privacyMode":"summary"');
+    expect(deps.calls.find((call) => call.startsWith('events:start'))).toContain('"scope":"fullscreen"');
+  });
+
   it('resolves active-window HWND before starting active-window recording', async () => {
     const repo = new FakeRecordingRepository();
     const deps = makeDeps();
@@ -176,6 +220,46 @@ describe('recordingTeach IPC helpers - real recorder orchestration', () => {
     expect(timeline!.keyframes).toHaveLength(2);
     expect(timeline!.keyframes[0].reason).toBe('interval');
     expect(timeline!.keyframes[0].includedInProvider).toBe(true);
+  });
+
+  it('stops passive event capture and persists captured events', async () => {
+    const repo = new FakeRecordingRepository();
+    const { started, deps } = await startAndStop(repo);
+
+    const timeline = await repo.getTimeline(started.id);
+
+    expect(deps.calls).toContain(`events:stop:${started.id}`);
+    expect(deps.calls).toContain(`events:drain:${started.id}`);
+    expect(timeline!.events).toHaveLength(1);
+    expect(timeline!.events[0]).toMatchObject({
+      type: 'click',
+      summary: 'Clicked primary action',
+      redactionLevel: 'summary',
+    });
+  });
+
+  it('persists active-window context snapshots into the timeline', async () => {
+    const repo = new FakeRecordingRepository();
+    const deps = makeDeps();
+
+    const started = ok(await handleRecordingTeachStart(repo as never, {
+      scope: 'active-window',
+      privacyMode: 'summary',
+    }, deps as never));
+    await handleRecordingTeachStop(repo as never, started.id, deps as never);
+
+    const timeline = await repo.getTimeline(started.id);
+
+    expect(timeline!.context).toHaveLength(1);
+    expect(timeline!.context[0]).toMatchObject({
+      kind: 'window',
+      summary: {
+        title: 'Notepad',
+        hwnd: 42,
+      },
+      source: 'active-window',
+      status: 'active',
+    });
   });
 
   it('keeps no recording sessions active after five start-stop cycles', async () => {

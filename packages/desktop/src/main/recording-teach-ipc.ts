@@ -4,13 +4,19 @@ import { readdir, stat, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type {
   RecordingKeyframe,
+  RecordingContextSnapshot,
+  RecordingEvent,
   RecordingPrivacyMode,
   RecordingRepository,
   RecordingScope,
   RecordingSession,
   RecordingTimeline,
 } from '@agivar/core';
-import { recorder as defaultRecorder, screenshot as defaultScreenshot } from '@agivar/core';
+import {
+  eventCapture as defaultEventCapture,
+  recorder as defaultRecorder,
+  screenshot as defaultScreenshot,
+} from '@agivar/core';
 import { ipcErr, safeIpc, type IpcResult } from './workflow-ipc.js';
 
 export interface RecordingTeachStartRequest {
@@ -57,6 +63,16 @@ export interface RecordingTeachDeps {
     fileSize: number;
     mimeType: string;
   }>>;
+  eventCapture?: {
+    startEventCapture(sessionId: string, config: {
+      scope: RecordingScope;
+      privacyMode: RecordingPrivacyMode;
+      targetHwnd?: number;
+      windowTitle?: string;
+    }): Promise<{ ok: true; data: void; durationMs: number } | { ok: false; error: { code: string; message: string }; durationMs: number }>;
+    stopEventCapture(sessionId: string): Promise<{ ok: true; data: void; durationMs: number } | { ok: false; error: { code: string; message: string }; durationMs: number }>;
+    drainEvents(sessionId: string): Promise<{ ok: true; data: RecordingEvent[]; durationMs: number } | { ok: false; error: { code: string; message: string }; durationMs: number }>;
+  };
   artifactRoot?: string;
 }
 
@@ -130,6 +146,19 @@ export async function handleRecordingTeachStart(
       ...(request.notes ? { notes: request.notes.trim() } : {}),
     };
     await repo.saveSession(session);
+
+    if (deps?.eventCapture) {
+      const eventStarted = await deps.eventCapture.startEventCapture(session.id, {
+        scope: session.scope,
+        privacyMode: session.privacyMode,
+        ...(typeof session.nativeTargetHwnd === 'number' ? { targetHwnd: session.nativeTargetHwnd } : {}),
+        ...(session.activeWindowTitle ? { windowTitle: session.activeWindowTitle } : {}),
+      });
+      if (!eventStarted.ok && eventStarted.error.code !== 'EVENT_CAPTURE_UNAVAILABLE') {
+        throw new RecordingTeachIpcError(eventStarted.error.code, eventStarted.error.message);
+      }
+    }
+
     return session;
   });
 }
@@ -173,6 +202,25 @@ export async function handleRecordingTeachStop(
 
     const stoppedAt = new Date().toISOString();
     const frames = deps ? await deps.frameScanner(session.artifactDir) : [];
+    if (deps?.eventCapture) {
+      const eventStopped = await deps.eventCapture.stopEventCapture(session.id);
+      if (!eventStopped.ok && eventStopped.error.code !== 'EVENT_CAPTURE_UNAVAILABLE') {
+        const failed = {
+          ...stopping,
+          status: 'failed' as const,
+          updatedAt: new Date().toISOString(),
+        };
+        await repo.updateSession(failed);
+        throw new RecordingTeachIpcError(eventStopped.error.code, eventStopped.error.message);
+      }
+    }
+    const eventDrainResult = deps?.eventCapture
+      ? await deps.eventCapture.drainEvents(session.id)
+      : null;
+    if (eventDrainResult && !eventDrainResult.ok && eventDrainResult.error.code !== 'EVENT_CAPTURE_UNAVAILABLE') {
+      throw new RecordingTeachIpcError(eventDrainResult.error.code, eventDrainResult.error.message);
+    }
+    const events = eventDrainResult?.ok ? eventDrainResult.data : [];
     const keyframes: RecordingKeyframe[] = frames.map((frame, index) => ({
       id: nanoid(),
       sessionId: session.id,
@@ -186,6 +234,7 @@ export async function handleRecordingTeachStop(
       mimeType: frame.mimeType,
       includedInProvider: true,
     }));
+    const context = buildContextSnapshots(session);
 
     const ready: RecordingSession = {
       ...stopping,
@@ -204,13 +253,29 @@ export async function handleRecordingTeachStop(
       startedAt: ready.startedAt ?? ready.createdAt,
       stoppedAt,
       keyframes,
-      events: [],
-      context: [],
+      events,
+      context,
       warnings: [],
     });
 
     return ready;
   });
+}
+
+function buildContextSnapshots(session: RecordingSession): RecordingContextSnapshot[] {
+  if (!session.activeWindowTitle && typeof session.nativeTargetHwnd !== 'number') return [];
+  return [{
+    id: nanoid(),
+    sessionId: session.id,
+    timestampMs: 0,
+    kind: 'window',
+    summary: {
+      ...(session.activeWindowTitle ? { title: session.activeWindowTitle } : {}),
+      ...(typeof session.nativeTargetHwnd === 'number' ? { hwnd: session.nativeTargetHwnd } : {}),
+    },
+    source: 'active-window',
+    status: 'active',
+  }];
 }
 
 export async function handleRecordingTeachStatus(
@@ -327,4 +392,5 @@ export const defaultRecordingTeachDeps: RecordingTeachDeps = {
   recorder: defaultRecorder,
   screenshot: defaultScreenshot,
   frameScanner: scanRecordingKeyframeFiles,
+  eventCapture: defaultEventCapture,
 };
