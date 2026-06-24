@@ -31,12 +31,15 @@ import {
   handleRecordingTeachGetTimeline,
   handleRecordingTeachStart,
   handleRecordingTeachStatus,
+  handleRecordingTeachStop,
+  type RecordingTeachDeps,
 } from './recording-teach-ipc.js';
 
 let agentService: AgentService | null = null;
 let memoryStore: MemoryStore | null = null;
 let recordingStore: RecordingStore | null = null;
 let settingsStore: SettingsStore | null = null;
+let recordingTeachDeps: RecordingTeachDeps | undefined;
 
 const fallbackTeachingProvider = createFallbackTeachingProvider();
 
@@ -50,6 +53,10 @@ export function setMemoryStore(store: MemoryStore): void {
 
 export function setRecordingStore(store: RecordingStore): void {
   recordingStore = store;
+}
+
+export function setRecordingTeachDeps(deps: RecordingTeachDeps): void {
+  recordingTeachDeps = deps;
 }
 
 export function setSettingsStore(store: SettingsStore): void {
@@ -216,7 +223,11 @@ export function registerAgentIpcHandlers(): void {
 
   // Recording teaching
   ipcMain.handle('recordingTeach:start', async (_event, request) => {
-    return handleRecordingTeachStart(recordingStore, request);
+    return handleRecordingTeachStart(recordingStore, request, recordingTeachDeps);
+  });
+
+  ipcMain.handle('recordingTeach:stop', async (_event, sessionId: string) => {
+    return handleRecordingTeachStop(recordingStore, sessionId, recordingTeachDeps);
   });
 
   ipcMain.handle('recordingTeach:status', async (_event, sessionId: string) => {

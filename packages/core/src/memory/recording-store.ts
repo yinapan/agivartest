@@ -18,8 +18,9 @@ export class RecordingStore implements RecordingRepository {
     this.db.prepare(`
       INSERT INTO recording_sessions (
         id, scope, privacy_mode, status, goal, notes, video_path, artifact_dir,
+        native_session_id, native_target_hwnd, active_window_title,
         started_at, stopped_at, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       session.id,
       session.scope,
@@ -29,6 +30,9 @@ export class RecordingStore implements RecordingRepository {
       session.notes ?? null,
       session.videoPath ?? null,
       session.artifactDir,
+      session.nativeSessionId ?? null,
+      session.nativeTargetHwnd ?? null,
+      session.activeWindowTitle ?? null,
       session.startedAt ?? null,
       session.stoppedAt ?? null,
       session.createdAt,
@@ -53,6 +57,9 @@ export class RecordingStore implements RecordingRepository {
         notes = ?,
         video_path = ?,
         artifact_dir = ?,
+        native_session_id = ?,
+        native_target_hwnd = ?,
+        active_window_title = ?,
         started_at = ?,
         stopped_at = ?,
         created_at = ?,
@@ -66,6 +73,9 @@ export class RecordingStore implements RecordingRepository {
       session.notes ?? null,
       session.videoPath ?? null,
       session.artifactDir,
+      session.nativeSessionId ?? null,
+      session.nativeTargetHwnd ?? null,
+      session.activeWindowTitle ?? null,
       session.startedAt ?? null,
       session.stoppedAt ?? null,
       session.createdAt,
@@ -252,6 +262,11 @@ export class RecordingStore implements RecordingRepository {
       ...optionalString('goal', row.goal),
       ...optionalString('notes', row.notes),
       ...optionalString('videoPath', row.video_path),
+      ...optionalString('nativeSessionId', row.native_session_id),
+      ...(typeof row.native_target_hwnd === 'number'
+        ? { nativeTargetHwnd: row.native_target_hwnd }
+        : {}),
+      ...optionalString('activeWindowTitle', row.active_window_title),
       ...optionalString('startedAt', row.started_at),
       ...optionalString('stoppedAt', row.stopped_at),
     };

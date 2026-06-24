@@ -242,6 +242,15 @@ export const MIGRATIONS: Migration[] = [
         ON recording_context_snapshots(session_id, timestamp_ms);
     `,
   },
+  {
+    version: 6,
+    name: 'add_recording_native_capture_fields',
+    up: `
+      ALTER TABLE recording_sessions ADD COLUMN native_session_id TEXT;
+      ALTER TABLE recording_sessions ADD COLUMN native_target_hwnd INTEGER;
+      ALTER TABLE recording_sessions ADD COLUMN active_window_title TEXT;
+    `,
+  },
 ];
 
 export function runMigrations(db: DatabaseLike): void {

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as net from 'node:net';
 import { createMainWindow, getMainWindow } from './windows.js';
-import { registerIpcHandlers, setAgentService, setMemoryStore, setRecordingStore, setSettingsStore } from './ipc.js';
+import { registerIpcHandlers, setAgentService, setMemoryStore, setRecordingStore, setRecordingTeachDeps, setSettingsStore } from './ipc.js';
 import { GlobalHotkeyAdapter } from './global-hotkey.js';
 import { CredentialStore } from './credential-store.js';
 import { SettingsStore } from './settings-store.js';
@@ -16,7 +16,8 @@ import {
   OpenAIClient,
 } from '@agivar/core';
 import type { ToolAdapters } from '@agivar/core';
-import { screenshot, uia, input, browser } from '@agivar/core';
+import { screenshot, uia, input, browser, recorder } from '@agivar/core';
+import { scanRecordingKeyframeFiles } from './recording-teach-ipc.js';
 
 let agentService: AgentService | null = null;
 let globalHotkey: GlobalHotkeyAdapter | null = null;
@@ -101,6 +102,12 @@ app.whenReady().then(async () => {
   setAgentService(agentService);
   setMemoryStore(memoryStore);
   setRecordingStore(recordingStore);
+  setRecordingTeachDeps({
+    recorder,
+    screenshot,
+    frameScanner: scanRecordingKeyframeFiles,
+    artifactRoot: path.join(dataDir, 'recordings'),
+  });
   setSettingsStore(settingsStore);
 
   wireAgentEvents(agentService, settingsStore, credentialStore, globalHotkey);

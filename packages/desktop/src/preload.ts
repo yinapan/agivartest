@@ -55,6 +55,8 @@ contextBridge.exposeInMainWorld('agivar', {
   recordingTeach: {
     start: (request: RecordingTeachStartRequestDto): Promise<IpcResult<RecordingSessionDto>> =>
       ipcRenderer.invoke('recordingTeach:start', request),
+    stop: (sessionId: string): Promise<IpcResult<RecordingSessionDto>> =>
+      ipcRenderer.invoke('recordingTeach:stop', sessionId),
     status: (sessionId: string): Promise<IpcResult<RecordingSessionDto>> =>
       ipcRenderer.invoke('recordingTeach:status', sessionId),
     getTimeline: (sessionId: string): Promise<IpcResult<RecordingTimelineDto>> =>

@@ -117,6 +117,9 @@ export interface RecordingSession {
   notes?: string;
   videoPath?: string;
   artifactDir: string;
+  nativeSessionId?: string;
+  nativeTargetHwnd?: number;
+  activeWindowTitle?: string;
   startedAt?: string;
   stoppedAt?: string;
   createdAt: string;
