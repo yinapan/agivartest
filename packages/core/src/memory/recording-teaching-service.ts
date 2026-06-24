@@ -1,5 +1,6 @@
 import type {
   ProviderPayloadManifest,
+  RecordingProviderPayload,
   RecordingTeachingRequest,
   RecordingTeachingResult,
   RecordingTimeline,
@@ -10,8 +11,7 @@ import { validateWorkflowDraft } from './workflow-draft.js';
 
 export interface RecordingWorkflowProvider {
   generateWorkflowDraft(
-    timeline: RecordingTeachingRequest['timeline'],
-    manifest: RecordingTeachingRequest['manifest'],
+    payload: RecordingProviderPayload,
   ): Promise<RecordingWorkflowProviderResult>;
 }
 
@@ -31,8 +31,7 @@ export class RecordingTeachingService {
     }
 
     const providerResult = await this.provider.generateWorkflowDraft(
-      request.timeline,
-      request.manifest,
+      buildRecordingProviderPayload(request.timeline, request.manifest),
     );
     const draft = {
       ...providerResult.draft,
@@ -66,6 +65,64 @@ export class RecordingTeachingService {
       warnings,
     };
   }
+}
+
+export function buildRecordingProviderPayload(
+  timeline: RecordingTimeline,
+  manifest: ProviderPayloadManifest,
+): RecordingProviderPayload {
+  const selected = new Set(manifest.selectedArtifactIds);
+  const includeRawPayload =
+    manifest.status === 'confirmed' &&
+    manifest.containsRawText &&
+    timeline.privacyMode === 'detailed';
+
+  return {
+    sessionId: timeline.sessionId,
+    providerName: manifest.providerName,
+    goal: timeline.goal,
+    notes: timeline.notes,
+    scope: timeline.scope,
+    privacyMode: timeline.privacyMode,
+    redactionPolicy: manifest.redactionPolicy,
+    containsRawText: manifest.containsRawText,
+    containsPreciseCoordinates: manifest.containsPreciseCoordinates,
+    keyframes: timeline.keyframes
+      .filter((keyframe) => selected.has(keyframe.id) && keyframe.status === 'active')
+      .map((keyframe) => ({
+        id: keyframe.id,
+        timestampMs: keyframe.timestampMs,
+        imagePath: keyframe.imagePath,
+        reason: keyframe.reason,
+        redacted: keyframe.redacted,
+        hash: keyframe.hash,
+        fileSize: keyframe.fileSize,
+        mimeType: keyframe.mimeType,
+      })),
+    events: timeline.events
+      .filter((event) => selected.has(event.id) && event.status === 'active')
+      .map((event) => ({
+        id: event.id,
+        timestampMs: event.timestampMs,
+        type: event.type,
+        summary: event.summary,
+        redactionLevel: event.redactionLevel,
+        windowTitle: event.windowTitle,
+        processName: event.processName,
+        ...(includeRawPayload && event.rawPayload !== undefined ? { rawPayload: event.rawPayload } : {}),
+      })),
+    context: timeline.context
+      .filter((context) => selected.has(context.id) && context.status === 'active')
+      .map((context) => ({
+        id: context.id,
+        timestampMs: context.timestampMs,
+        kind: context.kind,
+        summary: context.summary,
+        source: context.source,
+        warning: context.warning,
+      })),
+    warnings: timeline.warnings,
+  };
 }
 
 export function validateRecordingTeachingRequest(

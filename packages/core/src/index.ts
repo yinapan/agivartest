@@ -25,6 +25,7 @@ export {
   validateRecordingTeachingRequest,
   validateRecordingTimeline,
   buildProviderPayloadManifest,
+  buildRecordingProviderPayload,
 } from './memory/recording-teaching-service.js';
 export type { RecordingWorkflowProvider } from './memory/recording-teaching-service.js';
 export { RecordingStore } from './memory/recording-store.js';

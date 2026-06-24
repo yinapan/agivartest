@@ -7,17 +7,17 @@ import {
 import type { RecordingTimeline, WorkflowDraft } from '../src/types/workflow.js';
 
 const provider: RecordingWorkflowProvider = {
-  async generateWorkflowDraft(timeline, manifest) {
-    const firstEvent = timeline.events[0];
-    const topic = timeline.goal ?? timeline.notes.split(/[.。\n]/)[0] ?? 'Recorded workflow';
+  async generateWorkflowDraft(payload) {
+    const firstEvent = payload.events[0];
+    const topic = payload.goal ?? payload.notes.split(/[.。\n]/)[0] ?? 'Recorded workflow';
     const draft: WorkflowDraft = {
-      appName: (timeline.context[0]?.summary.title as string | undefined) ?? 'Recorded app',
-      platform: timeline.scope === 'active-window' ? 'desktop' : 'hybrid',
+      appName: (payload.context[0]?.summary.title as string | undefined) ?? 'Recorded app',
+      platform: payload.scope === 'active-window' ? 'desktop' : 'hybrid',
       topic,
       triggerExamples: [topic],
-      summary: timeline.notes || `Recorded ${topic}.`,
-      initialState: timeline.context[0]?.summary.title
-        ? `Window "${timeline.context[0].summary.title}" is active.`
+      summary: payload.notes || `Recorded ${topic}.`,
+      initialState: payload.context[0]?.summary.title
+        ? `Window "${payload.context[0].summary.title}" is active.`
         : 'The recording starts from a ready desktop state.',
       steps: [
         {
@@ -28,20 +28,20 @@ const provider: RecordingWorkflowProvider = {
         },
       ],
       successCriteria: `Complete ${topic}.`,
-      riskLevel: timeline.events.some((event) => event.type === 'type') ? 'medium' : 'low',
+      riskLevel: payload.events.some((event) => event.type === 'type') ? 'medium' : 'low',
       sourceType: 'recording',
     };
     return {
       draft,
       evidence: [{
-        id: `${timeline.sessionId}-evidence-1`,
-        sessionId: timeline.sessionId,
+        id: `${payload.sessionId}-evidence-1`,
+        sessionId: payload.sessionId,
         stepId: 'step-1',
-        eventIds: timeline.events.slice(0, 2).map((event) => event.id),
-        keyframeIds: timeline.keyframes.slice(0, 2).map((keyframe) => keyframe.id),
-        contextIds: timeline.context.slice(0, 2).map((context) => context.id),
+        eventIds: payload.events.slice(0, 2).map((event) => event.id),
+        keyframeIds: payload.keyframes.slice(0, 2).map((keyframe) => keyframe.id),
+        contextIds: payload.context.slice(0, 2).map((context) => context.id),
         confidence: 0.6,
-        rationale: `Benchmark manifest ${manifest.id} generated draft evidence.`,
+        rationale: `Benchmark provider ${payload.providerName} generated draft evidence.`,
       }],
       warnings: [],
     };

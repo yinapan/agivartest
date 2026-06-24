@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildRecordingProviderPayload,
   buildProviderPayloadManifest,
   RecordingTeachingService,
   validateRecordingTeachingRequest,
@@ -134,6 +135,75 @@ describe('RecordingTeachingService', () => {
     expect(result.estimatedBytes).toBeGreaterThan(1024);
   });
 
+  it('builds a provider payload from a confirmed manifest without leaking unselected or summary-redacted raw data', () => {
+    const timeline: RecordingTimeline = {
+      ...happyTimeline,
+      events: [
+        {
+          ...happyTimeline.events[0],
+          rawPayload: { text: 'sensitive typed text' },
+        },
+        {
+          ...happyTimeline.events[0],
+          id: 'ev-deleted',
+          status: 'deleted',
+          summary: 'Deleted event should not be sent.',
+          rawPayload: { text: 'deleted raw text' },
+        },
+      ],
+      keyframes: [
+        happyTimeline.keyframes[0],
+        {
+          ...happyTimeline.keyframes[0],
+          id: 'kf-excluded',
+          includedInProvider: false,
+          imagePath: 'artifact://rec-1/keyframes/excluded.png',
+        },
+      ],
+    };
+    const selectedManifest = buildProviderPayloadManifest(timeline, {
+      id: 'manifest-payload',
+      providerName: 'real-provider',
+      createdAt: '2026-06-24T10:01:01.000Z',
+    });
+
+    const payload = buildRecordingProviderPayload(timeline, {
+      ...selectedManifest,
+      status: 'confirmed',
+    });
+
+    expect(payload.providerName).toBe('real-provider');
+    expect(payload.sessionId).toBe('rec-1');
+    expect(payload.notes).toBe(timeline.notes);
+    expect(payload.redactionPolicy).toEqual(selectedManifest.redactionPolicy);
+    expect(payload.keyframes.map((keyframe) => keyframe.id)).toEqual(['kf-1']);
+    expect(payload.events.map((event) => event.id)).toEqual(['ev-1']);
+    expect(payload.events[0]).not.toHaveProperty('rawPayload');
+    expect(payload.context.map((context) => context.id)).toEqual(['ctx-1']);
+  });
+
+  it('includes raw event payload only when a confirmed detailed manifest allows raw text', () => {
+    const timeline: RecordingTimeline = {
+      ...happyTimeline,
+      privacyMode: 'detailed',
+      events: [{ ...happyTimeline.events[0], rawPayload: { text: 'visible after confirmation' } }],
+    };
+    const selectedManifest = buildProviderPayloadManifest(timeline, {
+      id: 'manifest-detailed',
+      providerName: 'real-provider',
+      createdAt: '2026-06-24T10:01:01.000Z',
+    });
+
+    const payload = buildRecordingProviderPayload(timeline, {
+      ...selectedManifest,
+      status: 'confirmed',
+    });
+
+    expect(payload.events[0].rawPayload).toEqual({ text: 'visible after confirmation' });
+    expect(payload.containsRawText).toBe(true);
+    expect(payload.containsPreciseCoordinates).toBe(true);
+  });
+
   it('requires explicit manifest confirmation before provider draft generation', async () => {
     let providerCalled = false;
     const provider: RecordingWorkflowProvider = {
@@ -190,13 +260,18 @@ describe('RecordingTeachingService', () => {
   });
 
   it('builds a validated recording draft from a complete simulated timeline', async () => {
+    let receivedPayloadProviderName = '';
+    let receivedPayloadKeyframes: string[] = [];
     const provider: RecordingWorkflowProvider = {
-      generateWorkflowDraft: async (timeline, providerManifest) => ({
-        draft: { ...validDraft, appName: timeline.context[0]?.summary.title ?? validDraft.appName },
+      generateWorkflowDraft: async (payload) => {
+        receivedPayloadProviderName = payload.providerName;
+        receivedPayloadKeyframes = payload.keyframes.map((keyframe) => keyframe.id);
+        return ({
+        draft: { ...validDraft, appName: payload.context[0]?.summary.title ?? validDraft.appName },
         evidence: [
           {
             id: 'evidence-1',
-            sessionId: timeline.sessionId,
+            sessionId: payload.sessionId,
             stepId: 'step-1',
             eventIds: ['ev-1'],
             keyframeIds: ['kf-1'],
@@ -205,9 +280,10 @@ describe('RecordingTeachingService', () => {
             rationale: 'The first step is visible in the first keyframe.',
           },
         ],
-        warnings: [`manifest:${providerManifest.id}`],
-        rawResponse: { provider: providerManifest.providerName },
-      }),
+        warnings: [`provider:${payload.providerName}`],
+        rawResponse: { provider: payload.providerName },
+      });
+      },
     };
 
     const result = await new RecordingTeachingService(provider).generateDraft({
@@ -218,7 +294,9 @@ describe('RecordingTeachingService', () => {
     expect(result.ok).toBe(true);
     expect(result.data!.draft.sourceType).toBe('recording');
     expect(result.data!.evidence[0].keyframeIds).toEqual(['kf-1']);
-    expect(result.data!.warnings).toContain('manifest:manifest-1');
+    expect(result.data!.warnings).toContain('provider:deterministic-test-provider');
+    expect(receivedPayloadProviderName).toBe('deterministic-test-provider');
+    expect(receivedPayloadKeyframes).toEqual(['kf-1']);
   });
 
   it('supports a minimal simulated timeline by preserving timeline warnings', async () => {

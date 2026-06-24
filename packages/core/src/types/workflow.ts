@@ -194,6 +194,47 @@ export interface ProviderPayloadManifest {
   status: 'pending' | 'confirmed' | 'sent' | 'failed';
 }
 
+export interface RecordingProviderPayload {
+  sessionId: string;
+  providerName: string;
+  goal?: string;
+  notes: string;
+  scope: RecordingScope;
+  privacyMode: RecordingPrivacyMode;
+  redactionPolicy: Record<string, unknown>;
+  containsRawText: boolean;
+  containsPreciseCoordinates: boolean;
+  keyframes: Array<{
+    id: string;
+    timestampMs: number;
+    imagePath: string;
+    reason: string;
+    redacted: boolean;
+    hash: string;
+    fileSize: number;
+    mimeType: string;
+  }>;
+  events: Array<{
+    id: string;
+    timestampMs: number;
+    type: RecordingEvent['type'];
+    summary: string;
+    redactionLevel: RecordingRedactionLevel;
+    windowTitle?: string;
+    processName?: string;
+    rawPayload?: unknown;
+  }>;
+  context: Array<{
+    id: string;
+    timestampMs: number;
+    kind: RecordingContextSnapshot['kind'];
+    summary: Record<string, unknown>;
+    source: string;
+    warning?: string;
+  }>;
+  warnings: string[];
+}
+
 export interface StepEvidenceLink {
   id: string;
   sessionId: string;
