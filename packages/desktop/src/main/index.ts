@@ -15,10 +15,11 @@ import {
   AbortManager,
   getDatabase,
   OpenAIClient,
+  OpenAICompatibleRecordingProvider,
 } from '@agivar/core';
 import type { ToolAdapters } from '@agivar/core';
 import { screenshot, uia, input, browser, recorder } from '@agivar/core';
-import { scanRecordingKeyframeFiles } from './recording-teach-ipc.js';
+import { scanRecordingKeyframeFiles, setRecordingTeachProvider } from './recording-teach-ipc.js';
 
 let agentService: AgentService | null = null;
 let globalHotkey: GlobalHotkeyAdapter | null = null;
@@ -118,6 +119,9 @@ app.whenReady().then(async () => {
     frameScanner: scanRecordingKeyframeFiles,
     artifactRoot: path.join(dataDir, 'recordings'),
   });
+  if (apiKey) {
+    setRecordingTeachProvider('openai-compatible', new OpenAICompatibleRecordingProvider(llm));
+  }
   setSettingsStore(settingsStore);
 
   wireAgentEvents(agentService, settingsStore, credentialStore, globalHotkey);

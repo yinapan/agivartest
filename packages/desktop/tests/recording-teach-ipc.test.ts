@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -11,6 +11,8 @@ import {
   handleRecordingTeachGetTimeline,
   handleRecordingTeachStart,
   handleRecordingTeachStatus,
+  resetRecordingTeachProvider,
+  setRecordingTeachProvider,
 } from '../src/main/recording-teach-ipc.js';
 import type { RecordingDraftLink, RecordingSession, RecordingTimeline } from '@agivar/core';
 
@@ -294,6 +296,10 @@ describe('recordingTeach IPC helpers - real recorder orchestration', () => {
 });
 
 describe('recordingTeach IPC helpers', () => {
+  afterEach(() => {
+    resetRecordingTeachProvider();
+  });
+
   it('rejects invalid start payloads with stable IPC errors', async () => {
     const result = await handleRecordingTeachStart(new FakeRecordingRepository() as never, {
       scope: 'bad',
@@ -402,6 +408,64 @@ describe('recordingTeach IPC helpers', () => {
 
     expect(result.status).toBe('pending');
     expect(result.selectedArtifactIds).toEqual(['kf-1']);
+  });
+
+  it('uses the configured recording provider name for manifests and draft generation', async () => {
+    const repo = new FakeRecordingRepository();
+    await repo.saveSession(makeActiveSession({ status: 'ready' }));
+    await repo.saveTimeline({
+      sessionId: 'rec-active',
+      goal: 'Save note',
+      notes: 'Saved a note',
+      scope: 'fullscreen',
+      privacyMode: 'summary',
+      startedAt: '2026-06-24T10:00:00.000Z',
+      stoppedAt: '2026-06-24T10:00:05.000Z',
+      keyframes: [],
+      events: [{
+        id: 'evt-1',
+        sessionId: 'rec-active',
+        timestampMs: 100,
+        type: 'click',
+        summary: 'Clicked Save',
+        redactionLevel: 'summary',
+        status: 'active',
+      }],
+      context: [],
+      warnings: [],
+    });
+    let providerNameSeen = '';
+    setRecordingTeachProvider('openai-compatible', {
+      async generateWorkflowDraft(payload) {
+        providerNameSeen = payload.providerName;
+        return {
+          draft: {
+            appName: 'Notepad',
+            platform: 'desktop',
+            topic: 'Save note',
+            triggerExamples: ['save note'],
+            summary: 'Saved a note',
+            initialState: 'Notepad is open',
+            steps: [{ intent: 'Click Save', targetHint: 'Save', target: { strategy: 'human', hint: 'Save' }, riskLevel: 'low' }],
+            successCriteria: 'The note is saved.',
+            riskLevel: 'low',
+            sourceType: 'recording',
+          },
+          evidence: [],
+          warnings: [],
+        };
+      },
+    });
+
+    const manifest = ok(await handleRecordingTeachBuildManifest(repo as never, 'rec-active'));
+    const generated = ok(await handleRecordingTeachGenerateDraft(repo as never, {
+      sessionId: 'rec-active',
+      manifest: { ...manifest, status: 'confirmed' },
+    }));
+
+    expect(manifest.providerName).toBe('openai-compatible');
+    expect(providerNameSeen).toBe('openai-compatible');
+    expect(generated.draftJson.topic).toBe('Save note');
   });
 
   it('generates and resumes a persisted recording draft after manifest confirmation', async () => {

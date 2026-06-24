@@ -86,6 +86,28 @@ export interface RecordingTeachDeps {
   artifactRoot?: string;
 }
 
+interface RecordingTeachProviderSelection {
+  name: string;
+  provider: RecordingWorkflowProvider;
+}
+
+const deterministicProviderName = 'recording-teaching-provider';
+let recordingTeachProviderSelection: RecordingTeachProviderSelection = {
+  name: deterministicProviderName,
+  provider: createDeterministicRecordingProvider(deterministicProviderName),
+};
+
+export function setRecordingTeachProvider(name: string, provider: RecordingWorkflowProvider): void {
+  recordingTeachProviderSelection = { name, provider };
+}
+
+export function resetRecordingTeachProvider(): void {
+  recordingTeachProviderSelection = {
+    name: deterministicProviderName,
+    provider: createDeterministicRecordingProvider(deterministicProviderName),
+  };
+}
+
 export async function handleRecordingTeachStart(
   repo: RecordingRepository | null,
   request: unknown,
@@ -325,7 +347,7 @@ export async function handleRecordingTeachGetTimeline(
 export async function handleRecordingTeachBuildManifest(
   repo: RecordingRepository | null,
   sessionId: unknown,
-  providerName = 'recording-teaching-provider',
+  providerName = recordingTeachProviderSelection.name,
 ): Promise<IpcResult<ProviderPayloadManifest>> {
   if (!repo) return ipcErr('NO_RECORDING_STORE', 'RecordingStore not initialized');
 
@@ -346,7 +368,7 @@ export async function handleRecordingTeachBuildManifest(
 export async function handleRecordingTeachGenerateDraft(
   repo: RecordingRepository | null,
   request: unknown,
-  provider: RecordingWorkflowProvider = createDeterministicRecordingProvider(),
+  provider: RecordingWorkflowProvider = recordingTeachProviderSelection.provider,
 ): Promise<IpcResult<RecordingDraftLink>> {
   if (!repo) return ipcErr('NO_RECORDING_STORE', 'RecordingStore not initialized');
 
@@ -530,36 +552,36 @@ export const defaultRecordingTeachDeps: RecordingTeachDeps = {
   eventCapture: defaultEventCapture,
 };
 
-function createDeterministicRecordingProvider(): RecordingWorkflowProvider {
+function createDeterministicRecordingProvider(providerName: string): RecordingWorkflowProvider {
   return {
-    async generateWorkflowDraft(timeline, manifest) {
-      const topic = timeline.goal?.trim() || timeline.notes.split(/[.。\n]/)[0]?.trim() || 'Recorded workflow';
+    async generateWorkflowDraft(payload) {
+      const topic = payload.goal?.trim() || payload.notes.split(/[.。\n]/)[0]?.trim() || 'Recorded workflow';
       const firstEvidence = {
         id: nanoid(),
-        sessionId: timeline.sessionId,
+        sessionId: payload.sessionId,
         stepId: 'step-1',
-        eventIds: timeline.events.slice(0, 3).map((event) => event.id),
-        keyframeIds: timeline.keyframes.slice(0, 3).map((keyframe) => keyframe.id),
-        contextIds: timeline.context.slice(0, 3).map((context) => context.id),
+        eventIds: payload.events.slice(0, 3).map((event) => event.id),
+        keyframeIds: payload.keyframes.slice(0, 3).map((keyframe) => keyframe.id),
+        contextIds: payload.context.slice(0, 3).map((context) => context.id),
         confidence: 0.55,
         rationale: 'Draft generated from confirmed recording artifacts.',
       };
       return {
         draft: {
-          appName: (timeline.context[0]?.summary.title as string | undefined) ?? 'Recorded app',
+          appName: (payload.context[0]?.summary.title as string | undefined) ?? 'Recorded app',
           platform: 'desktop',
           topic,
           triggerExamples: [topic],
-          summary: timeline.notes || `Recorded ${topic}.`,
-          initialState: timeline.context[0]?.summary.title
-            ? `Window "${timeline.context[0].summary.title}" is active.`
+          summary: payload.notes || `Recorded ${topic}.`,
+          initialState: payload.context[0]?.summary.title
+            ? `Window "${payload.context[0].summary.title}" is active.`
             : 'The recorded application is ready.',
           steps: [{
             id: 'step-1',
             order: 1,
             intent: topic,
-            targetHint: timeline.events[0]?.summary ?? timeline.context[0]?.source ?? 'recorded workflow',
-            target: { strategy: 'human', hint: timeline.events[0]?.summary ?? 'recorded target' },
+            targetHint: payload.events[0]?.summary ?? payload.context[0]?.source ?? 'recorded workflow',
+            target: { strategy: 'human', hint: payload.events[0]?.summary ?? 'recorded target' },
             riskLevel: 'low',
           }],
           successCriteria: `Complete ${topic}.`,
@@ -567,7 +589,7 @@ function createDeterministicRecordingProvider(): RecordingWorkflowProvider {
           sourceType: 'recording',
         },
         evidence: [firstEvidence],
-        warnings: [`manifest:${manifest.id}`],
+        warnings: [`provider:${providerName}`],
       };
     },
   };
