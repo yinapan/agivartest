@@ -13,6 +13,26 @@ export type RecordingPanelPhase =
   | 'draft_ready'
   | 'failed';
 
+export type RecordingProviderOptionDto = {
+  name: string;
+  label: string;
+  available: boolean;
+};
+
+export type RecordingProviderListDto = {
+  selectedProviderName: string;
+  providers: RecordingProviderOptionDto[];
+};
+
+export type RecordingGenerationStateDto = {
+  sessionId: string;
+  status: 'idle' | 'running' | 'failed' | 'draft_ready' | 'cancelled';
+  providerName: string;
+  canRetry: boolean;
+  attempts: number;
+  error?: string;
+};
+
 export type RecordingSessionDto = {
   id: string;
   scope: RecordingScopeDto;
@@ -70,6 +90,9 @@ export type RecordingTeachState = {
   phase: RecordingPanelPhase;
   scope: RecordingScopeDto;
   privacyMode: RecordingPrivacyModeDto;
+  providerName: string;
+  providers: RecordingProviderOptionDto[];
+  generation: RecordingGenerationStateDto | null;
   goal: string;
   notes: string;
   session: RecordingSessionDto | null;
@@ -84,6 +107,11 @@ export function createInitialRecordingTeachState(): RecordingTeachState {
     phase: 'idle',
     scope: 'active-window',
     privacyMode: 'summary',
+    providerName: 'recording-teaching-provider',
+    providers: [
+      { name: 'recording-teaching-provider', label: 'Deterministic regression provider', available: true },
+    ],
+    generation: null,
     goal: '',
     notes: '',
     session: null,
@@ -91,6 +119,19 @@ export function createInitialRecordingTeachState(): RecordingTeachState {
     manifest: null,
     draftLink: null,
     error: '',
+  };
+}
+
+export function applyProviderList(
+  state: RecordingTeachState,
+  providerList: RecordingProviderListDto,
+): RecordingTeachState {
+  const selectedExists = providerList.providers.some((provider) =>
+    provider.name === providerList.selectedProviderName && provider.available);
+  return {
+    ...state,
+    providers: providerList.providers,
+    providerName: selectedExists ? providerList.selectedProviderName : state.providerName,
   };
 }
 

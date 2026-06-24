@@ -24,6 +24,8 @@ type RecordingSessionDto = Record<string, unknown>;
 type RecordingTimelineDto = Record<string, unknown>;
 type ProviderPayloadManifestDto = Record<string, unknown>;
 type RecordingDraftLinkDto = Record<string, unknown>;
+type RecordingProviderListDto = Record<string, unknown>;
+type RecordingGenerationStateDto = Record<string, unknown>;
 
 contextBridge.exposeInMainWorld('agivar', {
   platform: process.platform,
@@ -63,10 +65,20 @@ contextBridge.exposeInMainWorld('agivar', {
       ipcRenderer.invoke('recordingTeach:status', sessionId),
     getTimeline: (sessionId: string): Promise<IpcResult<RecordingTimelineDto>> =>
       ipcRenderer.invoke('recordingTeach:getTimeline', sessionId),
+    listProviders: (): Promise<IpcResult<RecordingProviderListDto>> =>
+      ipcRenderer.invoke('recordingTeach:listProviders'),
     buildManifest: (sessionId: string, providerName?: string): Promise<IpcResult<ProviderPayloadManifestDto>> =>
       ipcRenderer.invoke('recordingTeach:buildManifest', sessionId, providerName),
     generateDraft: (request: { sessionId: string; manifest: ProviderPayloadManifestDto }): Promise<IpcResult<RecordingDraftLinkDto>> =>
       ipcRenderer.invoke('recordingTeach:generateDraft', request),
+    generationStatus: (sessionId: string): Promise<IpcResult<RecordingGenerationStateDto>> =>
+      ipcRenderer.invoke('recordingTeach:generationStatus', sessionId),
+    cancelDraftGeneration: (sessionId: string): Promise<IpcResult<RecordingGenerationStateDto>> =>
+      ipcRenderer.invoke('recordingTeach:cancelDraftGeneration', sessionId),
+    retryDraftGeneration: (sessionId: string): Promise<IpcResult<RecordingDraftLinkDto>> =>
+      ipcRenderer.invoke('recordingTeach:retryDraftGeneration', sessionId),
+    reprocessDraft: (request: { sessionId: string; providerName?: string }): Promise<IpcResult<RecordingDraftLinkDto>> =>
+      ipcRenderer.invoke('recordingTeach:reprocessDraft', request),
     resumeDraft: (sessionId: string): Promise<IpcResult<RecordingDraftLinkDto>> =>
       ipcRenderer.invoke('recordingTeach:resumeDraft', sessionId),
   },

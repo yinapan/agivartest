@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { getIpcErrorMessage, type IpcResult, type WorkflowDraft } from './workflow-editor-model.js';
 import {
+  applyProviderList,
   buildConfirmedManifest,
   createInitialRecordingTeachState,
   manifestSummary,
@@ -9,6 +10,8 @@ import {
   toEditorDraft,
   type ProviderPayloadManifestDto,
   type RecordingDraftLinkDto,
+  type RecordingGenerationStateDto,
+  type RecordingProviderListDto,
   type RecordingSessionDto,
   type RecordingTimelineDto,
 } from './recording-teach-model.js';
@@ -28,6 +31,16 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
   const detailWarning = state.privacyMode === 'detailed'
     ? 'Detailed mode may retain raw text or precise coordinates locally. Review the manifest before generating a draft.'
     : '';
+
+  useEffect(() => {
+    let disposed = false;
+    void (async () => {
+      const result = await window.agivar.recordingTeach.listProviders() as IpcResult<RecordingProviderListDto>;
+      if (disposed || !result.ok) return;
+      setState((current) => applyProviderList(current, result.data));
+    })();
+    return () => { disposed = true; };
+  }, []);
 
   async function startRecording() {
     if (requiresDetailedAck) {
@@ -82,7 +95,7 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
 
   async function buildManifest() {
     if (!state.session) return;
-    const result = await window.agivar.recordingTeach.buildManifest(state.session.id, 'recording-teaching-provider') as IpcResult<ProviderPayloadManifestDto>;
+    const result = await window.agivar.recordingTeach.buildManifest(state.session.id, state.providerName) as IpcResult<ProviderPayloadManifestDto>;
     if (!result.ok) {
       setState((current) => ({ ...current, error: getIpcErrorMessage(result) }));
       return;
@@ -98,11 +111,58 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
       manifest: buildConfirmedManifest(state.manifest),
     }) as IpcResult<RecordingDraftLinkDto>;
     if (!result.ok) {
+      await refreshGenerationStatus(state.session.id);
       setState((current) => ({ ...current, phase: 'manifest_ready', error: getIpcErrorMessage(result) }));
       return;
     }
     const draft = toEditorDraft(result.data);
     onDraftGenerated(draft, 'recording teaching');
+    setState((current) => ({ ...current, phase: 'draft_ready', draftLink: result.data, error: '' }));
+  }
+
+  async function refreshGenerationStatus(sessionId = state.session?.id) {
+    if (!sessionId) return;
+    const result = await window.agivar.recordingTeach.generationStatus(sessionId) as IpcResult<RecordingGenerationStateDto>;
+    if (!result.ok) return;
+    setState((current) => ({ ...current, generation: result.data }));
+  }
+
+  async function cancelGeneration() {
+    if (!state.session) return;
+    const result = await window.agivar.recordingTeach.cancelDraftGeneration(state.session.id) as IpcResult<RecordingGenerationStateDto>;
+    if (!result.ok) {
+      setState((current) => ({ ...current, error: getIpcErrorMessage(result) }));
+      return;
+    }
+    setState((current) => ({ ...current, phase: 'manifest_ready', generation: result.data, error: '' }));
+  }
+
+  async function retryGeneration() {
+    if (!state.session) return;
+    setState((current) => ({ ...current, phase: 'generating', error: '' }));
+    const result = await window.agivar.recordingTeach.retryDraftGeneration(state.session.id) as IpcResult<RecordingDraftLinkDto>;
+    if (!result.ok) {
+      await refreshGenerationStatus(state.session.id);
+      setState((current) => ({ ...current, phase: 'manifest_ready', error: getIpcErrorMessage(result) }));
+      return;
+    }
+    onDraftGenerated(toEditorDraft(result.data), 'recording teaching retry');
+    setState((current) => ({ ...current, phase: 'draft_ready', draftLink: result.data, error: '' }));
+  }
+
+  async function reprocessDraft() {
+    if (!state.session) return;
+    setState((current) => ({ ...current, phase: 'generating', error: '' }));
+    const result = await window.agivar.recordingTeach.reprocessDraft({
+      sessionId: state.session.id,
+      providerName: state.providerName,
+    }) as IpcResult<RecordingDraftLinkDto>;
+    if (!result.ok) {
+      await refreshGenerationStatus(state.session.id);
+      setState((current) => ({ ...current, phase: 'manifest_ready', error: getIpcErrorMessage(result) }));
+      return;
+    }
+    onDraftGenerated(toEditorDraft(result.data), 'recording teaching reprocess');
     setState((current) => ({ ...current, phase: 'draft_ready', draftLink: result.data, error: '' }));
   }
 
@@ -166,6 +226,23 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
           className="bg-bg-secondary border border-border rounded px-3 py-2 text-sm"
           placeholder="Recording notes"
         />
+        <select
+          data-testid="recording-provider"
+          disabled={isBusy}
+          value={state.providerName}
+          onChange={(event) => setState((current) => ({
+            ...current,
+            providerName: event.target.value,
+            manifest: null,
+          }))}
+          className="bg-bg-secondary border border-border rounded px-3 py-2 text-sm"
+        >
+          {state.providers.map((provider) => (
+            <option key={provider.name} value={provider.name} disabled={!provider.available}>
+              {provider.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {detailWarning && <div className="text-xs text-yellow-300">{detailWarning}</div>}
@@ -204,12 +281,26 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
         <button disabled={isBusy || !state.manifest} onClick={generateDraft} className="border border-border disabled:opacity-50 text-sm py-2 px-3 rounded">
           {state.phase === 'generating' ? 'Generating...' : 'Confirm & generate'}
         </button>
+        <button disabled={state.phase !== 'generating'} onClick={cancelGeneration} className="border border-border disabled:opacity-50 text-sm py-2 px-3 rounded">
+          Cancel
+        </button>
+        <button disabled={isBusy || !state.generation?.canRetry} onClick={retryGeneration} className="border border-border disabled:opacity-50 text-sm py-2 px-3 rounded">
+          Retry
+        </button>
+        <button disabled={isBusy || !state.session} onClick={reprocessDraft} className="border border-border disabled:opacity-50 text-sm py-2 px-3 rounded">
+          Reprocess
+        </button>
         <button disabled={isBusy || !state.session} onClick={resumeDraft} className="border border-border disabled:opacity-50 text-sm py-2 px-3 rounded">
           Resume draft
         </button>
       </div>
 
       {state.error && <div className="text-sm text-red-400">{state.error}</div>}
+      {state.generation && (
+        <div className="text-xs text-text-secondary">
+          Generation: {state.generation.status} / {state.generation.providerName} / attempts {state.generation.attempts}
+        </div>
+      )}
 
       {timelineInfo && (
         <div className="grid grid-cols-5 gap-2 text-xs text-text-secondary">

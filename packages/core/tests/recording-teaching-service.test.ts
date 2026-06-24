@@ -299,6 +299,54 @@ describe('RecordingTeachingService', () => {
     expect(receivedPayloadKeyframes).toEqual(['kf-1']);
   });
 
+  it('normalizes provider evidence to valid draft steps and selected artifacts', async () => {
+    const provider: RecordingWorkflowProvider = {
+      generateWorkflowDraft: async () => ({
+        draft: {
+          ...validDraft,
+          steps: [
+            { ...validDraft.steps[0], id: 'open-step', order: 1 },
+            { ...validDraft.steps[1], id: 'save-step', order: 2 },
+          ],
+        },
+        evidence: [
+          {
+            id: 'evidence-1',
+            sessionId: 'rec-1',
+            stepId: 'missing-step',
+            eventIds: ['ev-1', 'ev-missing'],
+            keyframeIds: ['kf-1', 'kf-missing'],
+            contextIds: ['ctx-1', 'ctx-missing'],
+            confidence: 2,
+            rationale: 'Provider linked one valid and one invalid artifact.',
+          },
+        ],
+        warnings: [],
+      }),
+    };
+
+    const result = await new RecordingTeachingService(provider).generateDraft({
+      timeline: happyTimeline,
+      manifest: { ...manifest, status: 'confirmed' },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data!.evidence).toEqual([{
+      id: 'evidence-1',
+      sessionId: 'rec-1',
+      stepId: 'open-step',
+      eventIds: ['ev-1'],
+      keyframeIds: ['kf-1'],
+      contextIds: ['ctx-1'],
+      confidence: 1,
+      rationale: 'Provider linked one valid and one invalid artifact.',
+    }]);
+    expect(result.data!.warnings).toContain('provider evidence stepId missing-step was not found; linked to open-step');
+    expect(result.data!.warnings).toContain('provider evidence referenced unavailable event ev-missing');
+    expect(result.data!.warnings).toContain('provider evidence referenced unavailable keyframe kf-missing');
+    expect(result.data!.warnings).toContain('provider evidence referenced unavailable context ctx-missing');
+  });
+
   it('supports a minimal simulated timeline by preserving timeline warnings', async () => {
     const provider: RecordingWorkflowProvider = {
       generateWorkflowDraft: async () => ({

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildConfirmedManifest,
   createInitialRecordingTeachState,
+  applyProviderList,
   manifestSummary,
   recordingStatusLabel,
   timelineSummary,
@@ -64,12 +65,26 @@ describe('recording teach model', () => {
       phase: 'idle',
       scope: 'active-window',
       privacyMode: 'summary',
+      providerName: 'recording-teaching-provider',
       session: null,
       timeline: null,
       manifest: null,
       draftLink: null,
       error: '',
     });
+  });
+
+  it('applies available provider selections from main process', () => {
+    const state = applyProviderList(createInitialRecordingTeachState(), {
+      selectedProviderName: 'openai-compatible',
+      providers: [
+        { name: 'recording-teaching-provider', label: 'Deterministic regression provider', available: true },
+        { name: 'openai-compatible', label: 'OpenAI-compatible recording provider', available: true },
+      ],
+    });
+
+    expect(state.providerName).toBe('openai-compatible');
+    expect(state.providers).toHaveLength(2);
   });
 
   it('builds readable status labels', () => {

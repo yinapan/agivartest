@@ -37,6 +37,31 @@ export interface RecordingTeachGenerateDraftRequest {
   manifest: ProviderPayloadManifest;
 }
 
+export interface RecordingTeachReprocessDraftRequest {
+  sessionId: string;
+  providerName?: string;
+}
+
+export interface RecordingTeachProviderOption {
+  name: string;
+  label: string;
+  available: boolean;
+}
+
+export interface RecordingTeachProviderList {
+  selectedProviderName: string;
+  providers: RecordingTeachProviderOption[];
+}
+
+export interface RecordingTeachGenerationState {
+  sessionId: string;
+  status: 'idle' | 'running' | 'failed' | 'draft_ready' | 'cancelled';
+  providerName: string;
+  canRetry: boolean;
+  attempts: number;
+  error?: string;
+}
+
 export interface RecordingTeachIpcOptions {
   deps?: RecordingTeachDeps;
 }
@@ -91,11 +116,18 @@ interface RecordingTeachProviderSelection {
   provider: RecordingWorkflowProvider;
 }
 
+interface StoredGenerationRequest {
+  sessionId: string;
+  manifest: ProviderPayloadManifest;
+}
+
 const deterministicProviderName = 'recording-teaching-provider';
 let recordingTeachProviderSelection: RecordingTeachProviderSelection = {
   name: deterministicProviderName,
   provider: createDeterministicRecordingProvider(deterministicProviderName),
 };
+const generationStates = new Map<string, RecordingTeachGenerationState>();
+const generationRequests = new Map<string, StoredGenerationRequest>();
 
 export function setRecordingTeachProvider(name: string, provider: RecordingWorkflowProvider): void {
   recordingTeachProviderSelection = { name, provider };
@@ -106,6 +138,26 @@ export function resetRecordingTeachProvider(): void {
     name: deterministicProviderName,
     provider: createDeterministicRecordingProvider(deterministicProviderName),
   };
+  generationStates.clear();
+  generationRequests.clear();
+}
+
+export async function handleRecordingTeachListProviders(): Promise<IpcResult<RecordingTeachProviderList>> {
+  return safeIpc(async () => ({
+    selectedProviderName: recordingTeachProviderSelection.name,
+    providers: [
+      {
+        name: deterministicProviderName,
+        label: 'Deterministic regression provider',
+        available: true,
+      },
+      {
+        name: 'openai-compatible',
+        label: 'OpenAI-compatible recording provider',
+        available: recordingTeachProviderSelection.name === 'openai-compatible',
+      },
+    ],
+  }));
 }
 
 export async function handleRecordingTeachStart(
@@ -374,18 +426,56 @@ export async function handleRecordingTeachGenerateDraft(
 
   return safeIpc(async () => {
     assertGenerateDraftRequest(request);
+    const sessionId = request.sessionId;
+    const providerName = request.manifest.providerName || recordingTeachProviderSelection.name;
+    const previous = generationStates.get(sessionId);
+    const attempts = (previous?.attempts ?? 0) + 1;
+    generationStates.set(sessionId, {
+      sessionId,
+      status: 'running',
+      providerName,
+      canRetry: false,
+      attempts,
+    });
+    generationRequests.set(sessionId, {
+      sessionId,
+      manifest: request.manifest,
+    });
+
     const timeline = await repo.getTimeline(request.sessionId);
     if (!timeline) {
       throw new RecordingTeachIpcError('RECORDING_TIMELINE_NOT_FOUND', 'Recording timeline not found');
     }
     verifySubmittedManifest(timeline, request.manifest);
 
-    const result = await new RecordingTeachingService(provider).generateDraft({
-      timeline,
-      manifest: request.manifest,
-    });
+    let result;
+    try {
+      result = await new RecordingTeachingService(provider).generateDraft({
+        timeline,
+        manifest: request.manifest,
+      });
+    } catch (err) {
+      generationStates.set(sessionId, {
+        sessionId,
+        status: 'failed',
+        providerName,
+        canRetry: true,
+        attempts,
+        error: err instanceof Error ? err.message : String(err),
+      });
+      throw new RecordingTeachIpcError('RECORDING_PROVIDER_FAILED', err instanceof Error ? err.message : String(err));
+    }
     if (!result.ok || !result.data) {
-      throw new RecordingTeachIpcError('RECORDING_DRAFT_INVALID', result.errors.join('; '));
+      const message = result.errors.join('; ');
+      generationStates.set(sessionId, {
+        sessionId,
+        status: 'failed',
+        providerName,
+        canRetry: true,
+        attempts,
+        error: message,
+      });
+      throw new RecordingTeachIpcError('RECORDING_DRAFT_INVALID', message);
     }
 
     const now = new Date().toISOString();
@@ -399,7 +489,86 @@ export async function handleRecordingTeachGenerateDraft(
       updatedAt: now,
     };
     await repo.saveDraftLink(link);
+    generationStates.set(sessionId, {
+      sessionId,
+      status: 'draft_ready',
+      providerName,
+      canRetry: true,
+      attempts,
+    });
     return link;
+  });
+}
+
+export async function handleRecordingTeachGenerationStatus(
+  sessionId: unknown,
+): Promise<IpcResult<RecordingTeachGenerationState>> {
+  return safeIpc(async () => {
+    assertSessionId(sessionId);
+    return generationStates.get(sessionId) ?? {
+      sessionId,
+      status: 'idle',
+      providerName: recordingTeachProviderSelection.name,
+      canRetry: false,
+      attempts: 0,
+    };
+  });
+}
+
+export async function handleRecordingTeachCancelDraftGeneration(
+  sessionId: unknown,
+): Promise<IpcResult<RecordingTeachGenerationState>> {
+  return safeIpc(async () => {
+    assertSessionId(sessionId);
+    const previous = generationStates.get(sessionId);
+    const state: RecordingTeachGenerationState = {
+      sessionId,
+      status: 'cancelled',
+      providerName: previous?.providerName ?? recordingTeachProviderSelection.name,
+      canRetry: Boolean(generationRequests.get(sessionId)),
+      attempts: previous?.attempts ?? 0,
+    };
+    generationStates.set(sessionId, state);
+    return state;
+  });
+}
+
+export async function handleRecordingTeachRetryDraftGeneration(
+  repo: RecordingRepository | null,
+  sessionId: unknown,
+): Promise<IpcResult<RecordingDraftLink>> {
+  if (!repo) return ipcErr('NO_RECORDING_STORE', 'RecordingStore not initialized');
+  return safeIpc(async () => {
+    assertSessionId(sessionId);
+    const previous = generationRequests.get(sessionId);
+    if (!previous) {
+      throw new RecordingTeachIpcError('RECORDING_GENERATION_NOT_FOUND', 'No recording draft generation request can be retried');
+    }
+    const result = await handleRecordingTeachGenerateDraft(repo, previous);
+    if (!result.ok) throw new RecordingTeachIpcError(result.error.code, result.error.message);
+    return result.data;
+  });
+}
+
+export async function handleRecordingTeachReprocessDraft(
+  repo: RecordingRepository | null,
+  request: unknown,
+): Promise<IpcResult<RecordingDraftLink>> {
+  if (!repo) return ipcErr('NO_RECORDING_STORE', 'RecordingStore not initialized');
+  return safeIpc(async () => {
+    assertReprocessDraftRequest(request);
+    const manifest = await handleRecordingTeachBuildManifest(
+      repo,
+      request.sessionId,
+      request.providerName ?? recordingTeachProviderSelection.name,
+    );
+    if (!manifest.ok) throw new RecordingTeachIpcError(manifest.error.code, manifest.error.message);
+    const generated = await handleRecordingTeachGenerateDraft(repo, {
+      sessionId: request.sessionId,
+      manifest: { ...manifest.data, status: 'confirmed' },
+    });
+    if (!generated.ok) throw new RecordingTeachIpcError(generated.error.code, generated.error.message);
+    return generated.data;
   });
 }
 
@@ -497,6 +666,14 @@ function assertGenerateDraftRequest(value: unknown): asserts value is RecordingT
   if (!isRecord(value)) throw new Error('request must be an object');
   assertString(value.sessionId, 'sessionId', 200);
   if (!isRecord(value.manifest)) throw new Error('manifest must be an object');
+}
+
+function assertReprocessDraftRequest(value: unknown): asserts value is RecordingTeachReprocessDraftRequest {
+  if (!isRecord(value)) throw new Error('request must be an object');
+  assertString(value.sessionId, 'sessionId', 200);
+  if ('providerName' in value && value.providerName !== undefined) {
+    assertString(value.providerName, 'providerName', 100);
+  }
 }
 
 function assertString(value: unknown, field: string, max: number): asserts value is string {

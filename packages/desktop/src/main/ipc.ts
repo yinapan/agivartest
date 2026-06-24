@@ -29,9 +29,14 @@ import {
 } from './workflow-ipc.js';
 import {
   handleRecordingTeachBuildManifest,
+  handleRecordingTeachCancelDraftGeneration,
   handleRecordingTeachGenerateDraft,
+  handleRecordingTeachGenerationStatus,
   handleRecordingTeachGetTimeline,
+  handleRecordingTeachListProviders,
+  handleRecordingTeachReprocessDraft,
   handleRecordingTeachResumeDraft,
+  handleRecordingTeachRetryDraftGeneration,
   handleRecordingTeachStart,
   handleRecordingTeachStatus,
   handleRecordingTeachStop,
@@ -241,12 +246,32 @@ export function registerAgentIpcHandlers(): void {
     return handleRecordingTeachGetTimeline(recordingStore, sessionId);
   });
 
+  ipcMain.handle('recordingTeach:listProviders', async () => {
+    return handleRecordingTeachListProviders();
+  });
+
   ipcMain.handle('recordingTeach:buildManifest', async (_event, sessionId: string, providerName?: string) => {
     return handleRecordingTeachBuildManifest(recordingStore, sessionId, providerName);
   });
 
   ipcMain.handle('recordingTeach:generateDraft', async (_event, request) => {
     return handleRecordingTeachGenerateDraft(recordingStore, request);
+  });
+
+  ipcMain.handle('recordingTeach:generationStatus', async (_event, sessionId: string) => {
+    return handleRecordingTeachGenerationStatus(sessionId);
+  });
+
+  ipcMain.handle('recordingTeach:cancelDraftGeneration', async (_event, sessionId: string) => {
+    return handleRecordingTeachCancelDraftGeneration(sessionId);
+  });
+
+  ipcMain.handle('recordingTeach:retryDraftGeneration', async (_event, sessionId: string) => {
+    return handleRecordingTeachRetryDraftGeneration(recordingStore, sessionId);
+  });
+
+  ipcMain.handle('recordingTeach:reprocessDraft', async (_event, request) => {
+    return handleRecordingTeachReprocessDraft(recordingStore, request);
   });
 
   ipcMain.handle('recordingTeach:resumeDraft', async (_event, sessionId: string) => {

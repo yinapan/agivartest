@@ -4,12 +4,17 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   scanRecordingKeyframeFiles,
+  handleRecordingTeachCancelDraftGeneration,
   handleRecordingTeachBuildManifest,
   handleRecordingTeachGenerateDraft,
+  handleRecordingTeachListProviders,
+  handleRecordingTeachReprocessDraft,
   handleRecordingTeachResumeDraft,
+  handleRecordingTeachRetryDraftGeneration,
   handleRecordingTeachStop,
   handleRecordingTeachGetTimeline,
   handleRecordingTeachStart,
+  handleRecordingTeachGenerationStatus,
   handleRecordingTeachStatus,
   resetRecordingTeachProvider,
   setRecordingTeachProvider,
@@ -466,6 +471,97 @@ describe('recordingTeach IPC helpers', () => {
     expect(manifest.providerName).toBe('openai-compatible');
     expect(providerNameSeen).toBe('openai-compatible');
     expect(generated.draftJson.topic).toBe('Save note');
+  });
+
+  it('lists deterministic and configured recording providers for renderer selection', async () => {
+    setRecordingTeachProvider('openai-compatible', {
+      async generateWorkflowDraft() {
+        throw new Error('not used');
+      },
+    });
+
+    const result = ok(await handleRecordingTeachListProviders());
+
+    expect(result).toEqual({
+      selectedProviderName: 'openai-compatible',
+      providers: [
+        { name: 'recording-teaching-provider', label: 'Deterministic regression provider', available: true },
+        { name: 'openai-compatible', label: 'OpenAI-compatible recording provider', available: true },
+      ],
+    });
+  });
+
+  it('supports draft generation retry, reprocess, status, and cancellation semantics', async () => {
+    const repo = new FakeRecordingRepository();
+    await repo.saveSession(makeActiveSession({ status: 'ready' }));
+    await repo.saveTimeline({
+      sessionId: 'rec-active',
+      goal: 'Save note',
+      notes: 'Saved a note',
+      scope: 'fullscreen',
+      privacyMode: 'summary',
+      startedAt: '2026-06-24T10:00:00.000Z',
+      stoppedAt: '2026-06-24T10:00:05.000Z',
+      keyframes: [],
+      events: [{
+        id: 'evt-1',
+        sessionId: 'rec-active',
+        timestampMs: 100,
+        type: 'click',
+        summary: 'Clicked Save',
+        redactionLevel: 'summary',
+        status: 'active',
+      }],
+      context: [],
+      warnings: [],
+    });
+    let attempts = 0;
+    setRecordingTeachProvider('openai-compatible', {
+      async generateWorkflowDraft() {
+        attempts += 1;
+        if (attempts === 1) throw new Error('provider unavailable');
+        return {
+          draft: {
+            appName: 'Notepad',
+            platform: 'desktop',
+            topic: `Save note attempt ${attempts}`,
+            triggerExamples: ['save note'],
+            summary: 'Saved a note',
+            initialState: 'Notepad is open',
+            steps: [{ id: 'step-1', intent: 'Click Save', targetHint: 'Save', target: { strategy: 'human', hint: 'Save' }, riskLevel: 'low' }],
+            successCriteria: 'The note is saved.',
+            riskLevel: 'low',
+            sourceType: 'recording',
+          },
+          evidence: [],
+          warnings: [],
+        };
+      },
+    });
+
+    const manifest = ok(await handleRecordingTeachBuildManifest(repo as never, 'rec-active'));
+    const failed = await handleRecordingTeachGenerateDraft(repo as never, {
+      sessionId: 'rec-active',
+      manifest: { ...manifest, status: 'confirmed' },
+    });
+    const afterFailure = ok(await handleRecordingTeachGenerationStatus('rec-active'));
+    const retried = ok(await handleRecordingTeachRetryDraftGeneration(repo as never, 'rec-active'));
+    const reprocessed = ok(await handleRecordingTeachReprocessDraft(repo as never, {
+      sessionId: 'rec-active',
+      providerName: 'openai-compatible',
+    }));
+    const cancelled = ok(await handleRecordingTeachCancelDraftGeneration('rec-active'));
+    const afterCancel = ok(await handleRecordingTeachGenerationStatus('rec-active'));
+
+    expect(failed.ok).toBe(false);
+    if (!failed.ok) expect(failed.error.code).toBe('RECORDING_PROVIDER_FAILED');
+    expect(afterFailure.status).toBe('failed');
+    expect(afterFailure.canRetry).toBe(true);
+    expect(retried.draftJson.topic).toBe('Save note attempt 2');
+    expect(reprocessed.draftJson.topic).toBe('Save note attempt 3');
+    expect(cancelled.status).toBe('cancelled');
+    expect(afterCancel.status).toBe('cancelled');
+    expect(afterCancel.canRetry).toBe(true);
   });
 
   it('generates and resumes a persisted recording draft after manifest confirmation', async () => {

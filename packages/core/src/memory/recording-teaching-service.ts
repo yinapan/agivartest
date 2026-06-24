@@ -39,9 +39,15 @@ export class RecordingTeachingService {
     };
 
     const draftValidation = validateWorkflowDraft(draft);
+    const evidenceNormalization = normalizeProviderEvidence(
+      providerResult.evidence,
+      request.timeline,
+      draft,
+    );
     const warnings = [
       ...request.timeline.warnings,
       ...providerResult.warnings,
+      ...evidenceNormalization.warnings,
       ...draftValidation.warnings,
     ];
 
@@ -57,7 +63,7 @@ export class RecordingTeachingService {
       ok: true,
       data: {
         draft,
-        evidence: providerResult.evidence,
+        evidence: evidenceNormalization.evidence,
         warnings,
         rawResponse: providerResult.rawResponse,
       },
@@ -65,6 +71,60 @@ export class RecordingTeachingService {
       warnings,
     };
   }
+}
+
+function normalizeProviderEvidence(
+  evidence: RecordingWorkflowProviderResult['evidence'],
+  timeline: RecordingTimeline,
+  draft: RecordingWorkflowProviderResult['draft'],
+): { evidence: RecordingWorkflowProviderResult['evidence']; warnings: string[] } {
+  const warnings: string[] = [];
+  const stepIds = draft.steps.map((step, index) => step.id ?? `step-${index + 1}`);
+  const fallbackStepId = stepIds[0] ?? 'step-1';
+  const eventIds = new Set(timeline.events.filter((event) => event.status === 'active').map((event) => event.id));
+  const keyframeIds = new Set(timeline.keyframes
+    .filter((keyframe) => keyframe.status === 'active' && keyframe.includedInProvider)
+    .map((keyframe) => keyframe.id));
+  const contextIds = new Set(timeline.context.filter((context) => context.status === 'active').map((context) => context.id));
+
+  return {
+    evidence: evidence.map((link) => {
+      let stepId = link.stepId;
+      if (!stepIds.includes(stepId)) {
+        warnings.push(`provider evidence stepId ${stepId} was not found; linked to ${fallbackStepId}`);
+        stepId = fallbackStepId;
+      }
+
+      return {
+        ...link,
+        sessionId: timeline.sessionId,
+        stepId,
+        eventIds: filterEvidenceIds(link.eventIds, eventIds, 'event', warnings),
+        keyframeIds: filterEvidenceIds(link.keyframeIds, keyframeIds, 'keyframe', warnings),
+        contextIds: filterEvidenceIds(link.contextIds, contextIds, 'context', warnings),
+        confidence: clampConfidence(link.confidence),
+      };
+    }),
+    warnings,
+  };
+}
+
+function filterEvidenceIds(
+  ids: string[],
+  allowed: Set<string>,
+  kind: string,
+  warnings: string[],
+): string[] {
+  return ids.filter((id) => {
+    if (allowed.has(id)) return true;
+    warnings.push(`provider evidence referenced unavailable ${kind} ${id}`);
+    return false;
+  });
+}
+
+function clampConfidence(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.min(1, Math.max(0, value));
 }
 
 export function buildRecordingProviderPayload(
