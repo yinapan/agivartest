@@ -4,7 +4,7 @@
 
 **Goal:** Build a usable renderer workflow for recording teaching: setup, start/stop, timeline review, manifest confirmation, draft generation, and handoff into the existing workflow editor.
 
-**Architecture:** Keep recording UI state in a focused renderer model and panel component. `RecordingTeachPanel` calls the existing preload IPC APIs and emits generated drafts to `WorkflowsPage`; `WorkflowsPage` remains responsible for validation and saving through the existing editor path.
+**Architecture:** Keep recording UI state in a focused renderer model and panel component. `RecordingTeachPanel` calls the existing preload IPC APIs and emits generated drafts to `WorkflowsPage`; `WorkflowsPage` remains responsible for validation and saving through the existing editor path. Main process remains the source of truth for recording lifecycle state so later recording-bar and overlay windows can reuse the same contract.
 
 **Tech Stack:** React, TypeScript, Electron preload IPC, Vitest, existing `@agivar/core` and `@agivar/desktop` packages.
 
@@ -23,6 +23,7 @@
   - UI for setup, start/stop, timeline summary, manifest confirmation, draft generation, and resume.
   - Calls `window.agivar.recordingTeach.*`.
   - Emits generated draft through `onDraftGenerated`.
+  - Requires explicit acknowledgement before starting in detailed privacy mode.
 
 - Modify `packages/desktop/src/renderer/pages/WorkflowsPage.tsx`
   - Import and render `RecordingTeachPanel`.
@@ -32,6 +33,7 @@
 - Modify `packages/desktop/src/renderer/pages/workflow-editor-model.ts`
   - Extend `WorkflowMemoryVersion.source` to include `recording-teach`.
   - Add a helper if needed for applying generated recording drafts.
+  - Ensure recording-generated versions persist with source `recording-teach`, not `text-teach`.
 
 - Modify `packages/desktop/tests/workflow-editor-model.test.ts`
   - Cover recording source type and version source display if helper/type behavior changes.
@@ -390,7 +392,9 @@ export interface RecordingTeachPanelProps {
 
 export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTeachPanelProps) {
   const [state, setState] = useState(createInitialRecordingTeachState);
+  const [detailedModeAcknowledged, setDetailedModeAcknowledged] = useState(false);
   const isBusy = disabled || state.phase === 'starting' || state.phase === 'stopping' || state.phase === 'generating';
+  const requiresDetailedAck = state.privacyMode === 'detailed' && !detailedModeAcknowledged;
   const timelineInfo = state.timeline ? timelineSummary(state.timeline) : null;
   const manifestInfo = state.manifest ? manifestSummary(state.manifest) : null;
   const detailWarning = state.privacyMode === 'detailed'
@@ -398,6 +402,10 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
     : '';
 
   async function startRecording() {
+    if (requiresDetailedAck) {
+      setState((current) => ({ ...current, error: 'Acknowledge detailed mode before starting.' }));
+      return;
+    }
     setState((current) => ({ ...current, phase: 'starting', error: '', session: null, timeline: null, manifest: null, draftLink: null }));
     const result = await window.agivar.recordingTeach.start({
       scope: state.scope,
@@ -482,7 +490,11 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
           <option value="active-window">active-window</option>
           <option value="fullscreen">fullscreen</option>
         </select>
-        <select disabled={isBusy} value={state.privacyMode} onChange={(e) => setState((current) => ({ ...current, privacyMode: e.target.value as typeof current.privacyMode }))} className="bg-bg-secondary border border-border rounded px-3 py-2 text-sm">
+        <select disabled={isBusy} value={state.privacyMode} onChange={(e) => {
+          const privacyMode = e.target.value as typeof state.privacyMode;
+          setDetailedModeAcknowledged(privacyMode !== 'detailed');
+          setState((current) => ({ ...current, privacyMode }));
+        }} className="bg-bg-secondary border border-border rounded px-3 py-2 text-sm">
           <option value="summary">summary</option>
           <option value="detailed">detailed</option>
         </select>
@@ -491,9 +503,15 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
       </div>
 
       {detailWarning && <div className="text-xs text-yellow-300">{detailWarning}</div>}
+      {state.privacyMode === 'detailed' && (
+        <label className="flex items-center gap-2 text-xs text-text-secondary">
+          <input type="checkbox" checked={detailedModeAcknowledged} onChange={(e) => setDetailedModeAcknowledged(e.target.checked)} disabled={isBusy} />
+          I understand detailed mode may keep raw local evidence until I delete it.
+        </label>
+      )}
 
       <div className="flex gap-2">
-        <button disabled={isBusy || state.phase === 'recording'} onClick={startRecording} className="bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm py-2 px-3 rounded">
+        <button disabled={isBusy || state.phase === 'recording' || requiresDetailedAck} onClick={startRecording} className="bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm py-2 px-3 rounded">
           {state.phase === 'starting' ? 'Starting...' : 'Start'}
         </button>
         <button disabled={isBusy || state.phase !== 'recording'} onClick={stopRecording} className="border border-border disabled:opacity-50 text-sm py-2 px-3 rounded">
@@ -552,7 +570,11 @@ pnpm --filter @agivar/desktop build
 
 Expected: PASS with only existing Vite/Rollup warnings.
 
-- [ ] **Step 3: Commit Task 2**
+- [ ] **Step 3: Record state-event follow-up**
+
+If the current preload already exposes a recording state event, subscribe to it and keep panel state aligned with main-process state. If it does not, add a TODO in the component or model that names the intended future API, for example `recordingTeach.onStateChanged(listener)`, so the later compact recording bar does not introduce a second lifecycle contract.
+
+- [ ] **Step 4: Commit Task 2**
 
 ```bash
 git add packages/desktop/src/renderer/pages/RecordingTeachPanel.tsx
@@ -614,7 +636,11 @@ pnpm vitest run packages/desktop/tests/workflow-editor-model.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 4: Render RecordingTeachPanel in WorkflowsPage**
+- [ ] **Step 4: Verify recording source persistence**
+
+Trace the save path from generated recording draft handoff through `memory.saveDraft` / `memory.update`. If any renderer save helper defaults to `text-teach`, add a source parameter or helper so recording-generated versions persist as `recording-teach`.
+
+- [ ] **Step 5: Render RecordingTeachPanel in WorkflowsPage**
 
 Modify `packages/desktop/src/renderer/pages/WorkflowsPage.tsx`:
 
@@ -641,7 +667,7 @@ Render the panel at the top of `<main>` before the text teaching section:
 <RecordingTeachPanel disabled={isBusy} onDraftGenerated={applyRecordingDraft} />
 ```
 
-- [ ] **Step 5: Run desktop build**
+- [ ] **Step 6: Run desktop build**
 
 Run:
 
@@ -651,7 +677,7 @@ pnpm --filter @agivar/desktop build
 
 Expected: PASS with only existing Vite/Rollup warnings.
 
-- [ ] **Step 6: Commit Task 3**
+- [ ] **Step 7: Commit Task 3**
 
 ```bash
 git add packages/desktop/src/renderer/pages/WorkflowsPage.tsx packages/desktop/src/renderer/pages/workflow-editor-model.ts packages/desktop/tests/workflow-editor-model.test.ts
@@ -699,7 +725,7 @@ git status --short --branch
 
 Expected: no whitespace errors; branch only contains intended Phase 4A commits.
 
-- [ ] **Step 4: Optional manual smoke**
+- [ ] **Step 4: Required manual smoke**
 
 Run the app with the project’s normal dev command:
 
@@ -717,14 +743,26 @@ Manual smoke:
 - Build manifest.
 - Confirm and generate draft.
 - Verify editor fields populate with `sourceType: recording`.
+- Verify detailed mode cannot start until the user acknowledges the privacy warning.
+- Verify saved recording-generated versions use `recording-teach`.
 
-- [ ] **Step 5: Push branch**
+- [ ] **Step 5: Record Phase 4A+/4C follow-up work**
+
+Before closing Phase 4A, create or update the follow-up checklist for:
+
+- Compact recording bar window backed by main-process state events.
+- Recording history with list, rename, delete, and lazy keyframe preview.
+- Discard, cancel-processing, and reprocess controls.
+- Permission preflight and selected screen-scope preference.
+- Persisted note / annotation editing instead of local-only panel edits.
+
+- [ ] **Step 6: Push branch only when requested**
 
 ```bash
 git push
 ```
 
-Expected: remote `master` receives Phase 4A commits.
+Expected: remote `master` receives Phase 4A commits only if the user explicitly asks to push.
 
 ---
 

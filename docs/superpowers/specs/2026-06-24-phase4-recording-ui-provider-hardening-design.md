@@ -122,14 +122,17 @@ Phase 4A uses the IPC APIs already exposed in preload:
 
 Renderer DTOs must not depend on broad `Record<string, unknown>` once the panel is implemented. The model file should define explicit DTO shapes matching the current preload surface.
 
+Phase 4A should also introduce, or explicitly reserve, a state-event subscription such as `recordingTeach.onStateChanged(listener)`. The embedded panel may still refresh after start/stop in the first implementation, but richer UI surfaces such as a compact recording bar window must consume main-process state events instead of inventing a second polling path.
+
 ## Privacy And Safety
 
 - Summary mode is selected by default.
-- Detailed mode shows a visible warning before start.
+- Detailed mode requires an explicit acknowledgement before start.
 - Manifest confirmation is required before draft generation.
 - UI displays `containsRawText` and `containsPreciseCoordinates`.
 - UI does not claim screenshots are redacted.
 - Generated drafts enter the editor before save.
+- Main/core must treat renderer manifest confirmation as advisory. Provider generation must re-derive or verify the manifest, or use a persisted manifest id plus confirmation state, before any remote provider payload is built.
 
 ## Phase 4B Provider Quality
 
@@ -140,10 +143,12 @@ Expected work:
 - Add provider configuration selection in main process.
 - Build a provider payload from the confirmed manifest rather than sending loose timeline data.
 - Include selected keyframes, event summaries, context summaries, notes, and redaction policy.
+- Add first-class annotations / explanations as optional evidence inputs, then map them into provider payloads.
 - Keep deterministic provider tests for regression.
 - Add provider failure retry and stable validation errors.
 - Improve evidence mapping from provider output to step ids.
 - Add benchmark reporting for the five representative recordings.
+- Add cancel, retry, and reprocess semantics for long-running provider generation.
 
 Phase 4B must not bypass manifest confirmation.
 
@@ -154,11 +159,16 @@ Phase 4C completes lifecycle reliability.
 Expected work:
 
 - Add `recordingTeach.discard`.
+- Add `recordingTeach.cancelProcessing` and `recordingTeach.reprocess`.
 - Add artifact delete/exclude IPC and renderer controls.
 - Add persisted note update IPC.
+- Add persisted annotation update IPC if Phase 4B introduces annotations.
+- Add recording history list, rename, delete, and lazy keyframe preview.
+- Add a compact recording bar window backed by the same main-process recording state.
 - Add startup orphan cleanup for `recording` and `stopping` sessions.
 - Add app quit cleanup for active teaching sessions.
 - Add recording artifact directory size checks and cleanup prompts.
+- Add permission preflight, selected screen-scope preference, and data-root settings.
 - Add evidence invalidation or hiding when artifacts are deleted.
 - Add tests for cleanup idempotency and missing files.
 

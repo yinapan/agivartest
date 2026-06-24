@@ -59,10 +59,35 @@
 | 任务模式 | 用户输入目标，Agent 规划、执行、观察、修正 | 需要 Planner、Executor、Observer 闭环 |
 | 教学模式 | 用户讲规则、偏好、流程，系统整理为长期记忆 | 需要结构化记忆库和可编辑流程 |
 | 录屏教学 | 采集屏幕、鼠标、键盘、注释，生成流程 | 需要录屏、事件采集、关键帧抽取、多模态理解 |
-| 记忆库 | 按平台和主题组织流程、规则和偏好 | 需要本地存储、向量检索、版本管理 |
+| 记忆库 | 按平台和主题组织流程、规则和偏好 | 需要本地存储、结构化检索、版本管理；向量检索后置 |
 | GUI 执行 | 操作网站或桌面软件，必要时让用户接管 | 需要 UI Automation、视觉定位、输入控制和人工暂停 |
 
 关键点：录屏教学不应沉淀为坐标回放，而应沉淀为“语义流程”。每一步都要有目标、定位依据、成功判断和失败处理。
+
+### 3.1 反编译参考到落地方案映射
+
+基于 `F:\agivarfanbianyi` 中可观察的包结构、页面形态、IPC 命名和运行时依赖，参考产品已经不是单一聊天窗口，而是“主窗口 + 录制条 + 捕获页 + 覆盖层 + 后台录制服务”的桌面产品结构。我们的落地方案应吸收这种产品分层，但只复用架构思想，不复用反编译源码、私有接口、密钥、素材或业务配置。
+
+| 参考产品可观察能力 | 映射到我们的模块 | 落地阶段 | 实施落点 |
+| --- | --- | --- | --- |
+| 主进程录制服务统一管理 start / stop / cancel / state | `RecordingSessionService`、`recordingTeach:*` IPC、SQLite session 表 | Phase 3 / Phase 4A | 录制生命周期必须由 main/core 持有，React 只显示状态 |
+| 独立 `recording_bar` 页面 | 录制条窗口 | Phase 4A+ / Phase 4C | Phase 4A 先做嵌入式面板，随后补轻量录制条窗口，共用同一状态事件 |
+| `capture`、overlay、main 多页面拆分 | 捕获页、人工接管浮层、任务进度浮层 | Phase 4C 以后 | 不阻塞 MVP，但窗口管理和 IPC 命名从现在起为多页面预留 |
+| 录制状态通过 IPC 事件推送 | `recordingTeach.onStateChanged` | Phase 4A | 避免后续录制条、主页面、历史页各自轮询 |
+| frame metadata 与 frame payload 分离 | keyframe 元数据表 + 按需读取图片 | Phase 3 / Phase 4C | UI 先展示数量、时间、原因、警告，再做懒加载缩略图 |
+| 注释、解释、语音注释独立于原始录屏 | annotation / explain evidence | Phase 4B / Phase 4C | 先做文字注释，后续再考虑语音；都进入 provider payload evidence |
+| cancel processing / reprocess | 生成任务取消、重试、重新处理 | Phase 4B / Phase 4C | provider 生成不能是一锤子买卖，必须可恢复 |
+| recordings list / rename / delete / frame preview | 录屏历史和素材治理 | Phase 4C | 加历史列表、重命名、删除、预览、孤儿清理和目录大小提示 |
+| screen scope、streamer mode、permission checks | 录制偏好、隐私模式、权限预检 | Phase 4A / Phase 4C | Summary 默认，Detailed 必须确认；屏幕/麦克风/事件捕获失败要可见 |
+| 本地 MCP 服务 | 外部自动化桥接 | 后置 | 当前不进入 Phase 2/3/4 主路径，等录屏和执行闭环稳定后再评估 |
+| 账号、支付、积分、更新、分析 | 商业化基础设施 | 后置商业化阶段 | 不进入 MVP 主路径，避免拖慢本地可用性 |
+
+落地原则：
+
+- 先复刻“桌面产品骨架”和“录屏教学闭环”，不要急着复刻账号、支付、云端和遥测。
+- 先把录屏 teaching 做成可恢复、可审查、可编辑的本地流程草稿，再接真实多模态 provider。
+- 录制生成的 workflow 永远先进入编辑器，用户确认后才保存；不自动执行。
+- Cloud sync、向量检索、团队共享和本地 MCP 暂不进入当前阶段主路径。
 
 ## 4. 桌面版 MVP 范围
 
@@ -141,12 +166,12 @@
 存储层
   -> SQLite：会话、任务、记忆、步骤、版本
   -> 本地文件目录：录屏、关键帧、截图、日志
-  -> 向量索引：流程记忆检索
+  -> 结构化索引：按应用、主题、触发词和版本检索
 
 模型层
   -> 文本模型：规划、总结、流程结构化
   -> 视觉模型：截图理解、状态判断
-  -> Embedding 模型：记忆检索
+  -> Embedding 模型：后续可选的语义检索增强
 ```
 
 ## 6. 推荐技术选型
@@ -161,7 +186,8 @@
 | 输入控制 | robotjs、nut.js、AutoHotkey Bridge 或 Windows SendInput | MVP 可先选最稳定的一条 |
 | OCR | PaddleOCR、Tesseract 或云端视觉模型 | 中文场景建议验证 PaddleOCR |
 | 存储 | SQLite + 本地文件目录 | 单机桌面产品足够 |
-| 向量索引 | sqlite-vec / LanceDB / Qdrant local | 先本地化，降低隐私顾虑 |
+| 结构化检索 | SQLite 索引 + 关键词 / 触发词匹配 | 当前主路径不做向量检索，先保证本地流程可查、可改、可回滚 |
+| 向量索引 | sqlite-vec / LanceDB / Qdrant local | 后置可选能力，用于流程规模变大后的语义召回 |
 | 录屏 | Windows Graphics Capture / FFmpeg | MVP 优先可用，后续优化性能 |
 
 工程上建议把桌面能力封装为统一工具接口：
@@ -308,6 +334,24 @@ TaskRun
 6. 用户在流程编辑器中确认或修改。
 7. 系统写入记忆库。
 
+### 9.1 录屏教学工程落地拆分
+
+参考产品把录屏教学拆成了低层录制、录制条、事件采集、录屏管理、注释解释、生成处理和历史恢复几组能力。我们的实现按以下顺序落地：
+
+| 能力 | MVP 做法 | 后续增强 |
+| --- | --- | --- |
+| 录制入口 | Phase 4A 先在流程记忆页提供嵌入式录制面板 | 增加独立录制条窗口，支持悬浮 start / stop / cancel |
+| 生命周期 | main/core 持有 session 状态，提供 `start`、`stop`、`status`、`timeline` | 增加 `discard`、`cancelProcessing`、`reprocess` 和启动恢复 |
+| 状态同步 | Phase 4A 可以在关键动作后刷新状态 | 增加 `onStateChanged` IPC 事件，供主窗口、录制条、历史页共用 |
+| 事件采集 | 使用 native passive event capture 记录鼠标、键盘摘要和时间线 | 围绕交互事件做智能关键帧采样 |
+| 关键帧 | 先保存 keyframe 元数据和文件路径，UI 展示数量、时间、警告 | 历史页懒加载缩略图，支持缺失文件降级 |
+| 注释 | MVP 支持开始前目标和 notes | 增加录制中 / 录制后 annotation、explain note、语音注释 |
+| Manifest 确认 | 用户确认 provider payload manifest 后才能生成草稿 | main/core 重新校验 manifest，避免信任 renderer 传入的敏感字段 |
+| 草稿生成 | 生成 `recording` sourceType 的 workflow draft，进入编辑器人工审核 | 支持取消、重试、重处理和 benchmark 对比 |
+| 历史治理 | Phase 4C 增加录屏列表和删除 | 增加重命名、预览、目录大小提示、孤儿清理 |
+
+这里的关键不是“录了视频就能复刻”，而是把视频、事件、窗口上下文、注释和关键帧都转成可审查证据，再由用户确认生成流程草稿。
+
 ## 10. 安全与隐私
 
 桌面版会天然接触更多敏感信息，因此安全能力必须从 MVP 开始做。
@@ -391,12 +435,16 @@ TaskRun
 - 关键帧抽取。
 - 流程草稿生成。
 - 用户审核入库。
+- provider payload manifest 生成与用户确认。
+- 录制 session、timeline、keyframe、draft link 本地持久化。
 
 验收标准：
 
 - 5 条录屏中至少 3 条能生成可编辑流程。
 - 用户编辑后可执行。
 - 录屏、关键帧、流程步骤能关联查看。
+- 录屏生成的流程版本来源标记为 `recording-teach`。
+- 详细隐私模式必须经过用户明确确认。
 
 ### 阶段 4：试点打磨，4 周
 
@@ -409,6 +457,9 @@ TaskRun
 - 失败重试。
 - 执行报告。
 - 安全暂停策略优化。
+- 录屏历史列表、重命名、删除和关键帧预览。
+- 录制条窗口、权限预检、数据目录治理。
+- 录屏生成任务的取消、重试、重新处理。
 
 验收标准：
 
@@ -416,6 +467,8 @@ TaskRun
 - 高风险动作暂停准确率达到 100%。
 - 每次失败都有明确步骤和原因。
 - 单条流程平均节省人工时间超过 50%。
+- 录制中退出、崩溃或重启后，不产生无法清理的活跃 session。
+- 删除录屏素材后，相关流程证据能降级显示而不是崩溃。
 
 ## 12. MVP 成功指标
 
