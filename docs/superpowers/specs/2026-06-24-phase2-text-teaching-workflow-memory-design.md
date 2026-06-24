@@ -129,6 +129,18 @@ Keep the existing keyword retrieval path. Improve local search only enough to su
 
 `embeddingStatus` remains `not_indexed`.
 
+### Agivar Reference Alignment
+
+The reference Agivar package shows workflow memory as a user-facing product surface, not only a hidden retrieval table. Phase 2 should keep the current local-first scope, but it must preserve room for Phase 3/4 recording workflows and artifact governance.
+
+Accepted constraints:
+
+- Structured retrieval remains the Phase 2 path. Cloud sync and vector retrieval stay out of scope until a separate design explicitly reopens them.
+- Version history must preserve source clearly. Phase 2 owns `text-teach`; Phase 3/4 add `recording-teach` for recording-generated saves without changing the meaning of `sourceType: 'recording'` on the draft itself.
+- Workflow list and version previews should remain source-aware so later UI can group `manual`, `text-teach`, and `recording` workflows without schema churn.
+- Save/update/rollback remain the only persistence path. Recording-generated drafts must enter the same editor and validation flow instead of writing memory directly.
+- Data-root and cache governance are deferred, but the storage layout should not assume workflow memories are the only local artifacts; recording sessions, keyframes, provider manifests, and draft links will share the local-first data boundary.
+
 ## Desktop Integration
 
 ### IPC

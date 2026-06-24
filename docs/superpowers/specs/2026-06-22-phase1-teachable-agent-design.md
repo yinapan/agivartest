@@ -177,6 +177,18 @@ packages/
 3. **LLM 只规划不执行**：LLM 产出 StepPlan，所有副作用统一经过 SafetyLayer → StepExecutor → ToolRouter → StateVerifier → ExecutionLog
 4. **两条执行路径共享基础设施**：SafetyLayer、StateVerifier、ExecutionLog、ToolRouter
 
+### Agivar 参考对齐
+
+`F:\agivarfanbianyi` 的参考产品形态确认了 Phase 1 的方向：桌面 Agent 不应只是一个聊天窗口，而应该从第一阶段就把任务执行、状态事件、人工接管和后续覆盖层视为同一条事件驱动链路。
+
+Phase 1 不需要返工，但需要保留以下约束：
+
+- `AgentService` 的 `AsyncGenerator<AgentEvent>` 是主事件源，desktop 只负责把事件转发给 renderer；不要在 React store 中创造第二套任务真相。
+- `agent:event` IPC 是后续任务进度覆盖层、托盘状态和录制教学联动的基础，事件字段应保持向后兼容。
+- `TaskContext` 中的 `mode`、`status`、`activeHwnd`、`activeWindowTitle`、`humanTakeoverEvents`、`outputDir` 必须持续写入日志，供 Phase 2/3 生成和复盘流程记忆。
+- 账号、支付、积分、遥测、本地 MCP 等产品化能力不进入 Phase 1 主路径；当前只保留本地 task/session 架构边界。
+- 任务清理必须继续覆盖浏览器、录屏、临时目录和 native 资源，避免后续录屏教学引入悬挂 session。
+
 ### 依赖关系
 
 ```

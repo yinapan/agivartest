@@ -177,6 +177,9 @@
 
 - [x] 总落地方案增加反编译参考映射。
 - [x] 总落地方案将向量检索从 MVP 主路径后置。
+- [x] Phase 1 设计补充事件源、任务日志、人工接管和后续覆盖层对齐约束。
+- [x] Phase 2 设计补充结构化检索、`recording-teach` source 扩展和本地数据边界。
+- [x] Phase 3 设计补充状态事件、active session ownership、录制条/历史/重处理预留和 annotation evidence 策略。
 - [x] Phase 4 总设计增加状态事件、manifest 可信边界、注释、取消 / 重试 / reprocess、录制条、历史和权限治理。
 - [x] Phase 4A 计划增加 detailed ack、`recording-teach` 来源校验、状态事件预留、手工 smoke 必做、按需 push。
 - [ ] Phase 4A 实施时优先修正 `handleMemorySaveDraft` 的 source 映射。

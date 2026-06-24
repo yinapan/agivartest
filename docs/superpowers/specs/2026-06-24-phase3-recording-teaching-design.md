@@ -429,6 +429,12 @@ Handlers should return stable `{ ok, data, error }` results and must validate pa
 
 Preload and renderer APIs should use explicit DTO/result types. Runtime validation must cover enum values, string lengths, session ids, artifact ids, version ids, path-like ids, and provider payload manifest requests.
 
+Agivar reference alignment:
+
+- Reserve a main-to-renderer recording state event, for example `recordingTeach:onStateChanged`, even if the first UI refreshes after commands. Main/core remains the only source of truth for active recording state.
+- Do not make active session ownership a renderer concern. Concurrent `start` must be rejected or resumed from repository/main state.
+- Keep low-level `recorder:*` APIs usable by future capture/recording-bar pages, while `recordingTeach:*` remains the product workflow API.
+
 Active-window recording resolves the current foreground HWND before starting capture:
 
 1. Call `screenshot.getActiveWindow()`.
@@ -450,6 +456,13 @@ Required panels:
 The generated draft should reuse the existing Phase 2 editor instead of creating a separate raw JSON editor.
 
 The workflow list should support filtering or grouping by `sourceType: 'recording'`. If the existing `memory:list` query only supports app or topic filters, Phase 3E should add an optional `sourceType` filter before surfacing recording-generated workflows as a distinct category.
+
+Phase 3 does not need to build the final recording bar or recording history UI, but it must not block them. The session/timeline APIs should support later consumers:
+
+- compact recording bar: start/stop/cancel/status and elapsed time
+- recording history: list/rename/delete/preview/reprocess
+- timeline review: lazy keyframe metadata first, binary image payload on demand
+- provider generation: cancel/retry/reprocess from a persisted manifest or draft link
 
 ## Safety And Privacy
 
@@ -475,6 +488,12 @@ Disk cleanup policy:
 - Check total recording artifact directory size on app startup and before starting a new recording.
 - If the total exceeds a soft threshold such as 500 MB, prompt the user to review or clean old recording sessions.
 - `recordingTeach:discard` deletes video files, keyframe images, context artifacts, draft links, and provider manifests for that session best-effort, then records any cleanup warning in session metadata.
+
+Annotation policy:
+
+- User notes entered before recording are session-level notes.
+- Future timeline annotations and explain notes must be persisted as first-class evidence rather than folded into unstructured text.
+- Voice annotation remains deferred, but the evidence model should allow a later audio transcript reference without changing provider payload semantics.
 
 ## Failure Handling
 
