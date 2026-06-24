@@ -28,7 +28,10 @@ import {
   handleMemoryValidateDraft,
 } from './workflow-ipc.js';
 import {
+  handleRecordingTeachBuildManifest,
+  handleRecordingTeachGenerateDraft,
   handleRecordingTeachGetTimeline,
+  handleRecordingTeachResumeDraft,
   handleRecordingTeachStart,
   handleRecordingTeachStatus,
   handleRecordingTeachStop,
@@ -236,6 +239,18 @@ export function registerAgentIpcHandlers(): void {
 
   ipcMain.handle('recordingTeach:getTimeline', async (_event, sessionId: string) => {
     return handleRecordingTeachGetTimeline(recordingStore, sessionId);
+  });
+
+  ipcMain.handle('recordingTeach:buildManifest', async (_event, sessionId: string, providerName?: string) => {
+    return handleRecordingTeachBuildManifest(recordingStore, sessionId, providerName);
+  });
+
+  ipcMain.handle('recordingTeach:generateDraft', async (_event, request) => {
+    return handleRecordingTeachGenerateDraft(recordingStore, request);
+  });
+
+  ipcMain.handle('recordingTeach:resumeDraft', async (_event, sessionId: string) => {
+    return handleRecordingTeachResumeDraft(recordingStore, sessionId);
   });
 
   // Session

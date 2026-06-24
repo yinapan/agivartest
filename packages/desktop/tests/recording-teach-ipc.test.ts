@@ -4,12 +4,15 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   scanRecordingKeyframeFiles,
+  handleRecordingTeachBuildManifest,
+  handleRecordingTeachGenerateDraft,
+  handleRecordingTeachResumeDraft,
   handleRecordingTeachStop,
   handleRecordingTeachGetTimeline,
   handleRecordingTeachStart,
   handleRecordingTeachStatus,
 } from '../src/main/recording-teach-ipc.js';
-import type { RecordingSession, RecordingTimeline } from '@agivar/core';
+import type { RecordingDraftLink, RecordingSession, RecordingTimeline } from '@agivar/core';
 
 class FakeRecordingRepository {
   sessions = new Map<string, RecordingSession>();
@@ -34,6 +37,16 @@ class FakeRecordingRepository {
   async getTimeline(sessionId: string): Promise<RecordingTimeline | null> {
     return this.timelines.get(sessionId) ?? null;
   }
+
+  async saveDraftLink(link: RecordingDraftLink): Promise<void> {
+    this.draftLinks.set(link.sessionId, link);
+  }
+
+  async getDraftLink(sessionId: string): Promise<RecordingDraftLink | null> {
+    return this.draftLinks.get(sessionId) ?? null;
+  }
+
+  draftLinks = new Map<string, RecordingDraftLink>();
 }
 
 function makeDeps() {
@@ -116,8 +129,8 @@ function makeDeps() {
 }
 
 function ok<T>(result: { ok: true; data: T } | { ok: false; error: unknown }): T {
+  if (!result.ok) throw new Error(`expected ok: ${JSON.stringify(result.error)}`);
   expect(result.ok).toBe(true);
-  if (!result.ok) throw new Error('expected ok');
   return result.data;
 }
 
@@ -337,5 +350,76 @@ describe('recordingTeach IPC helpers', () => {
     if (!status.ok) expect(status.error.code).toBe('RECORDING_SESSION_NOT_FOUND');
     expect(timeline.ok).toBe(false);
     if (!timeline.ok) expect(timeline.error.code).toBe('RECORDING_SESSION_NOT_FOUND');
+  });
+
+  it('builds a pending provider manifest for user confirmation', async () => {
+    const repo = new FakeRecordingRepository();
+    await repo.saveSession(makeActiveSession({ status: 'ready' }));
+    await repo.saveTimeline({
+      sessionId: 'rec-active',
+      notes: 'Saved a note',
+      scope: 'fullscreen',
+      privacyMode: 'summary',
+      startedAt: '2026-06-24T10:00:00.000Z',
+      stoppedAt: '2026-06-24T10:00:05.000Z',
+      keyframes: [{
+        id: 'kf-1',
+        sessionId: 'rec-active',
+        timestampMs: 0,
+        imagePath: 'artifact://kf-1.png',
+        reason: 'interval',
+        redacted: false,
+        status: 'active',
+        hash: 'sha256-kf-1',
+        fileSize: 1234,
+        mimeType: 'image/png',
+        includedInProvider: true,
+      }],
+      events: [],
+      context: [],
+      warnings: [],
+    });
+
+    const result = ok(await handleRecordingTeachBuildManifest(repo as never, 'rec-active', 'test-provider'));
+
+    expect(result.status).toBe('pending');
+    expect(result.selectedArtifactIds).toEqual(['kf-1']);
+  });
+
+  it('generates and resumes a persisted recording draft after manifest confirmation', async () => {
+    const repo = new FakeRecordingRepository();
+    await repo.saveSession(makeActiveSession({ status: 'ready' }));
+    await repo.saveTimeline({
+      sessionId: 'rec-active',
+      goal: 'Save note',
+      notes: 'Saved a note',
+      scope: 'fullscreen',
+      privacyMode: 'summary',
+      startedAt: '2026-06-24T10:00:00.000Z',
+      stoppedAt: '2026-06-24T10:00:05.000Z',
+      keyframes: [],
+      events: [{
+        id: 'evt-1',
+        sessionId: 'rec-active',
+        timestampMs: 100,
+        type: 'click',
+        summary: 'Clicked Save',
+        redactionLevel: 'summary',
+        status: 'active',
+      }],
+      context: [],
+      warnings: [],
+    });
+    const manifest = ok(await handleRecordingTeachBuildManifest(repo as never, 'rec-active', 'test-provider'));
+
+    const generated = ok(await handleRecordingTeachGenerateDraft(repo as never, {
+      sessionId: 'rec-active',
+      manifest: { ...manifest, status: 'confirmed' },
+    }));
+    const resumed = ok(await handleRecordingTeachResumeDraft(repo as never, 'rec-active'));
+
+    expect(generated.status).toBe('draft_ready');
+    expect(generated.draftJson.sourceType).toBe('recording');
+    expect(resumed).toEqual(generated);
   });
 });

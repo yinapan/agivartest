@@ -15,6 +15,7 @@ const EXPECTED_TABLES = [
   'recording_events',
   'recording_keyframes',
   'recording_context_snapshots',
+  'recording_draft_links',
   'task_runs',
   'task_step_logs',
   'app_settings',

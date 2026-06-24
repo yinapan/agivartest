@@ -5,16 +5,21 @@ import { join } from 'node:path';
 import type {
   RecordingKeyframe,
   RecordingContextSnapshot,
+  ProviderPayloadManifest,
+  RecordingDraftLink,
   RecordingEvent,
   RecordingPrivacyMode,
   RecordingRepository,
   RecordingScope,
   RecordingSession,
   RecordingTimeline,
+  RecordingWorkflowProvider,
 } from '@agivar/core';
 import {
+  buildProviderPayloadManifest,
   eventCapture as defaultEventCapture,
   recorder as defaultRecorder,
+  RecordingTeachingService,
   screenshot as defaultScreenshot,
 } from '@agivar/core';
 import { ipcErr, safeIpc, type IpcResult } from './workflow-ipc.js';
@@ -25,6 +30,11 @@ export interface RecordingTeachStartRequest {
   goal?: string;
   notes?: string;
   activeSessionId?: string;
+}
+
+export interface RecordingTeachGenerateDraftRequest {
+  sessionId: string;
+  manifest: ProviderPayloadManifest;
 }
 
 export interface RecordingTeachIpcOptions {
@@ -314,6 +324,80 @@ export async function handleRecordingTeachGetTimeline(
   });
 }
 
+export async function handleRecordingTeachBuildManifest(
+  repo: RecordingRepository | null,
+  sessionId: unknown,
+  providerName = 'recording-teaching-provider',
+): Promise<IpcResult<ProviderPayloadManifest>> {
+  if (!repo) return ipcErr('NO_RECORDING_STORE', 'RecordingStore not initialized');
+
+  return safeIpc(async () => {
+    assertSessionId(sessionId);
+    const timeline = await repo.getTimeline(sessionId);
+    if (!timeline) {
+      throw new RecordingTeachIpcError('RECORDING_TIMELINE_NOT_FOUND', 'Recording timeline not found');
+    }
+    return buildProviderPayloadManifest(timeline, {
+      id: nanoid(),
+      providerName,
+      createdAt: new Date().toISOString(),
+    });
+  });
+}
+
+export async function handleRecordingTeachGenerateDraft(
+  repo: RecordingRepository | null,
+  request: unknown,
+  provider: RecordingWorkflowProvider = createDeterministicRecordingProvider(),
+): Promise<IpcResult<RecordingDraftLink>> {
+  if (!repo) return ipcErr('NO_RECORDING_STORE', 'RecordingStore not initialized');
+
+  return safeIpc(async () => {
+    assertGenerateDraftRequest(request);
+    const timeline = await repo.getTimeline(request.sessionId);
+    if (!timeline) {
+      throw new RecordingTeachIpcError('RECORDING_TIMELINE_NOT_FOUND', 'Recording timeline not found');
+    }
+
+    const result = await new RecordingTeachingService(provider).generateDraft({
+      timeline,
+      manifest: request.manifest,
+    });
+    if (!result.ok || !result.data) {
+      throw new RecordingTeachIpcError('RECORDING_DRAFT_INVALID', result.errors.join('; '));
+    }
+
+    const now = new Date().toISOString();
+    const link: RecordingDraftLink = {
+      id: nanoid(),
+      sessionId: request.sessionId,
+      draftJson: result.data.draft,
+      status: 'draft_ready',
+      evidence: result.data.evidence,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await repo.saveDraftLink(link);
+    return link;
+  });
+}
+
+export async function handleRecordingTeachResumeDraft(
+  repo: RecordingRepository | null,
+  sessionId: unknown,
+): Promise<IpcResult<RecordingDraftLink>> {
+  if (!repo) return ipcErr('NO_RECORDING_STORE', 'RecordingStore not initialized');
+
+  return safeIpc(async () => {
+    assertSessionId(sessionId);
+    const link = await repo.getDraftLink(sessionId);
+    if (!link) {
+      throw new RecordingTeachIpcError('RECORDING_DRAFT_NOT_FOUND', 'Recording draft link not found');
+    }
+    return link;
+  });
+}
+
 class RecordingTeachIpcError extends Error {
   constructor(
     readonly code: string,
@@ -340,6 +424,12 @@ function assertStartRequest(value: unknown): asserts value is RecordingTeachStar
 
 function assertSessionId(value: unknown): asserts value is string {
   assertString(value, 'sessionId', 200);
+}
+
+function assertGenerateDraftRequest(value: unknown): asserts value is RecordingTeachGenerateDraftRequest {
+  if (!isRecord(value)) throw new Error('request must be an object');
+  assertString(value.sessionId, 'sessionId', 200);
+  if (!isRecord(value.manifest)) throw new Error('manifest must be an object');
 }
 
 function assertString(value: unknown, field: string, max: number): asserts value is string {
@@ -394,3 +484,46 @@ export const defaultRecordingTeachDeps: RecordingTeachDeps = {
   frameScanner: scanRecordingKeyframeFiles,
   eventCapture: defaultEventCapture,
 };
+
+function createDeterministicRecordingProvider(): RecordingWorkflowProvider {
+  return {
+    async generateWorkflowDraft(timeline, manifest) {
+      const topic = timeline.goal?.trim() || timeline.notes.split(/[.。\n]/)[0]?.trim() || 'Recorded workflow';
+      const firstEvidence = {
+        id: nanoid(),
+        sessionId: timeline.sessionId,
+        stepId: 'step-1',
+        eventIds: timeline.events.slice(0, 3).map((event) => event.id),
+        keyframeIds: timeline.keyframes.slice(0, 3).map((keyframe) => keyframe.id),
+        contextIds: timeline.context.slice(0, 3).map((context) => context.id),
+        confidence: 0.55,
+        rationale: 'Draft generated from confirmed recording artifacts.',
+      };
+      return {
+        draft: {
+          appName: (timeline.context[0]?.summary.title as string | undefined) ?? 'Recorded app',
+          platform: 'desktop',
+          topic,
+          triggerExamples: [topic],
+          summary: timeline.notes || `Recorded ${topic}.`,
+          initialState: timeline.context[0]?.summary.title
+            ? `Window "${timeline.context[0].summary.title}" is active.`
+            : 'The recorded application is ready.',
+          steps: [{
+            id: 'step-1',
+            order: 1,
+            intent: topic,
+            targetHint: timeline.events[0]?.summary ?? timeline.context[0]?.source ?? 'recorded workflow',
+            target: { strategy: 'human', hint: timeline.events[0]?.summary ?? 'recorded target' },
+            riskLevel: 'low',
+          }],
+          successCriteria: `Complete ${topic}.`,
+          riskLevel: 'low',
+          sourceType: 'recording',
+        },
+        evidence: [firstEvidence],
+        warnings: [`manifest:${manifest.id}`],
+      };
+    },
+  };
+}

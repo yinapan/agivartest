@@ -22,6 +22,8 @@ type RecordingTeachStartRequestDto = {
 };
 type RecordingSessionDto = Record<string, unknown>;
 type RecordingTimelineDto = Record<string, unknown>;
+type ProviderPayloadManifestDto = Record<string, unknown>;
+type RecordingDraftLinkDto = Record<string, unknown>;
 
 contextBridge.exposeInMainWorld('agivar', {
   platform: process.platform,
@@ -61,6 +63,12 @@ contextBridge.exposeInMainWorld('agivar', {
       ipcRenderer.invoke('recordingTeach:status', sessionId),
     getTimeline: (sessionId: string): Promise<IpcResult<RecordingTimelineDto>> =>
       ipcRenderer.invoke('recordingTeach:getTimeline', sessionId),
+    buildManifest: (sessionId: string, providerName?: string): Promise<IpcResult<ProviderPayloadManifestDto>> =>
+      ipcRenderer.invoke('recordingTeach:buildManifest', sessionId, providerName),
+    generateDraft: (request: { sessionId: string; manifest: ProviderPayloadManifestDto }): Promise<IpcResult<RecordingDraftLinkDto>> =>
+      ipcRenderer.invoke('recordingTeach:generateDraft', request),
+    resumeDraft: (sessionId: string): Promise<IpcResult<RecordingDraftLinkDto>> =>
+      ipcRenderer.invoke('recordingTeach:resumeDraft', sessionId),
   },
   dpi: {
     getScaleFactor: (idx?: number) => ipcRenderer.invoke('dpi:getScaleFactor', idx),

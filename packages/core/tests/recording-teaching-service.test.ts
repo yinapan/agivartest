@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildProviderPayloadManifest,
   RecordingTeachingService,
   validateRecordingTeachingRequest,
   validateRecordingTimeline,
@@ -119,6 +120,39 @@ const manifest: ProviderPayloadManifest = {
 };
 
 describe('RecordingTeachingService', () => {
+  it('builds a provider payload manifest from active selected artifacts', () => {
+    const result = buildProviderPayloadManifest(happyTimeline, {
+      id: 'manifest-built',
+      providerName: 'deterministic-test-provider',
+      createdAt: '2026-06-24T10:01:01.000Z',
+    });
+
+    expect(result.selectedArtifactIds).toEqual(['kf-1', 'ev-1', 'ctx-1']);
+    expect(result.containsRawText).toBe(false);
+    expect(result.containsPreciseCoordinates).toBe(false);
+    expect(result.status).toBe('pending');
+    expect(result.estimatedBytes).toBeGreaterThan(1024);
+  });
+
+  it('requires explicit manifest confirmation before provider draft generation', async () => {
+    let providerCalled = false;
+    const provider: RecordingWorkflowProvider = {
+      generateWorkflowDraft: async () => {
+        providerCalled = true;
+        return { draft: validDraft, evidence: [], warnings: [] };
+      },
+    };
+
+    const result = await new RecordingTeachingService(provider).generateDraft({
+      timeline: happyTimeline,
+      manifest,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors).toContain('manifest must be confirmed before draft generation');
+    expect(providerCalled).toBe(false);
+  });
+
   it('validates simulated timeline fixtures before provider use', () => {
     expect(validateRecordingTimeline(happyTimeline).ok).toBe(true);
     expect(validateRecordingTimeline(minimalTimeline).warnings).toContain('no keyframes captured');
@@ -144,6 +178,7 @@ describe('RecordingTeachingService', () => {
       timeline: happyTimeline,
       manifest: {
         ...manifest,
+        status: 'confirmed',
         containsRawText: true,
         containsPreciseCoordinates: true,
       },
@@ -177,7 +212,7 @@ describe('RecordingTeachingService', () => {
 
     const result = await new RecordingTeachingService(provider).generateDraft({
       timeline: happyTimeline,
-      manifest,
+      manifest: { ...manifest, status: 'confirmed' },
     });
 
     expect(result.ok).toBe(true);
@@ -197,7 +232,7 @@ describe('RecordingTeachingService', () => {
 
     const result = await new RecordingTeachingService(provider).generateDraft({
       timeline: minimalTimeline,
-      manifest: { ...manifest, sessionId: minimalTimeline.sessionId, selectedArtifactIds: [] },
+      manifest: { ...manifest, sessionId: minimalTimeline.sessionId, selectedArtifactIds: [], status: 'confirmed' },
     });
 
     expect(result.ok).toBe(true);
@@ -215,7 +250,7 @@ describe('RecordingTeachingService', () => {
 
     const result = await new RecordingTeachingService(provider).generateDraft({
       timeline: invalidTimeline,
-      manifest: { ...manifest, sessionId: invalidTimeline.sessionId },
+      manifest: { ...manifest, sessionId: invalidTimeline.sessionId, status: 'confirmed' },
     });
 
     expect(result.ok).toBe(false);
@@ -235,7 +270,7 @@ describe('RecordingTeachingService', () => {
 
     const result = await new RecordingTeachingService(provider).generateDraft({
       timeline: happyTimeline,
-      manifest,
+      manifest: { ...manifest, status: 'confirmed' },
     });
 
     expect(result.ok).toBe(false);

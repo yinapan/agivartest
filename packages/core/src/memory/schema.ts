@@ -251,6 +251,24 @@ export const MIGRATIONS: Migration[] = [
       ALTER TABLE recording_sessions ADD COLUMN active_window_title TEXT;
     `,
   },
+  {
+    version: 7,
+    name: 'add_recording_draft_links',
+    up: `
+      CREATE TABLE IF NOT EXISTS recording_draft_links (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL REFERENCES recording_sessions(id) ON DELETE CASCADE,
+        draft_json TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('draft_ready', 'saved', 'discarded')),
+        evidence_json TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        discarded_at TEXT
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_recording_draft_links_session
+        ON recording_draft_links(session_id);
+    `,
+  },
 ];
 
 export function runMigrations(db: DatabaseLike): void {

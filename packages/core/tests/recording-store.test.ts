@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getDatabaseForTest } from '../src/memory/db.js';
 import { RecordingStore } from '../src/memory/recording-store.js';
 import type { DatabaseLike } from '../src/memory/schema.js';
-import type { RecordingSession, RecordingTimeline } from '../src/types/workflow.js';
+import type { RecordingDraftLink, RecordingSession, RecordingTimeline } from '../src/types/workflow.js';
 
 const session: RecordingSession = {
   id: 'rec-1',
@@ -67,6 +67,47 @@ const timeline: RecordingTimeline = {
   warnings: [],
 };
 
+const draftLink: RecordingDraftLink = {
+  id: 'draft-link-1',
+  sessionId: 'rec-1',
+  draftJson: {
+    appName: 'Notepad',
+    platform: 'desktop',
+    topic: 'Save note',
+    triggerExamples: ['save note'],
+    summary: 'Save a note from the recording.',
+    initialState: 'Notepad is open.',
+    steps: [
+      {
+        id: 'step-1',
+        order: 1,
+        intent: 'Save the note',
+        targetHint: 'Save command',
+        target: { strategy: 'human', hint: 'Save command' },
+        riskLevel: 'low',
+      },
+    ],
+    successCriteria: 'The note is saved.',
+    riskLevel: 'low',
+    sourceType: 'recording',
+  },
+  status: 'draft_ready',
+  evidence: [
+    {
+      id: 'evidence-1',
+      sessionId: 'rec-1',
+      stepId: 'step-1',
+      eventIds: ['ev-1'],
+      keyframeIds: ['kf-1'],
+      contextIds: ['ctx-1'],
+      confidence: 0.87,
+      rationale: 'The event and keyframe show the save action.',
+    },
+  ],
+  createdAt: '2026-06-24T10:02:00.000Z',
+  updatedAt: '2026-06-24T10:02:00.000Z',
+};
+
 describe('RecordingStore', () => {
   let db: DatabaseLike;
   let store: RecordingStore;
@@ -125,6 +166,14 @@ describe('RecordingStore', () => {
     expect(fetched!.keyframes[0].status).toBe('deleted');
     expect(fetched!.keyframes[0].deletedAt).toBe('2026-06-24T10:02:00.000Z');
     expect(fetched!.keyframes[0].includedInProvider).toBe(false);
+  });
+
+  it('persists and resumes draft generation links', async () => {
+    await store.saveSession(session);
+
+    await store.saveDraftLink(draftLink);
+
+    expect(await store.getDraftLink(session.id)).toEqual(draftLink);
   });
 
   it('returns null for unknown sessions and timelines', async () => {

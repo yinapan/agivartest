@@ -2,6 +2,7 @@ import type { DatabaseLike } from './schema.js';
 import type {
   RecordingArtifactStatus,
   RecordingContextSnapshot,
+  RecordingDraftLink,
   RecordingEvent,
   RecordingKeyframe,
   RecordingRepository,
@@ -242,12 +243,36 @@ export class RecordingStore implements RecordingRepository {
     return result.changes > 0;
   }
 
-  async saveDraftLink(): Promise<void> {
-    throw new Error('recording draft links are implemented in Phase 3E');
+  async saveDraftLink(link: RecordingDraftLink): Promise<void> {
+    this.db.prepare(`
+      INSERT INTO recording_draft_links (
+        id, session_id, draft_json, status, evidence_json,
+        created_at, updated_at, discarded_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(session_id) DO UPDATE SET
+        id = excluded.id,
+        draft_json = excluded.draft_json,
+        status = excluded.status,
+        evidence_json = excluded.evidence_json,
+        updated_at = excluded.updated_at,
+        discarded_at = excluded.discarded_at
+    `).run(
+      link.id,
+      link.sessionId,
+      JSON.stringify(link.draftJson),
+      link.status,
+      JSON.stringify(link.evidence),
+      link.createdAt,
+      link.updatedAt,
+      link.discardedAt ?? null,
+    );
   }
 
-  async getDraftLink(): Promise<null> {
-    return null;
+  async getDraftLink(sessionId: string): Promise<RecordingDraftLink | null> {
+    const row = this.db
+      .prepare('SELECT * FROM recording_draft_links WHERE session_id = ?')
+      .get(sessionId) as Record<string, unknown> | undefined;
+    return row ? this.rowToDraftLink(row) : null;
   }
 
   private rowToSession(row: Record<string, unknown>): RecordingSession {
@@ -318,6 +343,19 @@ export class RecordingStore implements RecordingRepository {
       source: row.source as string,
       status: row.status as RecordingContextSnapshot['status'],
       ...optionalString('warning', row.warning),
+    };
+  }
+
+  private rowToDraftLink(row: Record<string, unknown>): RecordingDraftLink {
+    return {
+      id: row.id as string,
+      sessionId: row.session_id as string,
+      draftJson: JSON.parse(row.draft_json as string) as RecordingDraftLink['draftJson'],
+      status: row.status as RecordingDraftLink['status'],
+      evidence: JSON.parse(row.evidence_json as string) as RecordingDraftLink['evidence'],
+      createdAt: row.created_at as string,
+      updatedAt: row.updated_at as string,
+      ...optionalString('discardedAt', row.discarded_at),
     };
   }
 }

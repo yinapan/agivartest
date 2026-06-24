@@ -1,4 +1,5 @@
 import type {
+  ProviderPayloadManifest,
   RecordingTeachingRequest,
   RecordingTeachingResult,
   RecordingTimeline,
@@ -76,6 +77,9 @@ export function validateRecordingTeachingRequest(
 
   if (!request.manifest.id?.trim()) errors.push('manifest id is required');
   if (!request.manifest.providerName?.trim()) errors.push('manifest providerName is required');
+  if (request.manifest.status !== 'confirmed') {
+    errors.push('manifest must be confirmed before draft generation');
+  }
   if (request.manifest.sessionId !== request.timeline.sessionId) {
     errors.push('manifest sessionId must match timeline sessionId');
   }
@@ -118,4 +122,54 @@ export function validateRecordingTimeline(timeline: RecordingTimeline): Workflow
     errors,
     warnings: timeline.warnings ?? [],
   };
+}
+
+export interface ProviderPayloadManifestBuildOptions {
+  id: string;
+  providerName: string;
+  createdAt: string;
+}
+
+export function buildProviderPayloadManifest(
+  timeline: RecordingTimeline,
+  options: ProviderPayloadManifestBuildOptions,
+): ProviderPayloadManifest {
+  const selectedKeyframes = timeline.keyframes.filter((keyframe) =>
+    keyframe.status === 'active' && keyframe.includedInProvider);
+  const selectedEvents = timeline.events.filter((event) => event.status === 'active');
+  const selectedContext = timeline.context.filter((context) => context.status === 'active');
+  const selectedArtifactIds = [
+    ...selectedKeyframes.map((keyframe) => keyframe.id),
+    ...selectedEvents.map((event) => event.id),
+    ...selectedContext.map((context) => context.id),
+  ];
+
+  return {
+    id: options.id,
+    sessionId: timeline.sessionId,
+    providerName: options.providerName,
+    selectedArtifactIds,
+    redactionPolicy: {
+      privacyMode: timeline.privacyMode,
+      rawPayload: timeline.privacyMode === 'detailed' ? 'allowed-after-confirmation' : 'excluded',
+      coordinates: timeline.privacyMode === 'detailed' ? 'allowed-after-confirmation' : 'summarized',
+    },
+    containsRawText: timeline.privacyMode === 'detailed' && timeline.events.some((event) => event.rawPayload !== undefined),
+    containsPreciseCoordinates: timeline.privacyMode === 'detailed',
+    estimatedBytes: estimateProviderPayloadBytes(timeline, selectedArtifactIds),
+    createdAt: options.createdAt,
+    status: 'pending',
+  };
+}
+
+function estimateProviderPayloadBytes(timeline: RecordingTimeline, selectedArtifactIds: string[]): number {
+  const keyframeBytes = timeline.keyframes
+    .filter((keyframe) => selectedArtifactIds.includes(keyframe.id))
+    .reduce((total, keyframe) => total + keyframe.fileSize, 0);
+  const jsonBytes = Buffer.byteLength(JSON.stringify({
+    notes: timeline.notes,
+    events: timeline.events.filter((event) => selectedArtifactIds.includes(event.id)),
+    context: timeline.context.filter((context) => selectedArtifactIds.includes(context.id)),
+  }), 'utf8');
+  return keyframeBytes + jsonBytes;
 }
