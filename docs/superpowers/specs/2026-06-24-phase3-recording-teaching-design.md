@@ -65,6 +65,18 @@ Phase 3 adds a recording teaching flow to the workflow memory area:
 
 ## Architecture
 
+### Responsibility Boundaries
+
+Phase 3 keeps the same ownership style as Phase 2, but recording adds more low-level adapters. The boundary is:
+
+| Layer | Owns | Must Not Own |
+| --- | --- | --- |
+| Core | Types, state machines, redaction policy, timeline builder, extractor interface, draft validation, repository interfaces | Native hooks, Electron IPC, arbitrary local file reads from renderer |
+| Desktop main | IPC, user permission gates, artifact directory management, adapter wiring, provider payload assembly, app quit cleanup | Workflow draft validation rules duplicated from Core |
+| native | Low-level recording, screenshots, UIA, window enumeration, input event capture | Business session state, provider payload decisions, workflow memory writes |
+| Renderer | DTO display, setup choices, timeline review, user confirmation, draft handoff to Phase 2 editor | Direct local path access, provider calls, raw artifact mutation |
+| Provider | Parse an explicit manifest-filtered payload into a draft response | Access to loose artifact directories or unfiltered raw session files |
+
 ### RecordingSessionService
 
 Core owns session lifecycle and metadata, while Desktop owns platform-specific capture through existing recorder, screenshot, input, and UIA tools.
@@ -155,7 +167,7 @@ interface RecordingTimeline {
 }
 ```
 
-The timeline should include references to local artifact paths, but provider payload preparation should decide which artifacts are sent out of process.
+The timeline should include references to local artifact ids and paths, but provider payload preparation decides which artifacts are sent out of process. Providers must never receive a loose artifact directory or unfiltered timeline object.
 
 ### RecordingWorkflowExtractor
 
@@ -184,6 +196,9 @@ Rules:
 - Generated drafts use `sourceType: 'recording'`.
 - Drafts must preserve evidence links for review where practical.
 - Invalid output returns stable validation errors and does not create workflow memory.
+- `recordingTeach:generateDraft` returns an unsaved draft wrapper and evidence mapping. It must not write `workflow_memories`.
+- Saving still goes through the Phase 2 editor and existing save path.
+- Workflow version source should add `recording-teach` so version history preserves the creation source clearly.
 
 ## Data Model
 
@@ -194,6 +209,7 @@ Add local tables or equivalent storage records:
 - `recording_keyframes`
 - `recording_context_snapshots`
 - `recording_draft_links`
+- `provider_payload_manifests`
 
 Minimum session fields:
 
@@ -221,6 +237,8 @@ Minimum event fields:
 - `raw_payload_json`
 - `window_title`
 - `process_name`
+- `status`
+- `deleted_at`
 
 Minimum keyframe fields:
 
@@ -231,6 +249,56 @@ Minimum keyframe fields:
 - `reason`
 - `event_id`
 - `redacted`
+- `status`
+- `deleted_at`
+- `hash`
+- `file_size`
+- `mime_type`
+- `included_in_provider`
+
+Minimum context snapshot fields:
+
+- `id`
+- `session_id`
+- `timestamp_ms`
+- `kind`
+- `summary_json`
+- `source`
+- `warning`
+- `status`
+
+Minimum draft evidence fields:
+
+- `id`
+- `session_id`
+- `draft_id` or `memory_id` plus `version`
+- `step_id`
+- `event_ids_json`
+- `keyframe_ids_json`
+- `context_ids_json`
+- `confidence`
+- `rationale`
+
+Minimum provider payload manifest fields:
+
+- `id`
+- `session_id`
+- `provider_name`
+- `selected_artifact_ids_json`
+- `redaction_policy_json`
+- `contains_raw_text`
+- `contains_precise_coordinates`
+- `estimated_bytes`
+- `created_at`
+- `status`
+
+Artifact lifecycle uses:
+
+- `active`: available for review and payload selection
+- `excluded`: retained locally but not included in provider payload
+- `deleted`: removed from local review, provider selection, and evidence preview; physical files should be deleted best-effort and marked with `deleted_at`
+
+Deleting an artifact must update timeline metadata, provider selections, draft evidence links, and local files. Deleted artifacts must not be shown in evidence preview or sent to a provider.
 
 The implementation may start with JSON files under an artifact directory if schema churn is high, but the design should keep a clear migration path to SQLite tables.
 
@@ -238,14 +306,33 @@ The implementation may start with JSON files under an artifact directory if sche
 
 Recording artifacts are local-first. The app must not send anything to a provider until the user explicitly clicks generate draft.
 
-Before provider invocation:
+Provider invocation is a two-step flow:
 
-- show which data classes may be sent: notes, event summaries, selected keyframes, UIA/window summaries
+1. Build a `ProviderPayloadManifest`.
+2. Show the manifest to the user and invoke the provider only after confirmation.
+
+The manifest must include:
+
+- data classes included: notes, event summaries, keyframes, UIA/window summaries
+- selected keyframe ids, event ids, and context ids
+- whether raw text is included
+- whether precise coordinates are included
+- estimated payload size
+- provider name
+- redaction mode and policy
+
+Provider payload rules:
+
 - never send full raw video by default
-- allow user to deselect sensitive keyframes or events
+- allow user to deselect sensitive keyframes or events before manifest confirmation
 - respect summary mode redactions
+- do not send artifacts with `excluded` or `deleted` status
+- enforce payload size limits before provider invocation
+- fail closed if manifest generation cannot prove whether raw text or precise coordinates are included
 
 Detailed mode does not mean automatic upload of raw text or coordinates. It means the local timeline may retain them. Provider payload assembly still applies filtering.
+
+Summary mode only redacts event payloads by default. It does not guarantee that keyframe pixels are safe. Keyframes require user selection or confirmation before they can enter the provider payload.
 
 ## Desktop Integration
 
@@ -263,6 +350,8 @@ Add recording teaching handlers under a new namespace:
 - `recordingTeach:generateDraft`
 
 Handlers should return stable `{ ok, data, error }` results and must validate payloads at runtime.
+
+Preload and renderer APIs should use explicit DTO/result types. Runtime validation must cover enum values, string lengths, session ids, artifact ids, version ids, path-like ids, and provider payload manifest requests.
 
 ### Renderer
 
@@ -285,6 +374,9 @@ The generated draft should reuse the existing Phase 2 editor instead of creating
 - Detailed mode requires explicit opt-in and clear warning.
 - User can delete recording sessions and artifacts locally.
 - Sensitive frames/events can be removed before parsing.
+- Summary mode does not mean screenshots are visually redacted. It means raw event payloads are redacted unless the user opts into detailed capture.
+- Provider payload manifests must be previewed and confirmed before any keyframe, event, or context leaves the process.
+- Raw typed text and precise coordinates are never included in provider payloads unless both detailed capture and manifest confirmation allow them.
 - Generated workflows are drafts only and must be reviewed before save.
 - High-risk generated steps follow existing Phase 2 risk warnings and save confirmation.
 - Provider payloads should be minimized and assembled from selected timeline evidence.
@@ -294,11 +386,18 @@ The generated draft should reuse the existing Phase 2 editor instead of creating
 Failures should degrade by layer:
 
 - Recorder unavailable: show setup error and do not start.
+- Concurrent start: reject by default and show the active session.
 - Frame capture fails: continue event capture where possible and mark timeline warning.
 - Event capture fails: continue recording and mark timeline warning.
 - UIA snapshot fails: continue with screenshot/window context.
+- Stop timeout: mark session `failed`, release native/session resources best-effort, and keep artifacts for review.
+- Disk quota or artifact write failure: stop capture if required, mark the session degraded or failed, and preserve consistent metadata.
+- Active window handle invalid: switch to degraded capture or fail before starting active-window recording.
+- Remote desktop or unstable capture environment: show degraded warning and allow screenshots-only or manual smoke fallback where real recording is unreliable.
 - Provider parse fails: keep timeline and allow retry or manual draft creation.
 - Draft validation fails: show errors and keep generated draft as editable unsaved data where safe.
+- App startup should clean up orphan active sessions from prior crashes.
+- App quit should call `forceStopAllRecordings()` and finalize or fail active recording sessions.
 
 No failure should leave an active recording session untracked.
 
@@ -309,6 +408,9 @@ Core tests:
 - Recording session lifecycle state transitions.
 - Event redaction for summary and detailed modes.
 - Timeline builder aligns events and keyframes.
+- Provider payload manifest generation and redaction.
+- Artifact exclude/delete consistency.
+- Evidence link invalidation when artifacts are deleted.
 - Extractor accepts deterministic provider output and validates `WorkflowDraft`.
 - Extractor rejects malformed provider output.
 
@@ -316,7 +418,9 @@ Desktop tests:
 
 - IPC rejects invalid recording payloads.
 - IPC returns stable errors for missing sessions and provider failures.
+- IPC rejects concurrent starts by default.
 - Timeline review model handles deleted keyframes/events.
+- App quit cleanup calls recorder force-stop path.
 - Generate draft result opens Phase 2-compatible draft data.
 
 Integration and smoke:
@@ -324,12 +428,14 @@ Integration and smoke:
 - Simulated recording timeline can generate and save a workflow draft.
 - Real desktop smoke validates full-screen and active-window start/stop.
 - Five-cycle start/stop test verifies no active session leak.
+- Remote desktop or degraded-mode manual smoke records the fallback behavior.
 - Manual or interactive smoke records one simple workflow, reviews timeline, generates draft, edits it, and saves it.
 
 Quality benchmark:
 
 - Use 5 representative recordings.
 - At least 3 should produce structurally complete drafts that pass validation and are practical to edit.
+- Structurally complete means: topic, summary, success criteria, at least 2 steps, each step has intent, target hint, risk level, and key steps have at least one evidence link.
 - The benchmark does not claim fully automatic execution without review.
 
 ## Acceptance Criteria
@@ -340,21 +446,34 @@ Quality benchmark:
 - User can click generate draft and receive a Phase 2-compatible `WorkflowDraft`.
 - Generated drafts use `sourceType: 'recording'`.
 - Generated drafts enter the Phase 2 editor before save.
+- Workflow version history records initial recording-created saves as source `recording-teach`.
+- Provider payload manifest is shown and confirmed before provider invocation.
+- Deleted or excluded artifacts never enter provider payloads or evidence previews.
 - Invalid parser output returns stable validation errors.
 - Full-screen and active-window recording can each start and stop successfully in a valid desktop session.
 - Five repeated start/stop cycles leave no active recording sessions behind.
+- Startup orphan cleanup and app quit cleanup are covered.
 - 5 benchmark recordings produce at least 3 structurally complete, editable drafts.
 - Cloud sync and vector retrieval remain absent.
 
 ## Implementation Order
 
-1. Add recording teaching core types and session metadata model.
-2. Add event redaction and timeline builder with deterministic tests.
-3. Add extractor provider interface and validation path.
-4. Add local storage for sessions, events, keyframes, and context snapshots.
-5. Add desktop IPC handlers with stable result contracts.
-6. Add recording teaching renderer view.
-7. Integrate generated drafts with the existing workflow editor.
-8. Add simulated timeline smoke tests.
-9. Add real desktop recording smoke and five-cycle leak verification.
-10. Run quality benchmark and record results.
+Phase 3 should be implemented as internal slices rather than one large change:
+
+1. **Phase 3A: Types, schema, and simulated timeline**
+   - Add recording session, timeline, artifact, evidence, and provider manifest types.
+   - Add runtime validation and repository interfaces.
+   - Use simulated timelines to validate extractor-to-Phase-2-editor handoff.
+2. **Phase 3B: Local session and artifact lifecycle**
+   - Implement session state machine, artifact directory management, exclude/delete consistency, and stable IPC results.
+   - Do not connect real provider parsing yet.
+3. **Phase 3C: Keyframes and basic recording**
+   - Connect full-screen and active-window start/stop, keyframe sampling, five-cycle leak checks, app quit cleanup, and remote desktop degraded warnings.
+4. **Phase 3D: Events and context**
+   - Add event summaries, window context, UIA snapshots, summary mode defaults, and explicit detailed mode opt-in.
+5. **Phase 3E: Provider payload and draft generation**
+   - Add provider payload manifests, user confirmation, provider invocation, warnings, evidence mapping, and unsaved draft wrapper.
+   - Generated drafts enter the Phase 2 editor and do not write workflow memory directly.
+6. **Phase 3F: Benchmark and hardening**
+   - Run 5 representative recordings.
+   - Record pass rate, failure reasons, resource leak checks, and provider payload audit results.
