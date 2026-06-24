@@ -99,4 +99,59 @@ describe('Schema migrations', () => {
 
     expect(rows.some((row) => row.name === 'idx_workflow_memory_versions_unique' && row.unique === 1)).toBe(true);
   });
+
+  it('upgrades existing v3 databases to allow recording-teach version sources', () => {
+    db = getDatabaseForTest();
+    db.exec("DELETE FROM schema_migrations WHERE version = 4");
+    db.exec(`
+      DROP INDEX IF EXISTS idx_workflow_memory_versions_memory_version;
+      DROP INDEX IF EXISTS idx_workflow_memory_versions_unique;
+      ALTER TABLE workflow_memory_versions RENAME TO workflow_memory_versions_newer;
+      CREATE TABLE workflow_memory_versions (
+        id TEXT PRIMARY KEY,
+        memory_id TEXT NOT NULL REFERENCES workflow_memories(id) ON DELETE CASCADE,
+        version INTEGER NOT NULL,
+        snapshot_json TEXT NOT NULL,
+        change_note TEXT,
+        source TEXT NOT NULL CHECK (source IN ('create', 'edit', 'rollback', 'import', 'text-teach')),
+        created_at TEXT NOT NULL
+      );
+      INSERT INTO workflow_memory_versions
+        SELECT * FROM workflow_memory_versions_newer;
+      DROP TABLE workflow_memory_versions_newer;
+      CREATE INDEX IF NOT EXISTS idx_workflow_memory_versions_memory_version
+        ON workflow_memory_versions(memory_id, version DESC);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_workflow_memory_versions_unique
+        ON workflow_memory_versions(memory_id, version);
+    `);
+
+    runMigrations(db);
+
+    db.exec(`
+      INSERT INTO workflow_memories (
+        id, app_name, platform, topic, trigger_examples, summary,
+        initial_state, steps, success_criteria, risk_level, source_type,
+        version, search_text, embedding_status, created_at, updated_at
+      ) VALUES (
+        'recording-source-upgrade', 'Notepad', 'desktop', 'Save note', '[]', 'summary',
+        'initial', '[]', 'done', 'low', 'recording',
+        1, 'Save note', 'not_indexed', '2026-06-24T00:00:00.000Z', '2026-06-24T00:00:00.000Z'
+      );
+      INSERT INTO workflow_memory_versions (
+        id, memory_id, version, snapshot_json, source, created_at
+      ) VALUES (
+        'version-recording-source-upgrade',
+        'recording-source-upgrade',
+        1,
+        '{}',
+        'recording-teach',
+        '2026-06-24T00:00:00.000Z'
+      );
+    `);
+
+    const row = db
+      .prepare("SELECT source FROM workflow_memory_versions WHERE id = 'version-recording-source-upgrade'")
+      .get() as { source: string };
+    expect(row.source).toBe('recording-teach');
+  });
 });

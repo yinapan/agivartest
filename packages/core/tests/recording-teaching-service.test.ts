@@ -1,0 +1,246 @@
+import { describe, expect, it } from 'vitest';
+import {
+  RecordingTeachingService,
+  validateRecordingTeachingRequest,
+  validateRecordingTimeline,
+  type RecordingWorkflowProvider,
+} from '../src/memory/recording-teaching-service.js';
+import type {
+  ProviderPayloadManifest,
+  RecordingTimeline,
+  WorkflowDraft,
+} from '../src/types/workflow.js';
+
+const validDraft: WorkflowDraft = {
+  appName: 'Notepad',
+  topic: 'Save a note',
+  summary: 'Open Notepad, type a note, and save it.',
+  initialState: 'Desktop is visible.',
+  triggerExamples: ['save a note'],
+  steps: [
+    {
+      intent: 'Open Notepad',
+      targetHint: 'Notepad app',
+      target: { strategy: 'human', hint: 'Notepad app' },
+      expectedState: { all: [{ type: 'window_title_contains', value: 'Notepad' }] },
+      riskLevel: 'low',
+    },
+    {
+      intent: 'Save the note',
+      targetHint: 'Save dialog',
+      target: { strategy: 'human', hint: 'Save dialog' },
+      expectedState: { all: [{ type: 'screen_contains_text', value: 'saved' }] },
+      riskLevel: 'low',
+    },
+  ],
+  successCriteria: 'The note is saved.',
+  riskLevel: 'low',
+};
+
+const happyTimeline: RecordingTimeline = {
+  sessionId: 'rec-1',
+  goal: 'Save a note',
+  notes: 'I open Notepad, type a short note, then save it.',
+  scope: 'active-window',
+  privacyMode: 'summary',
+  startedAt: '2026-06-24T10:00:00.000Z',
+  stoppedAt: '2026-06-24T10:01:00.000Z',
+  keyframes: [
+    {
+      id: 'kf-1',
+      sessionId: 'rec-1',
+      timestampMs: 1000,
+      imagePath: 'artifact://rec-1/keyframes/kf-1.png',
+      reason: 'first-frame',
+      redacted: false,
+      status: 'active',
+      hash: 'sha256-a',
+      fileSize: 1024,
+      mimeType: 'image/png',
+      includedInProvider: true,
+    },
+  ],
+  events: [
+    {
+      id: 'ev-1',
+      sessionId: 'rec-1',
+      timestampMs: 1500,
+      type: 'type',
+      summary: 'Typed a short note.',
+      redactionLevel: 'summary',
+      windowTitle: 'Untitled - Notepad',
+      processName: 'notepad.exe',
+      status: 'active',
+    },
+  ],
+  context: [
+    {
+      id: 'ctx-1',
+      sessionId: 'rec-1',
+      timestampMs: 1200,
+      kind: 'window',
+      summary: { title: 'Untitled - Notepad', processName: 'notepad.exe' },
+      source: 'active-window',
+      status: 'active',
+    },
+  ],
+  warnings: [],
+};
+
+const minimalTimeline: RecordingTimeline = {
+  ...happyTimeline,
+  sessionId: 'rec-min',
+  notes: 'Only notes and events are available.',
+  keyframes: [],
+  context: [],
+  warnings: ['no keyframes captured'],
+};
+
+const invalidTimeline: RecordingTimeline = {
+  ...happyTimeline,
+  sessionId: '',
+  notes: '',
+  keyframes: [],
+  events: [],
+  context: [],
+};
+
+const manifest: ProviderPayloadManifest = {
+  id: 'manifest-1',
+  sessionId: 'rec-1',
+  providerName: 'deterministic-test-provider',
+  selectedArtifactIds: ['kf-1', 'ev-1', 'ctx-1'],
+  redactionPolicy: { privacyMode: 'summary' },
+  containsRawText: false,
+  containsPreciseCoordinates: false,
+  estimatedBytes: 4096,
+  createdAt: '2026-06-24T10:01:01.000Z',
+  status: 'pending',
+};
+
+describe('RecordingTeachingService', () => {
+  it('validates simulated timeline fixtures before provider use', () => {
+    expect(validateRecordingTimeline(happyTimeline).ok).toBe(true);
+    expect(validateRecordingTimeline(minimalTimeline).warnings).toContain('no keyframes captured');
+
+    const result = validateRecordingTimeline(invalidTimeline);
+    expect(result.ok).toBe(false);
+    expect(result.errors).toContain('timeline sessionId is required');
+    expect(result.errors).toContain('timeline must include notes, events, keyframes, or context');
+  });
+
+  it('rejects provider manifests that do not match the timeline session', () => {
+    const result = validateRecordingTeachingRequest({
+      timeline: happyTimeline,
+      manifest: { ...manifest, sessionId: 'different-session' },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors).toContain('manifest sessionId must match timeline sessionId');
+  });
+
+  it('warns when manifest includes raw text or precise coordinates', () => {
+    const result = validateRecordingTeachingRequest({
+      timeline: happyTimeline,
+      manifest: {
+        ...manifest,
+        containsRawText: true,
+        containsPreciseCoordinates: true,
+      },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.warnings).toContain('manifest includes raw text');
+    expect(result.warnings).toContain('manifest includes precise coordinates');
+  });
+
+  it('builds a validated recording draft from a complete simulated timeline', async () => {
+    const provider: RecordingWorkflowProvider = {
+      generateWorkflowDraft: async (timeline, providerManifest) => ({
+        draft: { ...validDraft, appName: timeline.context[0]?.summary.title ?? validDraft.appName },
+        evidence: [
+          {
+            id: 'evidence-1',
+            sessionId: timeline.sessionId,
+            stepId: 'step-1',
+            eventIds: ['ev-1'],
+            keyframeIds: ['kf-1'],
+            contextIds: ['ctx-1'],
+            confidence: 0.9,
+            rationale: 'The first step is visible in the first keyframe.',
+          },
+        ],
+        warnings: [`manifest:${providerManifest.id}`],
+        rawResponse: { provider: providerManifest.providerName },
+      }),
+    };
+
+    const result = await new RecordingTeachingService(provider).generateDraft({
+      timeline: happyTimeline,
+      manifest,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data!.draft.sourceType).toBe('recording');
+    expect(result.data!.evidence[0].keyframeIds).toEqual(['kf-1']);
+    expect(result.data!.warnings).toContain('manifest:manifest-1');
+  });
+
+  it('supports a minimal simulated timeline by preserving timeline warnings', async () => {
+    const provider: RecordingWorkflowProvider = {
+      generateWorkflowDraft: async () => ({
+        draft: validDraft,
+        evidence: [],
+        warnings: [],
+      }),
+    };
+
+    const result = await new RecordingTeachingService(provider).generateDraft({
+      timeline: minimalTimeline,
+      manifest: { ...manifest, sessionId: minimalTimeline.sessionId, selectedArtifactIds: [] },
+    });
+
+    expect(result.ok).toBe(true);
+    expect(result.data!.warnings).toContain('no keyframes captured');
+  });
+
+  it('rejects an invalid simulated timeline before invoking the provider', async () => {
+    let providerCalled = false;
+    const provider: RecordingWorkflowProvider = {
+      generateWorkflowDraft: async () => {
+        providerCalled = true;
+        return { draft: validDraft, evidence: [], warnings: [] };
+      },
+    };
+
+    const result = await new RecordingTeachingService(provider).generateDraft({
+      timeline: invalidTimeline,
+      manifest: { ...manifest, sessionId: invalidTimeline.sessionId },
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors).toContain('timeline sessionId is required');
+    expect(result.errors).toContain('timeline must include notes, events, keyframes, or context');
+    expect(providerCalled).toBe(false);
+  });
+
+  it('returns validation errors for malformed provider output', async () => {
+    const provider: RecordingWorkflowProvider = {
+      generateWorkflowDraft: async () => ({
+        draft: { ...validDraft, topic: '', steps: [] },
+        evidence: [],
+        warnings: ['provider warning'],
+      }),
+    };
+
+    const result = await new RecordingTeachingService(provider).generateDraft({
+      timeline: happyTimeline,
+      manifest,
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors).toContain('topic is required');
+    expect(result.errors).toContain('at least one step is required');
+    expect(result.warnings).toContain('provider warning');
+  });
+});

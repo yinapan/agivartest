@@ -2,6 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { TakeoverRequest } from '../src/types/agent.js';
 import { DEFAULT_SETTINGS } from '../src/types/settings.js';
 import type { StepAction, TargetDescriptor } from '../src/types/agent.js';
+import type {
+  ProviderPayloadManifest,
+  RecordingRepository,
+  RecordingSession,
+  RecordingSessionStatus,
+  RecordingTimeline,
+  RecordingWorkflowProviderResult,
+  StepEvidenceLink,
+} from '../src/types/index.js';
 
 describe('StepAction discriminated union', () => {
   it('discriminates on type=click', () => {
@@ -115,5 +124,81 @@ describe('DEFAULT_SETTINGS', () => {
     expect(DEFAULT_SETTINGS.llm.model).toBe('gpt-4o');
     expect(DEFAULT_SETTINGS.llm.maxTokens).toBe(4096);
     expect(DEFAULT_SETTINGS.llm.temperature).toBe(0.1);
+  });
+});
+
+describe('recording teaching types', () => {
+  it('exposes Phase 3A recording contracts from the public type barrel', () => {
+    const status: RecordingSessionStatus = 'draft_ready';
+    const session: RecordingSession = {
+      id: 'rec-1',
+      scope: 'active-window',
+      privacyMode: 'summary',
+      status,
+      artifactDir: 'artifact://rec-1',
+      startedAt: '2026-06-24T10:00:00.000Z',
+      createdAt: '2026-06-24T10:00:00.000Z',
+      updatedAt: '2026-06-24T10:01:00.000Z',
+    };
+    const evidence: StepEvidenceLink = {
+      id: 'evidence-1',
+      sessionId: session.id,
+      stepId: 'step-1',
+      eventIds: [],
+      keyframeIds: [],
+      contextIds: [],
+      confidence: 0.5,
+      rationale: 'fixture',
+    };
+    const manifest: ProviderPayloadManifest = {
+      id: 'manifest-1',
+      sessionId: session.id,
+      providerName: 'test',
+      selectedArtifactIds: [],
+      redactionPolicy: {},
+      containsRawText: false,
+      containsPreciseCoordinates: false,
+      estimatedBytes: 0,
+      createdAt: session.createdAt,
+      status: 'pending',
+    };
+    const timeline: RecordingTimeline = {
+      sessionId: session.id,
+      notes: 'fixture',
+      scope: session.scope,
+      privacyMode: session.privacyMode,
+      startedAt: session.startedAt,
+      stoppedAt: session.updatedAt,
+      keyframes: [],
+      events: [],
+      context: [],
+      warnings: [],
+    };
+    const providerResult: RecordingWorkflowProviderResult = {
+      draft: {
+        appName: 'Notepad',
+        topic: 'Fixture',
+        summary: 'Fixture',
+        initialState: 'Ready',
+        steps: [{
+          intent: 'Do fixture',
+          targetHint: 'Fixture',
+          target: { strategy: 'human', hint: 'Fixture' },
+          riskLevel: 'low',
+        }],
+        riskLevel: 'low',
+      },
+      evidence: [evidence],
+      warnings: [],
+    };
+    const repo: Pick<RecordingRepository, 'getSession' | 'saveDraftLink'> = {
+      getSession: async () => session,
+      saveDraftLink: async () => undefined,
+    };
+
+    expect(timeline.sessionId).toBe('rec-1');
+    expect(manifest.sessionId).toBe('rec-1');
+    expect(providerResult.evidence[0].confidence).toBe(0.5);
+    expect(repo.getSession).toBeTypeOf('function');
   });
 });

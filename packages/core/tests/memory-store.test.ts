@@ -406,6 +406,17 @@ describe('MemoryStore', () => {
       expect(versions[0].snapshot.topic).toBe(mem.topic);
     });
 
+    it('saveWithVersion records recording-created workflow versions', () => {
+      const mem = makeMemory({ id: 'versioned-recording', sourceType: 'recording' });
+
+      store.saveWithVersion(mem, { source: 'recording-teach', changeNote: 'initial recording teach' });
+
+      const versions = store.listVersions(mem.id);
+      expect(versions).toHaveLength(1);
+      expect(versions[0].source).toBe('recording-teach');
+      expect(versions[0].snapshot.sourceType).toBe('recording');
+    });
+
     it('updateWithVersion increments memory version and records a snapshot', () => {
       const mem = makeMemory({ id: 'versioned-2' });
       store.saveWithVersion(mem, { source: 'create' });

@@ -133,9 +133,42 @@ export const MIGRATIONS: Migration[] = [
         version INTEGER NOT NULL,
         snapshot_json TEXT NOT NULL,
         change_note TEXT,
-        source TEXT NOT NULL CHECK (source IN ('create', 'edit', 'rollback', 'import', 'text-teach')),
+        source TEXT NOT NULL CHECK (source IN ('create', 'edit', 'rollback', 'import', 'text-teach', 'recording-teach')),
         created_at TEXT NOT NULL
       );
+      CREATE INDEX IF NOT EXISTS idx_workflow_memory_versions_memory_version
+        ON workflow_memory_versions(memory_id, version DESC);
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_workflow_memory_versions_unique
+        ON workflow_memory_versions(memory_id, version);
+    `,
+  },
+  {
+    version: 4,
+    name: 'allow_recording_teach_version_source',
+    up: `
+      DROP INDEX IF EXISTS idx_workflow_memory_versions_memory_version;
+      DROP INDEX IF EXISTS idx_workflow_memory_versions_unique;
+
+      ALTER TABLE workflow_memory_versions RENAME TO workflow_memory_versions_old;
+
+      CREATE TABLE workflow_memory_versions (
+        id TEXT PRIMARY KEY,
+        memory_id TEXT NOT NULL REFERENCES workflow_memories(id) ON DELETE CASCADE,
+        version INTEGER NOT NULL,
+        snapshot_json TEXT NOT NULL,
+        change_note TEXT,
+        source TEXT NOT NULL CHECK (source IN ('create', 'edit', 'rollback', 'import', 'text-teach', 'recording-teach')),
+        created_at TEXT NOT NULL
+      );
+
+      INSERT INTO workflow_memory_versions (
+        id, memory_id, version, snapshot_json, change_note, source, created_at
+      )
+      SELECT id, memory_id, version, snapshot_json, change_note, source, created_at
+      FROM workflow_memory_versions_old;
+
+      DROP TABLE workflow_memory_versions_old;
+
       CREATE INDEX IF NOT EXISTS idx_workflow_memory_versions_memory_version
         ON workflow_memory_versions(memory_id, version DESC);
       CREATE UNIQUE INDEX IF NOT EXISTS idx_workflow_memory_versions_unique

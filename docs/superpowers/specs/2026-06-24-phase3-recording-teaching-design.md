@@ -265,8 +265,9 @@ Migration allocation:
 
 | Migration | Phase | Tables |
 | --- | --- | --- |
-| v4 | 3B | `recording_sessions`, `recording_events`, `recording_keyframes`, `recording_context_snapshots` |
-| v5 | 3E | `recording_draft_links`, `provider_payload_manifests` |
+| v4 | 3A | Extend `workflow_memory_versions.source` to include `recording-teach` |
+| v5 | 3B | `recording_sessions`, `recording_events`, `recording_keyframes`, `recording_context_snapshots` |
+| v6 | 3E | `recording_draft_links`, `provider_payload_manifests` |
 
 Minimum session fields:
 
@@ -571,7 +572,7 @@ Phase 3 should be implemented as internal slices rather than one large change:
    - Use simulated timelines to validate extractor-to-Phase-2-editor handoff.
 2. **Phase 3B: Local session and artifact lifecycle**
    - Implement session state machine, artifact directory management, exclude/delete consistency, and stable IPC results.
-   - Add migration v4 for session, event, keyframe, and context tables.
+   - Add migration v5 for session, event, keyframe, and context tables.
    - Do not connect real provider parsing yet.
 3. **Phase 3C: Keyframes and basic recording**
    - Connect full-screen and active-window start/stop, interval keyframe sampling, first/last frame capture, SHA-256 keyframe hashing, five-cycle leak checks, app quit cleanup, and remote desktop degraded warnings.
@@ -579,7 +580,7 @@ Phase 3 should be implemented as internal slices rather than one large change:
 4. **Phase 3D: Events and context**
    - Add native passive event capture, event summaries, event-driven keyframe sampling, window context, UIA snapshots, summary mode defaults, and explicit detailed mode opt-in.
 5. **Phase 3E: Provider payload and draft generation**
-   - Add migration v5 for draft links and provider payload manifests.
+   - Add migration v6 for draft links and provider payload manifests.
    - Add provider payload manifests, user confirmation, provider invocation, warnings, evidence mapping, persisted `draft_ready` wrapper recovery, and optional `sourceType` list filtering.
    - Generated drafts enter the Phase 2 editor and do not write workflow memory directly.
 6. **Phase 3F: Benchmark and hardening**

@@ -78,7 +78,7 @@ export interface WorkflowMemoryVersion {
   version: number;
   snapshot: WorkflowMemory;
   changeNote?: string;
-  source: 'create' | 'edit' | 'rollback' | 'import' | 'text-teach';
+  source: 'create' | 'edit' | 'rollback' | 'import' | 'text-teach' | 'recording-teach';
   createdAt: string;
 }
 
@@ -93,4 +93,151 @@ export interface TextTeachingResult {
   draft: WorkflowDraft;
   warnings: string[];
   rawResponse?: unknown;
+}
+
+export type RecordingScope = 'fullscreen' | 'active-window';
+export type RecordingPrivacyMode = 'summary' | 'detailed';
+export type RecordingSessionStatus =
+  | 'idle'
+  | 'recording'
+  | 'stopping'
+  | 'ready'
+  | 'draft_ready'
+  | 'failed'
+  | 'discarded';
+export type RecordingArtifactStatus = 'active' | 'excluded' | 'deleted';
+export type RecordingRedactionLevel = 'summary' | 'detailed';
+
+export interface RecordingSession {
+  id: string;
+  scope: RecordingScope;
+  privacyMode: RecordingPrivacyMode;
+  status: RecordingSessionStatus;
+  goal?: string;
+  notes?: string;
+  videoPath?: string;
+  artifactDir: string;
+  startedAt?: string;
+  stoppedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RecordingEvent {
+  id: string;
+  sessionId: string;
+  timestampMs: number;
+  type: 'click' | 'double-click' | 'type' | 'hotkey' | 'scroll' | 'window-change';
+  summary: string;
+  redactionLevel: RecordingRedactionLevel;
+  rawPayload?: unknown;
+  windowTitle?: string;
+  processName?: string;
+  status: RecordingArtifactStatus;
+  deletedAt?: string;
+}
+
+export interface RecordingKeyframe {
+  id: string;
+  sessionId: string;
+  timestampMs: number;
+  imagePath: string;
+  reason: string;
+  eventId?: string;
+  redacted: boolean;
+  status: RecordingArtifactStatus;
+  deletedAt?: string;
+  hash: string;
+  fileSize: number;
+  mimeType: string;
+  includedInProvider: boolean;
+}
+
+export interface RecordingContextSnapshot {
+  id: string;
+  sessionId: string;
+  timestampMs: number;
+  kind: 'window' | 'uia' | 'screenshot' | 'note';
+  summary: Record<string, unknown>;
+  source: string;
+  warning?: string;
+  status: RecordingArtifactStatus;
+}
+
+export interface RecordingTimeline {
+  sessionId: string;
+  goal?: string;
+  notes: string;
+  scope: RecordingScope;
+  privacyMode: RecordingPrivacyMode;
+  startedAt: string;
+  stoppedAt: string;
+  keyframes: RecordingKeyframe[];
+  events: RecordingEvent[];
+  context: RecordingContextSnapshot[];
+  warnings: string[];
+}
+
+export interface ProviderPayloadManifest {
+  id: string;
+  sessionId: string;
+  providerName: string;
+  selectedArtifactIds: string[];
+  redactionPolicy: Record<string, unknown>;
+  containsRawText: boolean;
+  containsPreciseCoordinates: boolean;
+  estimatedBytes: number;
+  createdAt: string;
+  status: 'pending' | 'confirmed' | 'sent' | 'failed';
+}
+
+export interface StepEvidenceLink {
+  id: string;
+  sessionId: string;
+  stepId: string;
+  eventIds: string[];
+  keyframeIds: string[];
+  contextIds: string[];
+  confidence: number;
+  rationale: string;
+}
+
+export interface RecordingWorkflowProviderResult {
+  draft: WorkflowDraft;
+  evidence: StepEvidenceLink[];
+  warnings: string[];
+  rawResponse?: unknown;
+}
+
+export interface RecordingTeachingRequest {
+  timeline: RecordingTimeline;
+  manifest: ProviderPayloadManifest;
+}
+
+export interface RecordingTeachingResult {
+  draft: WorkflowDraft;
+  evidence: StepEvidenceLink[];
+  warnings: string[];
+  rawResponse?: unknown;
+}
+
+export interface RecordingDraftLink {
+  id: string;
+  sessionId: string;
+  draftJson: WorkflowDraft;
+  status: 'draft_ready' | 'saved' | 'discarded';
+  evidence: StepEvidenceLink[];
+  createdAt: string;
+  updatedAt: string;
+  discardedAt?: string;
+}
+
+export interface RecordingRepository {
+  saveSession(session: RecordingSession): Promise<void>;
+  getSession(sessionId: string): Promise<RecordingSession | null>;
+  updateSession(session: RecordingSession): Promise<void>;
+  saveTimeline(timeline: RecordingTimeline): Promise<void>;
+  getTimeline(sessionId: string): Promise<RecordingTimeline | null>;
+  saveDraftLink(link: RecordingDraftLink): Promise<void>;
+  getDraftLink(sessionId: string): Promise<RecordingDraftLink | null>;
 }

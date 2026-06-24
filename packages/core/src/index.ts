@@ -19,6 +19,12 @@ export {
 } from './memory/workflow-draft.js';
 export { TextTeachingService } from './memory/text-teaching-service.js';
 export type { TextTeachingProvider } from './memory/text-teaching-service.js';
+export { RecordingTeachingService } from './memory/recording-teaching-service.js';
+export {
+  validateRecordingTeachingRequest,
+  validateRecordingTimeline,
+} from './memory/recording-teaching-service.js';
+export type { RecordingWorkflowProvider } from './memory/recording-teaching-service.js';
 export { getDatabase, getDatabaseForTest, closeDatabase } from './memory/db.js';
 export { runMigrations } from './memory/schema.js';
 export { AbortManager } from './safety/abort-manager.js';
