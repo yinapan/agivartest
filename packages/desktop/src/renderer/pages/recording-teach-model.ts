@@ -33,6 +33,17 @@ export type RecordingGenerationStateDto = {
   error?: string;
 };
 
+export type RecordingDiscardResultDto = {
+  session: RecordingSessionDto | null;
+  warnings: string[];
+};
+
+export type RecordingPreflightDto = {
+  canRecord: boolean;
+  warnings: string[];
+  artifactBytes: number;
+};
+
 export type RecordingSessionDto = {
   id: string;
   scope: RecordingScopeDto;
@@ -93,6 +104,9 @@ export type RecordingTeachState = {
   providerName: string;
   providers: RecordingProviderOptionDto[];
   generation: RecordingGenerationStateDto | null;
+  history: RecordingSessionDto[];
+  preflight: RecordingPreflightDto | null;
+  discardWarnings: string[];
   goal: string;
   notes: string;
   session: RecordingSessionDto | null;
@@ -112,6 +126,9 @@ export function createInitialRecordingTeachState(): RecordingTeachState {
       { name: 'recording-teaching-provider', label: 'Deterministic regression provider', available: true },
     ],
     generation: null,
+    history: [],
+    preflight: null,
+    discardWarnings: [],
     goal: '',
     notes: '',
     session: null,
@@ -119,6 +136,33 @@ export function createInitialRecordingTeachState(): RecordingTeachState {
     manifest: null,
     draftLink: null,
     error: '',
+  };
+}
+
+export function applyHistory(state: RecordingTeachState, history: RecordingSessionDto[]): RecordingTeachState {
+  return {
+    ...state,
+    history,
+  };
+}
+
+export function summarizePreflight(preflight: RecordingPreflightDto): string {
+  const mb = Math.round(preflight.artifactBytes / 1024 / 1024);
+  const status = preflight.canRecord ? 'ready' : 'blocked';
+  return `${status} / ${mb} MB / ${preflight.warnings.length} warnings`;
+}
+
+export function applyDiscardResult(
+  state: RecordingTeachState,
+  result: RecordingDiscardResultDto,
+): RecordingTeachState {
+  return {
+    ...state,
+    history: result.session
+      ? state.history.map((session) => session.id === result.session!.id ? result.session! : session)
+      : state.history,
+    session: state.session && result.session?.id === state.session.id ? result.session : state.session,
+    discardWarnings: result.warnings,
   };
 }
 

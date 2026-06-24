@@ -3,8 +3,11 @@ import {
   buildConfirmedManifest,
   createInitialRecordingTeachState,
   applyProviderList,
+  applyDiscardResult,
+  applyHistory,
   manifestSummary,
   recordingStatusLabel,
+  summarizePreflight,
   timelineSummary,
   toEditorDraft,
   type ProviderPayloadManifestDto,
@@ -85,6 +88,34 @@ describe('recording teach model', () => {
 
     expect(state.providerName).toBe('openai-compatible');
     expect(state.providers).toHaveLength(2);
+  });
+
+  it('applies recording history and discard summaries', () => {
+    const initial = createInitialRecordingTeachState();
+    const withHistory = applyHistory(initial, [{
+      id: 'rec-1',
+      scope: 'fullscreen',
+      privacyMode: 'summary',
+      status: 'ready',
+      artifactDir: 'artifact://rec-1',
+      createdAt: '2026-06-24T10:00:00.000Z',
+      updatedAt: '2026-06-24T10:00:00.000Z',
+    }]);
+    const discarded = applyDiscardResult(withHistory, {
+      session: { ...withHistory.history[0], status: 'discarded' },
+      warnings: ['missing frame ignored'],
+    });
+
+    expect(discarded.history[0].status).toBe('discarded');
+    expect(discarded.discardWarnings).toEqual(['missing frame ignored']);
+  });
+
+  it('summarizes preflight readiness and artifact bytes', () => {
+    expect(summarizePreflight({
+      canRecord: true,
+      warnings: ['large artifact dir'],
+      artifactBytes: 2 * 1024 * 1024,
+    })).toBe('ready / 2 MB / 1 warnings');
   });
 
   it('builds readable status labels', () => {

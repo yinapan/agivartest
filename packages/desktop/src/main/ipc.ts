@@ -30,16 +30,21 @@ import {
 import {
   handleRecordingTeachBuildManifest,
   handleRecordingTeachCancelDraftGeneration,
+  handleRecordingTeachCleanupOrphans,
+  handleRecordingTeachDiscard,
   handleRecordingTeachGenerateDraft,
   handleRecordingTeachGenerationStatus,
   handleRecordingTeachGetTimeline,
+  handleRecordingTeachListSessions,
   handleRecordingTeachListProviders,
+  handleRecordingTeachPreflight,
   handleRecordingTeachReprocessDraft,
   handleRecordingTeachResumeDraft,
   handleRecordingTeachRetryDraftGeneration,
   handleRecordingTeachStart,
   handleRecordingTeachStatus,
   handleRecordingTeachStop,
+  handleRecordingTeachUpdateSessionMetadata,
   type RecordingTeachDeps,
 } from './recording-teach-ipc.js';
 
@@ -246,6 +251,14 @@ export function registerAgentIpcHandlers(): void {
     return handleRecordingTeachGetTimeline(recordingStore, sessionId);
   });
 
+  ipcMain.handle('recordingTeach:listSessions', async (_event, options) => {
+    return handleRecordingTeachListSessions(recordingStore, options);
+  });
+
+  ipcMain.handle('recordingTeach:updateSessionMetadata', async (_event, request) => {
+    return handleRecordingTeachUpdateSessionMetadata(recordingStore, request);
+  });
+
   ipcMain.handle('recordingTeach:listProviders', async () => {
     return handleRecordingTeachListProviders();
   });
@@ -272,6 +285,18 @@ export function registerAgentIpcHandlers(): void {
 
   ipcMain.handle('recordingTeach:reprocessDraft', async (_event, request) => {
     return handleRecordingTeachReprocessDraft(recordingStore, request);
+  });
+
+  ipcMain.handle('recordingTeach:discard', async (_event, sessionId: string) => {
+    return handleRecordingTeachDiscard(recordingStore, sessionId);
+  });
+
+  ipcMain.handle('recordingTeach:preflight', async () => {
+    return handleRecordingTeachPreflight(recordingTeachDeps);
+  });
+
+  ipcMain.handle('recordingTeach:cleanupOrphans', async () => {
+    return handleRecordingTeachCleanupOrphans(recordingStore, recordingTeachDeps);
   });
 
   ipcMain.handle('recordingTeach:resumeDraft', async (_event, sessionId: string) => {

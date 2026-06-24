@@ -19,10 +19,12 @@ import {
 } from '@agivar/core';
 import type { ToolAdapters } from '@agivar/core';
 import { screenshot, uia, input, browser, recorder } from '@agivar/core';
-import { scanRecordingKeyframeFiles, setRecordingTeachProvider } from './recording-teach-ipc.js';
+import { handleRecordingTeachCleanupOrphans, scanRecordingKeyframeFiles, setRecordingTeachProvider, type RecordingTeachDeps } from './recording-teach-ipc.js';
 
 let agentService: AgentService | null = null;
 let globalHotkey: GlobalHotkeyAdapter | null = null;
+let recordingStoreForCleanup: RecordingStore | null = null;
+let recordingTeachDepsForCleanup: RecordingTeachDeps | undefined;
 
 function ensureDataDir(dataDir: string): void {
   if (!fs.existsSync(dataDir)) {
@@ -113,12 +115,16 @@ app.whenReady().then(async () => {
   setAgentService(agentService);
   setMemoryStore(memoryStore);
   setRecordingStore(recordingStore);
-  setRecordingTeachDeps({
+  const recordingTeachDeps: RecordingTeachDeps = {
     recorder,
     screenshot,
     frameScanner: scanRecordingKeyframeFiles,
     artifactRoot: path.join(dataDir, 'recordings'),
-  });
+  };
+  setRecordingTeachDeps(recordingTeachDeps);
+  recordingStoreForCleanup = recordingStore;
+  recordingTeachDepsForCleanup = recordingTeachDeps;
+  await handleRecordingTeachCleanupOrphans(recordingStore, recordingTeachDeps);
   if (apiKey) {
     setRecordingTeachProvider('openai-compatible', new OpenAICompatibleRecordingProvider(llm));
   }
@@ -299,6 +305,13 @@ function wireAgentEvents(
 app.on('window-all-closed', () => {
   globalHotkey?.unregisterAll();
   app.quit();
+});
+
+app.on('before-quit', () => {
+  if (recordingStoreForCleanup) {
+    void handleRecordingTeachCleanupOrphans(recordingStoreForCleanup, recordingTeachDepsForCleanup);
+  }
+  void recorder.forceStopAllRecordings();
 });
 
 export { agentService, globalHotkey };

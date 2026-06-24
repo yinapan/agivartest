@@ -2,15 +2,20 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { getIpcErrorMessage, type IpcResult, type WorkflowDraft } from './workflow-editor-model.js';
 import {
   applyProviderList,
+  applyDiscardResult,
+  applyHistory,
   buildConfirmedManifest,
   createInitialRecordingTeachState,
   manifestSummary,
   recordingStatusLabel,
+  summarizePreflight,
   timelineSummary,
   toEditorDraft,
   type ProviderPayloadManifestDto,
+  type RecordingDiscardResultDto,
   type RecordingDraftLinkDto,
   type RecordingGenerationStateDto,
+  type RecordingPreflightDto,
   type RecordingProviderListDto,
   type RecordingSessionDto,
   type RecordingTimelineDto,
@@ -43,6 +48,7 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
   }, []);
 
   async function startRecording() {
+    await runPreflight();
     if (requiresDetailedAck) {
       setState((current) => ({ ...current, error: 'Acknowledge detailed mode before starting.' }));
       return;
@@ -101,6 +107,50 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
       return;
     }
     setState((current) => ({ ...current, phase: 'manifest_ready', manifest: result.data, error: '' }));
+  }
+
+  async function refreshHistory() {
+    const result = await window.agivar.recordingTeach.listSessions({ includeActive: false, limit: 25 }) as IpcResult<RecordingSessionDto[]>;
+    if (!result.ok) {
+      setState((current) => ({ ...current, error: getIpcErrorMessage(result) }));
+      return;
+    }
+    setState((current) => applyHistory({ ...current, error: '' }, result.data));
+  }
+
+  async function runPreflight() {
+    const result = await window.agivar.recordingTeach.preflight() as IpcResult<RecordingPreflightDto>;
+    if (!result.ok) {
+      setState((current) => ({ ...current, error: getIpcErrorMessage(result) }));
+      return;
+    }
+    setState((current) => ({ ...current, preflight: result.data, error: '' }));
+  }
+
+  async function saveSessionNotes() {
+    if (!state.session) return;
+    const result = await window.agivar.recordingTeach.updateSessionMetadata({
+      sessionId: state.session.id,
+      goal: state.goal || undefined,
+      notes: state.notes || undefined,
+    }) as IpcResult<RecordingSessionDto>;
+    if (!result.ok) {
+      setState((current) => ({ ...current, error: getIpcErrorMessage(result) }));
+      return;
+    }
+    setState((current) => ({ ...current, session: result.data, error: '' }));
+    await refreshHistory();
+  }
+
+  async function discardSession() {
+    if (!state.session) return;
+    const result = await window.agivar.recordingTeach.discard(state.session.id) as IpcResult<RecordingDiscardResultDto>;
+    if (!result.ok) {
+      setState((current) => ({ ...current, error: getIpcErrorMessage(result) }));
+      return;
+    }
+    setState((current) => applyDiscardResult({ ...current, phase: 'idle', error: '' }, result.data));
+    await refreshHistory();
   }
 
   async function generateDraft() {
@@ -278,6 +328,15 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
         <button disabled={isBusy || !state.timeline} onClick={buildManifest} className="border border-border disabled:opacity-50 text-sm py-2 px-3 rounded">
           Build manifest
         </button>
+        <button disabled={isBusy} onClick={runPreflight} className="border border-border disabled:opacity-50 text-sm py-2 px-3 rounded">
+          Preflight
+        </button>
+        <button disabled={isBusy} onClick={refreshHistory} className="border border-border disabled:opacity-50 text-sm py-2 px-3 rounded">
+          Refresh history
+        </button>
+        <button disabled={isBusy || !state.session} onClick={saveSessionNotes} className="border border-border disabled:opacity-50 text-sm py-2 px-3 rounded">
+          Save notes
+        </button>
         <button disabled={isBusy || !state.manifest} onClick={generateDraft} className="border border-border disabled:opacity-50 text-sm py-2 px-3 rounded">
           {state.phase === 'generating' ? 'Generating...' : 'Confirm & generate'}
         </button>
@@ -293,9 +352,18 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
         <button disabled={isBusy || !state.session} onClick={resumeDraft} className="border border-border disabled:opacity-50 text-sm py-2 px-3 rounded">
           Resume draft
         </button>
+        <button disabled={isBusy || !state.session} onClick={discardSession} className="border border-red-500 text-red-300 disabled:opacity-50 text-sm py-2 px-3 rounded">
+          Discard
+        </button>
       </div>
 
       {state.error && <div className="text-sm text-red-400">{state.error}</div>}
+      {state.preflight && <div className="text-xs text-text-secondary">Preflight: {summarizePreflight(state.preflight)}</div>}
+      {state.discardWarnings.length > 0 && (
+        <ul className="text-xs text-yellow-300">
+          {state.discardWarnings.map((warning) => <li key={warning}>{warning}</li>)}
+        </ul>
+      )}
       {state.generation && (
         <div className="text-xs text-text-secondary">
           Generation: {state.generation.status} / {state.generation.providerName} / attempts {state.generation.attempts}
@@ -325,6 +393,30 @@ export function RecordingTeachPanel({ disabled, onDraftGenerated }: RecordingTea
           <div>Size: {manifestInfo.estimatedKb} KB</div>
           <div>Raw text: {manifestInfo.includesRawText ? 'yes' : 'no'}</div>
           <div>Coordinates: {manifestInfo.includesPreciseCoordinates ? 'yes' : 'no'}</div>
+        </div>
+      )}
+
+      {state.history.length > 0 && (
+        <div className="border border-border rounded p-2 text-xs text-text-secondary space-y-1">
+          <div className="font-medium text-text-primary">History</div>
+          {state.history.slice(0, 5).map((session) => (
+            <button
+              key={session.id}
+              onClick={() => setState((current) => ({
+                ...current,
+                session,
+                goal: session.goal ?? '',
+                notes: session.notes ?? '',
+                timeline: null,
+                manifest: null,
+                draftLink: null,
+                phase: session.status === 'draft_ready' ? 'draft_ready' : 'ready',
+              }))}
+              className="block w-full text-left truncate hover:text-text-primary"
+            >
+              {recordingStatusLabel(session.status)} / {session.goal || session.notes || session.id}
+            </button>
+          ))}
         </div>
       )}
     </section>

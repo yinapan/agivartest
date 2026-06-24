@@ -42,6 +42,12 @@ export interface RecordingTeachReprocessDraftRequest {
   providerName?: string;
 }
 
+export interface RecordingTeachUpdateSessionMetadataRequest {
+  sessionId: string;
+  goal?: string;
+  notes?: string;
+}
+
 export interface RecordingTeachProviderOption {
   name: string;
   label: string;
@@ -108,6 +114,15 @@ export interface RecordingTeachDeps {
     stopEventCapture(sessionId: string): Promise<{ ok: true; data: void; durationMs: number } | { ok: false; error: { code: string; message: string }; durationMs: number }>;
     drainEvents(sessionId: string): Promise<{ ok: true; data: RecordingEvent[]; durationMs: number } | { ok: false; error: { code: string; message: string }; durationMs: number }>;
   };
+  preflight?: () => Promise<{
+    ok: true;
+    data: { canRecord: boolean; warnings: string[]; artifactBytes: number };
+    durationMs: number;
+  } | {
+    ok: false;
+    error: { code: string; message: string };
+    durationMs: number;
+  }>;
   artifactRoot?: string;
 }
 
@@ -158,6 +173,98 @@ export async function handleRecordingTeachListProviders(): Promise<IpcResult<Rec
       },
     ],
   }));
+}
+
+export async function handleRecordingTeachListSessions(
+  repo: RecordingRepository | null,
+  options?: unknown,
+): Promise<IpcResult<RecordingSession[]>> {
+  if (!repo) return ipcErr('NO_RECORDING_STORE', 'RecordingStore not initialized');
+
+  return safeIpc(async () => {
+    const parsed = parseListSessionsOptions(options);
+    return repo.listSessions(parsed);
+  });
+}
+
+export async function handleRecordingTeachUpdateSessionMetadata(
+  repo: RecordingRepository | null,
+  request: unknown,
+): Promise<IpcResult<RecordingSession>> {
+  if (!repo) return ipcErr('NO_RECORDING_STORE', 'RecordingStore not initialized');
+
+  return safeIpc(async () => {
+    assertUpdateSessionMetadataRequest(request);
+    const updated = await repo.updateSessionMetadata(request.sessionId, {
+      goal: request.goal?.trim(),
+      notes: request.notes?.trim(),
+      updatedAt: new Date().toISOString(),
+    });
+    if (!updated) {
+      throw new RecordingTeachIpcError('RECORDING_SESSION_NOT_FOUND', 'Recording session not found');
+    }
+    return updated;
+  });
+}
+
+export async function handleRecordingTeachDiscard(
+  repo: RecordingRepository | null,
+  sessionId: unknown,
+): Promise<IpcResult<{ session: RecordingSession | null; warnings: string[] }>> {
+  if (!repo) return ipcErr('NO_RECORDING_STORE', 'RecordingStore not initialized');
+
+  return safeIpc(async () => {
+    assertSessionId(sessionId);
+    const result = await repo.discardSession(sessionId, { now: new Date().toISOString() });
+    if (!result.session) {
+      throw new RecordingTeachIpcError('RECORDING_SESSION_NOT_FOUND', 'Recording session not found');
+    }
+    return result;
+  });
+}
+
+export async function handleRecordingTeachCleanupOrphans(
+  repo: RecordingRepository | null,
+  deps?: RecordingTeachDeps,
+): Promise<IpcResult<{ cleanedSessionIds: string[]; warnings: string[] }>> {
+  if (!repo) return ipcErr('NO_RECORDING_STORE', 'RecordingStore not initialized');
+
+  return safeIpc(async () => {
+    const active = await repo.listActiveSessions();
+    const warnings: string[] = [];
+    const cleanedSessionIds: string[] = [];
+
+    for (const session of active) {
+      if (deps && session.nativeSessionId) {
+        const stopped = await deps.recorder.stopRecording(session.nativeSessionId);
+        if (!stopped.ok) warnings.push(`${session.id}: ${stopped.error.message}`);
+      }
+      await repo.updateSession({
+        ...session,
+        status: 'failed',
+        notes: appendCleanupNote(session.notes),
+        updatedAt: new Date().toISOString(),
+      });
+      cleanedSessionIds.push(session.id);
+    }
+
+    return { cleanedSessionIds, warnings };
+  });
+}
+
+export async function handleRecordingTeachPreflight(
+  deps?: RecordingTeachDeps,
+): Promise<IpcResult<{ canRecord: boolean; warnings: string[]; artifactBytes: number }>> {
+  return safeIpc(async () => {
+    if (deps?.preflight) {
+      const result = await deps.preflight();
+      if (!result.ok) {
+        throw new RecordingTeachIpcError(result.error.code, result.error.message);
+      }
+      return result.data;
+    }
+    return { canRecord: true, warnings: [], artifactBytes: 0 };
+  });
 }
 
 export async function handleRecordingTeachStart(
@@ -674,6 +781,34 @@ function assertReprocessDraftRequest(value: unknown): asserts value is Recording
   if ('providerName' in value && value.providerName !== undefined) {
     assertString(value.providerName, 'providerName', 100);
   }
+}
+
+function assertUpdateSessionMetadataRequest(value: unknown): asserts value is RecordingTeachUpdateSessionMetadataRequest {
+  if (!isRecord(value)) throw new Error('request must be an object');
+  assertString(value.sessionId, 'sessionId', 200);
+  if ('goal' in value && value.goal !== undefined) assertString(value.goal, 'goal', 500);
+  if ('notes' in value && value.notes !== undefined) assertString(value.notes, 'notes', 20000);
+}
+
+function parseListSessionsOptions(value: unknown): { includeActive?: boolean; limit?: number } {
+  if (value === undefined) return { includeActive: false };
+  if (!isRecord(value)) throw new Error('options must be an object');
+  const result: { includeActive?: boolean; limit?: number } = {};
+  if ('includeActive' in value) result.includeActive = value.includeActive === true;
+  if ('limit' in value && value.limit !== undefined) {
+    if (typeof value.limit !== 'number' || value.limit < 1 || value.limit > 200) {
+      throw new Error('limit is invalid');
+    }
+    result.limit = Math.floor(value.limit);
+  }
+  return result;
+}
+
+function appendCleanupNote(notes: string | undefined): string {
+  const marker = 'Recording was recovered during startup cleanup.';
+  if (!notes?.trim()) return marker;
+  if (notes.includes(marker)) return notes;
+  return `${notes}\n${marker}`;
 }
 
 function assertString(value: unknown, field: string, max: number): asserts value is string {

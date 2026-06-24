@@ -103,7 +103,57 @@ describe('recording teaching benchmark hardening', () => {
     expect(complete).toHaveLength(5);
     expect(complete.length).toBeGreaterThanOrEqual(3);
   });
+
+  it('summarizes benchmark pass rate, payload audit, and failure reasons', async () => {
+    const service = new RecordingTeachingService(provider);
+    const timelines = representativeTimelines();
+    const results = [];
+
+    for (const timeline of timelines) {
+      const manifest = buildProviderPayloadManifest(timeline, {
+        id: `manifest-${timeline.sessionId}`,
+        providerName: 'benchmark-provider',
+        createdAt: '2026-06-24T12:00:00.000Z',
+      });
+      results.push(await service.generateDraft({
+        timeline,
+        manifest: { ...manifest, status: 'confirmed' },
+      }));
+    }
+
+    const report = summarizeBenchmark(results, timelines);
+
+    expect(report.totalRecordings).toBe(5);
+    expect(report.completeDrafts).toBeGreaterThanOrEqual(3);
+    expect(report.passRate).toBeGreaterThanOrEqual(0.6);
+    expect(report.payloadAudit.summaryRawPayloadLeaks).toBe(0);
+    expect(report.failureReasons).toEqual([]);
+  });
 });
+
+function summarizeBenchmark(
+  results: Array<Awaited<ReturnType<RecordingTeachingService['generateDraft']>>>,
+  timelines: RecordingTimeline[],
+) {
+  const completeDrafts = results.filter((result) =>
+    result.ok &&
+    result.data?.draft.sourceType === 'recording' &&
+    result.data.draft.steps.length > 0 &&
+    result.data.evidence.length > 0);
+  const summaryRawPayloadLeaks = timelines.filter((timeline) =>
+    timeline.privacyMode === 'summary' && timeline.events.some((event) => event.rawPayload !== undefined)).length;
+
+  return {
+    totalRecordings: results.length,
+    completeDrafts: completeDrafts.length,
+    passRate: completeDrafts.length / results.length,
+    payloadAudit: {
+      summaryRawPayloadLeaks,
+      detailedRecordings: timelines.filter((timeline) => timeline.privacyMode === 'detailed').length,
+    },
+    failureReasons: results.flatMap((result) => result.ok ? [] : result.errors),
+  };
+}
 
 function representativeTimelines(): RecordingTimeline[] {
   return [

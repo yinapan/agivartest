@@ -1,13 +1,17 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { access, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   scanRecordingKeyframeFiles,
   handleRecordingTeachCancelDraftGeneration,
   handleRecordingTeachBuildManifest,
+  handleRecordingTeachCleanupOrphans,
+  handleRecordingTeachDiscard,
   handleRecordingTeachGenerateDraft,
+  handleRecordingTeachListSessions,
   handleRecordingTeachListProviders,
+  handleRecordingTeachPreflight,
   handleRecordingTeachReprocessDraft,
   handleRecordingTeachResumeDraft,
   handleRecordingTeachRetryDraftGeneration,
@@ -16,6 +20,7 @@ import {
   handleRecordingTeachStart,
   handleRecordingTeachGenerationStatus,
   handleRecordingTeachStatus,
+  handleRecordingTeachUpdateSessionMetadata,
   resetRecordingTeachProvider,
   setRecordingTeachProvider,
 } from '../src/main/recording-teach-ipc.js';
@@ -58,6 +63,37 @@ class FakeRecordingRepository {
   async listActiveSessions(): Promise<RecordingSession[]> {
     return [...this.sessions.values()].filter((session) =>
       session.status === 'recording' || session.status === 'stopping');
+  }
+
+  async listSessions(options?: { includeActive?: boolean }): Promise<RecordingSession[]> {
+    return [...this.sessions.values()]
+      .filter((session) => options?.includeActive || (session.status !== 'recording' && session.status !== 'stopping'))
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }
+
+  async updateSessionMetadata(sessionId: string, patch: { goal?: string; notes?: string; updatedAt: string }): Promise<RecordingSession | null> {
+    const session = this.sessions.get(sessionId);
+    if (!session) return null;
+    const updated = { ...session, goal: patch.goal, notes: patch.notes, updatedAt: patch.updatedAt };
+    this.sessions.set(sessionId, updated);
+    const timeline = this.timelines.get(sessionId);
+    if (timeline) this.timelines.set(sessionId, { ...timeline, goal: patch.goal, notes: patch.notes ?? '' });
+    return updated;
+  }
+
+  async discardSession(sessionId: string, options: { now: string }): Promise<{ session: RecordingSession | null; warnings: string[] }> {
+    const session = this.sessions.get(sessionId);
+    if (!session) return { session: null, warnings: [] };
+    const timeline = this.timelines.get(sessionId);
+    for (const keyframe of timeline?.keyframes ?? []) {
+      await rm(keyframe.imagePath, { force: true });
+    }
+    if (session.videoPath) await rm(session.videoPath, { force: true });
+    const discarded = { ...session, status: 'discarded' as const, updatedAt: options.now };
+    this.sessions.set(sessionId, discarded);
+    const link = this.draftLinks.get(sessionId);
+    if (link) this.draftLinks.set(sessionId, { ...link, status: 'discarded', discardedAt: options.now, updatedAt: options.now });
+    return { session: discarded, warnings: [] };
   }
 }
 
@@ -137,6 +173,7 @@ function makeDeps() {
         };
       },
     },
+    preflight: async () => ({ ok: true as const, data: { canRecord: true, warnings: [], artifactBytes: 0 }, durationMs: 1 }),
   };
 }
 
@@ -562,6 +599,97 @@ describe('recordingTeach IPC helpers', () => {
     expect(cancelled.status).toBe('cancelled');
     expect(afterCancel.status).toBe('cancelled');
     expect(afterCancel.canRetry).toBe(true);
+  });
+
+  it('lists and edits non-active recording history sessions', async () => {
+    const repo = new FakeRecordingRepository();
+    await repo.saveSession(makeActiveSession({ id: 'rec-active', status: 'recording', updatedAt: '2026-06-24T10:04:00.000Z' }));
+    await repo.saveSession(makeActiveSession({ id: 'rec-old', status: 'ready', goal: 'Old', updatedAt: '2026-06-24T10:01:00.000Z' }));
+    await repo.saveSession(makeActiveSession({ id: 'rec-new', status: 'draft_ready', goal: 'New', updatedAt: '2026-06-24T10:03:00.000Z' }));
+
+    const history = ok(await handleRecordingTeachListSessions(repo as never, { includeActive: false }));
+    const updated = ok(await handleRecordingTeachUpdateSessionMetadata(repo as never, {
+      sessionId: 'rec-old',
+      goal: 'Updated old',
+      notes: 'Updated notes',
+    }));
+
+    expect(history.map((session) => session.id)).toEqual(['rec-new', 'rec-old']);
+    expect(updated.goal).toBe('Updated old');
+    expect(updated.notes).toBe('Updated notes');
+  });
+
+  it('discards recording sessions and tolerates repeated cleanup', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'agivar-ipc-discard-'));
+    const artifactDir = join(root, 'rec-active');
+    const framePath = join(artifactDir, 'frame-000001.png');
+    const videoPath = join(artifactDir, 'capture.mp4');
+    await mkdir(artifactDir, { recursive: true });
+    await writeFile(framePath, 'frame');
+    await writeFile(videoPath, 'video');
+    try {
+      const repo = new FakeRecordingRepository();
+      await repo.saveSession(makeActiveSession({ status: 'ready', artifactDir, videoPath }));
+      await repo.saveTimeline({
+        sessionId: 'rec-active',
+        notes: 'Saved a note',
+        scope: 'fullscreen',
+        privacyMode: 'summary',
+        startedAt: '2026-06-24T10:00:00.000Z',
+        stoppedAt: '2026-06-24T10:00:05.000Z',
+        keyframes: [{
+          id: 'kf-1',
+          sessionId: 'rec-active',
+          timestampMs: 0,
+          imagePath: framePath,
+          reason: 'interval',
+          redacted: false,
+          status: 'active',
+          hash: 'sha256-kf-1',
+          fileSize: 1234,
+          mimeType: 'image/png',
+          includedInProvider: true,
+        }],
+        events: [],
+        context: [],
+        warnings: [],
+      });
+
+      const first = ok(await handleRecordingTeachDiscard(repo as never, 'rec-active'));
+      const second = ok(await handleRecordingTeachDiscard(repo as never, 'rec-active'));
+
+      expect(first.session!.status).toBe('discarded');
+      expect(second.session!.status).toBe('discarded');
+      await expect(access(framePath)).rejects.toThrow();
+      await expect(access(videoPath)).rejects.toThrow();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('cleans startup orphan sessions and force-stops native recordings on quit', async () => {
+    const repo = new FakeRecordingRepository();
+    const deps = makeDeps();
+    await repo.saveSession(makeActiveSession({ id: 'rec-recording', status: 'recording', nativeSessionId: 'native-recording' }));
+    await repo.saveSession(makeActiveSession({ id: 'rec-stopping', status: 'stopping', nativeSessionId: 'native-stopping' }));
+
+    const cleanup = ok(await handleRecordingTeachCleanupOrphans(repo as never, deps as never));
+
+    expect(cleanup.cleanedSessionIds).toEqual(['rec-recording', 'rec-stopping']);
+    expect((await repo.getSession('rec-recording'))!.status).toBe('failed');
+    expect((await repo.getSession('rec-stopping'))!.status).toBe('failed');
+    expect(deps.calls).toContain('stop:native-recording');
+    expect(deps.calls).toContain('stop:native-stopping');
+  });
+
+  it('preflights recording permissions and artifact storage before start', async () => {
+    const deps = makeDeps();
+
+    const result = ok(await handleRecordingTeachPreflight(deps as never));
+
+    expect(result.canRecord).toBe(true);
+    expect(result.warnings).toEqual([]);
+    expect(result.artifactBytes).toBe(0);
   });
 
   it('generates and resumes a persisted recording draft after manifest confirmation', async () => {

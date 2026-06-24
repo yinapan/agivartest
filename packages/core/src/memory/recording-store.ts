@@ -1,3 +1,4 @@
+import { rm } from 'node:fs/promises';
 import type { DatabaseLike } from './schema.js';
 import type {
   RecordingArtifactStatus,
@@ -48,6 +49,15 @@ export class RecordingStore implements RecordingRepository {
     return row ? this.rowToSession(row) : null;
   }
 
+  async listSessions(options: { includeActive?: boolean; limit?: number } = {}): Promise<RecordingSession[]> {
+    const where = options.includeActive ? '' : "WHERE status NOT IN ('recording', 'stopping')";
+    const hasLimit = typeof options.limit === 'number' && options.limit > 0;
+    const rows = this.db
+      .prepare(`SELECT * FROM recording_sessions ${where} ORDER BY updated_at DESC${hasLimit ? ' LIMIT ?' : ''}`)
+      .all(...(hasLimit ? [options.limit] : [])) as Array<Record<string, unknown>>;
+    return rows.map((row) => this.rowToSession(row));
+  }
+
   async listActiveSessions(): Promise<RecordingSession[]> {
     const rows = this.db
       .prepare("SELECT * FROM recording_sessions WHERE status IN ('recording', 'stopping') ORDER BY updated_at DESC")
@@ -90,6 +100,23 @@ export class RecordingStore implements RecordingRepository {
       session.updatedAt,
       session.id,
     );
+  }
+
+  async updateSessionMetadata(
+    sessionId: string,
+    patch: { goal?: string; notes?: string; updatedAt: string },
+  ): Promise<RecordingSession | null> {
+    const current = await this.getSession(sessionId);
+    if (!current) return null;
+
+    const updated: RecordingSession = {
+      ...current,
+      goal: patch.goal,
+      notes: patch.notes,
+      updatedAt: patch.updatedAt,
+    };
+    await this.updateSession(updated);
+    return updated;
   }
 
   async saveTimeline(timeline: RecordingTimeline): Promise<void> {
@@ -282,6 +309,49 @@ export class RecordingStore implements RecordingRepository {
     return row ? this.rowToDraftLink(row) : null;
   }
 
+  async discardSession(
+    sessionId: string,
+    options: { now: string },
+  ): Promise<{ session: RecordingSession | null; warnings: string[] }> {
+    const session = await this.getSession(sessionId);
+    if (!session) return { session: null, warnings: [] };
+
+    const timeline = await this.getTimeline(sessionId);
+    const warnings: string[] = [];
+
+    for (const keyframe of timeline?.keyframes ?? []) {
+      await removeLocalPath(keyframe.imagePath, warnings);
+      await this.markArtifactStatus(sessionId, 'keyframe', keyframe.id, 'deleted', options.now);
+    }
+    for (const event of timeline?.events ?? []) {
+      await this.markArtifactStatus(sessionId, 'event', event.id, 'deleted', options.now);
+    }
+    for (const context of timeline?.context ?? []) {
+      await this.markArtifactStatus(sessionId, 'context', context.id, 'deleted', options.now);
+    }
+
+    await removeLocalPath(session.videoPath, warnings);
+    await removeLocalPath(session.artifactDir, warnings);
+
+    const link = await this.getDraftLink(sessionId);
+    if (link) {
+      await this.saveDraftLink({
+        ...link,
+        status: 'discarded',
+        discardedAt: options.now,
+        updatedAt: options.now,
+      });
+    }
+
+    const discarded: RecordingSession = {
+      ...session,
+      status: 'discarded',
+      updatedAt: options.now,
+    };
+    await this.updateSession(discarded);
+    return { session: discarded, warnings };
+  }
+
   private rowToSession(row: Record<string, unknown>): RecordingSession {
     return {
       id: row.id as string,
@@ -364,6 +434,15 @@ export class RecordingStore implements RecordingRepository {
       updatedAt: row.updated_at as string,
       ...optionalString('discardedAt', row.discarded_at),
     };
+  }
+}
+
+async function removeLocalPath(value: string | undefined, warnings: string[]): Promise<void> {
+  if (!value || value.startsWith('artifact://')) return;
+  try {
+    await rm(value, { recursive: true, force: true });
+  } catch (err) {
+    warnings.push(`failed to remove ${value}: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 

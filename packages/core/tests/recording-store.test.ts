@@ -1,4 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { mkdir, writeFile, access } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { mkdtemp, rm } from 'node:fs/promises';
 import { getDatabaseForTest } from '../src/memory/db.js';
 import { RecordingStore } from '../src/memory/recording-store.js';
 import type { DatabaseLike } from '../src/memory/schema.js';
@@ -174,6 +178,60 @@ describe('RecordingStore', () => {
     await store.saveDraftLink(draftLink);
 
     expect(await store.getDraftLink(session.id)).toEqual(draftLink);
+  });
+
+  it('lists non-active recording history newest first', async () => {
+    await store.saveSession({ ...session, id: 'rec-old', status: 'ready', updatedAt: '2026-06-24T10:01:00.000Z' });
+    await store.saveSession({ ...session, id: 'rec-active', status: 'recording', updatedAt: '2026-06-24T10:02:00.000Z' });
+    await store.saveSession({ ...session, id: 'rec-new', status: 'draft_ready', updatedAt: '2026-06-24T10:03:00.000Z' });
+
+    const history = await store.listSessions({ includeActive: false });
+
+    expect(history.map((item) => item.id)).toEqual(['rec-new', 'rec-old']);
+  });
+
+  it('renames recording goal and notes without changing evidence', async () => {
+    await store.saveSession(session);
+    await store.saveTimeline(timeline);
+
+    const updated = await store.updateSessionMetadata(session.id, {
+      goal: 'Updated goal',
+      notes: 'Updated notes',
+      updatedAt: '2026-06-24T10:03:00.000Z',
+    });
+
+    expect(updated!.goal).toBe('Updated goal');
+    expect(updated!.notes).toBe('Updated notes');
+    expect((await store.getTimeline(session.id))!.events).toHaveLength(1);
+  });
+
+  it('discards a recording idempotently and removes local artifacts best-effort', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'agivar-recording-discard-'));
+    const artifactDir = join(root, 'rec-1');
+    const framePath = join(artifactDir, 'frame-000001.png');
+    const videoPath = join(artifactDir, 'capture.mp4');
+    await mkdir(artifactDir, { recursive: true });
+    await writeFile(framePath, 'frame');
+    await writeFile(videoPath, 'video');
+    try {
+      await store.saveSession({ ...session, artifactDir, videoPath });
+      await store.saveTimeline({
+        ...timeline,
+        keyframes: [{ ...timeline.keyframes[0], imagePath: framePath }],
+      });
+      await store.saveDraftLink(draftLink);
+
+      const first = await store.discardSession(session.id, { now: '2026-06-24T10:04:00.000Z' });
+      const second = await store.discardSession(session.id, { now: '2026-06-24T10:05:00.000Z' });
+
+      expect(first.session?.status).toBe('discarded');
+      expect(second.session?.status).toBe('discarded');
+      await expect(access(framePath)).rejects.toThrow();
+      await expect(access(videoPath)).rejects.toThrow();
+      expect(await store.getDraftLink(session.id)).toMatchObject({ status: 'discarded' });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it('returns null for unknown sessions and timelines', async () => {

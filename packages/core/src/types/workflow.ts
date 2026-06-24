@@ -279,10 +279,19 @@ export interface RecordingDraftLink {
 export interface RecordingRepository {
   saveSession(session: RecordingSession): Promise<void>;
   getSession(sessionId: string): Promise<RecordingSession | null>;
+  listSessions(options?: { includeActive?: boolean; limit?: number }): Promise<RecordingSession[]>;
   listActiveSessions(): Promise<RecordingSession[]>;
   updateSession(session: RecordingSession): Promise<void>;
+  updateSessionMetadata(
+    sessionId: string,
+    patch: { goal?: string; notes?: string; updatedAt: string },
+  ): Promise<RecordingSession | null>;
   saveTimeline(timeline: RecordingTimeline): Promise<void>;
   getTimeline(sessionId: string): Promise<RecordingTimeline | null>;
   saveDraftLink(link: RecordingDraftLink): Promise<void>;
   getDraftLink(sessionId: string): Promise<RecordingDraftLink | null>;
+  discardSession(
+    sessionId: string,
+    options: { now: string },
+  ): Promise<{ session: RecordingSession | null; warnings: string[] }>;
 }
