@@ -81,6 +81,8 @@ Phase 3 keeps the same ownership style as Phase 2, but recording adds more low-l
 
 Core owns session lifecycle and metadata, while Desktop owns platform-specific capture through existing recorder, screenshot, input, and UIA tools.
 
+`RecordingSessionService` wraps the existing low-level recorder instead of replacing it. Video capture is delegated to `recorder.startRecording`, `recorder.stopRecording`, `recorder.getRecordingStatus`, and `recorder.forceStopAllRecordings`. The service owns the teaching session state machine, metadata persistence, artifact directory lifecycle, and cross-adapter status aggregation.
+
 Responsibilities:
 
 - Start full-screen or active-window recording.
@@ -95,8 +97,22 @@ Session states:
 - `recording`
 - `stopping`
 - `ready`
+- `draft_ready`
 - `failed`
 - `discarded`
+
+### Native Event Capture Dependency
+
+Existing input helpers are active automation tools, such as click, type, and hotkey simulation. They do not passively listen to the user's real mouse and keyboard events.
+
+Passive event capture for Phase 3D requires native Windows support, such as low-level mouse and keyboard hooks or Raw Input. The native layer must expose:
+
+```ts
+startEventCapture(sessionId: string, config: EventCaptureConfig): Promise<void>;
+stopEventCapture(sessionId: string): Promise<void>;
+```
+
+Event callbacks must cross into Node.js through a thread-safe mechanism and preserve session id, timestamp, event type, and redaction boundary. Phase 3D depends on this native capability. If the native event-capture work is not ready, Phase 3D must start with simulated/manual events and keep real passive capture behind an explicit implementation task.
 
 ### EventCaptureService
 
@@ -140,10 +156,12 @@ Outputs:
 
 Sampling strategy:
 
-- capture around interaction events
 - capture first and last frame
 - capture after window changes
-- deduplicate visually or by timestamp thresholds in later iterations
+- Phase 3C captures interval keyframes only, plus first and last frames
+- Phase 3D adds capture around interaction events after passive event capture exists
+- deduplicate by timestamp thresholds first, and by exact file hash when keyframes are persisted
+- consider perceptual deduplication only in later iterations
 
 ### MultimodalTimeline
 
@@ -175,6 +193,35 @@ The extractor converts a timeline into a `WorkflowDraft`.
 
 It uses an injected provider interface, similar to Phase 2 `TextTeachingService`, so tests can use deterministic providers.
 
+Provider interface:
+
+```ts
+export interface RecordingWorkflowProvider {
+  generateWorkflowDraft(
+    timeline: RecordingTimeline,
+    manifest: ProviderPayloadManifest,
+  ): Promise<RecordingWorkflowProviderResult>;
+}
+
+export interface RecordingWorkflowProviderResult {
+  draft: WorkflowDraft;
+  evidence: StepEvidenceLink[];
+  warnings: string[];
+  rawResponse?: unknown;
+}
+
+export interface StepEvidenceLink {
+  id: string;
+  sessionId: string;
+  stepId: string;
+  eventIds: string[];
+  keyframeIds: string[];
+  contextIds: string[];
+  confidence: number;
+  rationale: string;
+}
+```
+
 Inputs:
 
 - `RecordingTimeline`
@@ -197,8 +244,11 @@ Rules:
 - Drafts must preserve evidence links for review where practical.
 - Invalid output returns stable validation errors and does not create workflow memory.
 - `recordingTeach:generateDraft` returns an unsaved draft wrapper and evidence mapping. It must not write `workflow_memories`.
+- The generated draft wrapper is persisted locally and the session moves to `draft_ready` so it can be recovered after app restart.
+- App startup checks for `draft_ready` sessions and can restore the user to the draft review state.
+- `recordingTeach:discard` removes draft links, marks the session discarded, and deletes physical artifacts best-effort.
 - Saving still goes through the Phase 2 editor and existing save path.
-- Workflow version source should add `recording-teach` so version history preserves the creation source clearly.
+- Workflow version source must add `recording-teach` in types, persistence, and schema constraints so version history preserves the creation source clearly.
 
 ## Data Model
 
@@ -210,6 +260,13 @@ Add local tables or equivalent storage records:
 - `recording_context_snapshots`
 - `recording_draft_links`
 - `provider_payload_manifests`
+
+Migration allocation:
+
+| Migration | Phase | Tables |
+| --- | --- | --- |
+| v4 | 3B | `recording_sessions`, `recording_events`, `recording_keyframes`, `recording_context_snapshots` |
+| v5 | 3E | `recording_draft_links`, `provider_payload_manifests` |
 
 Minimum session fields:
 
@@ -256,6 +313,8 @@ Minimum keyframe fields:
 - `mime_type`
 - `included_in_provider`
 
+`hash` is SHA-256 of the image file contents for exact deduplication. If visual-near-duplicate detection becomes necessary later, add a separate `perceptual_hash` field instead of changing the meaning of `hash`.
+
 Minimum context snapshot fields:
 
 - `id`
@@ -266,6 +325,16 @@ Minimum context snapshot fields:
 - `source`
 - `warning`
 - `status`
+
+Minimum generated draft wrapper fields in `recording_draft_links`:
+
+- `id`
+- `session_id`
+- `draft_json`
+- `status`
+- `created_at`
+- `updated_at`
+- `discarded_at`
 
 Minimum draft evidence fields:
 
@@ -349,9 +418,21 @@ Add recording teaching handlers under a new namespace:
 - `recordingTeach:deleteArtifact`
 - `recordingTeach:generateDraft`
 
+Namespace meaning:
+
+- `recorder:*` remains the low-level video/frame capture API backed by native capture tools.
+- `recordingTeach:*` is the teaching orchestration API. It delegates to `recorder:*` where needed and combines recording, passive event capture, context sampling, timeline persistence, provider payload confirmation, and draft handoff.
+
 Handlers should return stable `{ ok, data, error }` results and must validate payloads at runtime.
 
 Preload and renderer APIs should use explicit DTO/result types. Runtime validation must cover enum values, string lengths, session ids, artifact ids, version ids, path-like ids, and provider payload manifest requests.
+
+Active-window recording resolves the current foreground HWND before starting capture:
+
+1. Call `screenshot.getActiveWindow()`.
+2. Read `hwnd`, title, and process metadata for the timeline.
+3. Pass `targetHwnd` into `recorder.startRecording({ targetHwnd })`.
+4. Fail before start or enter degraded capture if the HWND is missing or invalid.
 
 ### Renderer
 
@@ -365,6 +446,8 @@ Required panels:
 - draft generation panel: selected evidence, provider warnings, generated draft entry point
 
 The generated draft should reuse the existing Phase 2 editor instead of creating a separate raw JSON editor.
+
+The workflow list should support filtering or grouping by `sourceType: 'recording'`. If the existing `memory:list` query only supports app or topic filters, Phase 3E should add an optional `sourceType` filter before surfacing recording-generated workflows as a distinct category.
 
 ## Safety And Privacy
 
@@ -380,6 +463,16 @@ The generated draft should reuse the existing Phase 2 editor instead of creating
 - Generated workflows are drafts only and must be reviewed before save.
 - High-risk generated steps follow existing Phase 2 risk warnings and save confirmation.
 - Provider payloads should be minimized and assembled from selected timeline evidence.
+
+Summary mode setup warning:
+
+> 摘要模式仅屏蔽事件中的原始文本和坐标，截图不会被自动打码。如果你的操作中涉及密码、银行卡号等敏感信息，请在生成草稿前在时间线中手动删除相关截图。
+
+Disk cleanup policy:
+
+- Check total recording artifact directory size on app startup and before starting a new recording.
+- If the total exceeds a soft threshold such as 500 MB, prompt the user to review or clean old recording sessions.
+- `recordingTeach:discard` deletes video files, keyframe images, context artifacts, draft links, and provider manifests for that session best-effort, then records any cleanup warning in session metadata.
 
 ## Failure Handling
 
@@ -406,13 +499,15 @@ No failure should leave an active recording session untracked.
 Core tests:
 
 - Recording session lifecycle state transitions.
+- `RecordingSessionService` returns a failed/degraded state when low-level `recorder.startRecording()` fails instead of throwing through IPC.
 - Event redaction for summary and detailed modes.
 - Timeline builder aligns events and keyframes.
 - Provider payload manifest generation and redaction.
 - Artifact exclude/delete consistency.
-- Evidence link invalidation when artifacts are deleted.
+- Evidence link invalidation when artifacts are deleted, including dangling evidence links that reference removed keyframes or events.
 - Extractor accepts deterministic provider output and validates `WorkflowDraft`.
 - Extractor rejects malformed provider output.
+- High-frequency event ingestion, such as 100+ events per second, does not corrupt session state.
 
 Desktop tests:
 
@@ -421,6 +516,7 @@ Desktop tests:
 - IPC rejects concurrent starts by default.
 - Timeline review model handles deleted keyframes/events.
 - App quit cleanup calls recorder force-stop path.
+- `forceStopAllRecordings()` transitions all active teaching sessions to `failed` or `ready` consistently.
 - Generate draft result opens Phase 2-compatible draft data.
 
 Integration and smoke:
@@ -434,6 +530,12 @@ Integration and smoke:
 Quality benchmark:
 
 - Use 5 representative recordings.
+- Benchmark scenarios:
+  - Notepad text entry and save.
+  - Browser copy to editor, paste, and window switch.
+  - Shortcut-heavy workflow using actions such as Ctrl+N, Ctrl+S, and Alt+Tab.
+  - Explorer mouse navigation through folders and opening a file.
+  - Mixed form workflow with text inputs, dropdown selection, and confirm click.
 - At least 3 should produce structurally complete drafts that pass validation and are practical to edit.
 - Structurally complete means: topic, summary, success criteria, at least 2 steps, each step has intent, target hint, risk level, and key steps have at least one evidence link.
 - The benchmark does not claim fully automatic execution without review.
@@ -463,16 +565,22 @@ Phase 3 should be implemented as internal slices rather than one large change:
 1. **Phase 3A: Types, schema, and simulated timeline**
    - Add recording session, timeline, artifact, evidence, and provider manifest types.
    - Add runtime validation and repository interfaces.
+   - Add `RecordingWorkflowProvider`, `RecordingWorkflowProviderResult`, and `StepEvidenceLink` types.
+   - Extend `WorkflowMemoryVersion.source` to include `recording-teach` in Core types, memory-store writes, and SQLite CHECK constraints.
+   - Prepare at least three simulated timeline fixtures: happy path, minimal timeline with warnings, and invalid timeline with validation errors.
    - Use simulated timelines to validate extractor-to-Phase-2-editor handoff.
 2. **Phase 3B: Local session and artifact lifecycle**
    - Implement session state machine, artifact directory management, exclude/delete consistency, and stable IPC results.
+   - Add migration v4 for session, event, keyframe, and context tables.
    - Do not connect real provider parsing yet.
 3. **Phase 3C: Keyframes and basic recording**
-   - Connect full-screen and active-window start/stop, keyframe sampling, five-cycle leak checks, app quit cleanup, and remote desktop degraded warnings.
+   - Connect full-screen and active-window start/stop, interval keyframe sampling, first/last frame capture, SHA-256 keyframe hashing, five-cycle leak checks, app quit cleanup, and remote desktop degraded warnings.
+   - Do not depend on passive event capture for this phase.
 4. **Phase 3D: Events and context**
-   - Add event summaries, window context, UIA snapshots, summary mode defaults, and explicit detailed mode opt-in.
+   - Add native passive event capture, event summaries, event-driven keyframe sampling, window context, UIA snapshots, summary mode defaults, and explicit detailed mode opt-in.
 5. **Phase 3E: Provider payload and draft generation**
-   - Add provider payload manifests, user confirmation, provider invocation, warnings, evidence mapping, and unsaved draft wrapper.
+   - Add migration v5 for draft links and provider payload manifests.
+   - Add provider payload manifests, user confirmation, provider invocation, warnings, evidence mapping, persisted `draft_ready` wrapper recovery, and optional `sourceType` list filtering.
    - Generated drafts enter the Phase 2 editor and do not write workflow memory directly.
 6. **Phase 3F: Benchmark and hardening**
    - Run 5 representative recordings.
