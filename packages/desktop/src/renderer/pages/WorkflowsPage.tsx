@@ -16,6 +16,7 @@ import {
   type WorkflowInput,
   type WorkflowMemoryVersion,
 } from './workflow-editor-model.js';
+import { RecordingTeachPanel } from './RecordingTeachPanel.js';
 
 type BusyAction = 'teach' | 'save' | 'update' | 'rollback' | null;
 
@@ -169,6 +170,15 @@ export function WorkflowsPage() {
     }
   }
 
+  function applyRecordingDraft(recordingDraft: WorkflowDraft, note: string) {
+    setDraft({ ...createEmptyDraft(), ...recordingDraft, sourceType: 'recording', inputs: recordingDraft.inputs ?? [] });
+    setSelected(null);
+    setChangeNote(note);
+    setValidationErrors([]);
+    setValidationWarnings([]);
+    setMessage('Recording draft generated');
+  }
+
   function updateInput(index: number, patch: Partial<WorkflowInput>) {
     setDraft((current) => ({
       ...current,
@@ -249,6 +259,8 @@ export function WorkflowsPage() {
       </aside>
 
       <main className="p-4 overflow-y-auto space-y-4">
+        <RecordingTeachPanel disabled={isBusy} onDraftGenerated={applyRecordingDraft} />
+
         <section className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <input value={draft.appName} onChange={(e) => setDraft({ ...draft, appName: e.target.value })} className="bg-bg-secondary border border-border rounded px-3 py-2 text-sm" placeholder="App name" />
