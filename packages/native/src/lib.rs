@@ -3,6 +3,7 @@ use napi_derive::napi;
 pub mod uia;
 pub mod dpi;
 pub mod recorder;
+pub mod event_capture;
 
 #[napi]
 pub fn ping() -> String {
