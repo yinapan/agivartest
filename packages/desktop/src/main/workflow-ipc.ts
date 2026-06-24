@@ -155,6 +155,9 @@ export async function handleMemoryRollback(
 }
 
 function errorToIpcResult(err: unknown): IpcErr {
+  if (err instanceof Error && 'code' in err && typeof err.code === 'string') {
+    return ipcErr(err.code, err.message);
+  }
   const message = err instanceof Error ? err.message : String(err);
   if (/already exists|duplicate/i.test(message)) {
     return ipcErr('WORKFLOW_ALREADY_EXISTS', message);

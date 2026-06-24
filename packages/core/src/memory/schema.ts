@@ -175,6 +175,73 @@ export const MIGRATIONS: Migration[] = [
         ON workflow_memory_versions(memory_id, version);
     `,
   },
+  {
+    version: 5,
+    name: 'add_recording_teaching_lifecycle_tables',
+    up: `
+      CREATE TABLE IF NOT EXISTS recording_sessions (
+        id TEXT PRIMARY KEY,
+        scope TEXT NOT NULL CHECK (scope IN ('fullscreen', 'active-window')),
+        privacy_mode TEXT NOT NULL CHECK (privacy_mode IN ('summary', 'detailed')),
+        status TEXT NOT NULL CHECK (status IN ('idle', 'recording', 'stopping', 'ready', 'draft_ready', 'failed', 'discarded')),
+        goal TEXT,
+        notes TEXT,
+        video_path TEXT,
+        artifact_dir TEXT NOT NULL,
+        started_at TEXT,
+        stopped_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS recording_events (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL REFERENCES recording_sessions(id) ON DELETE CASCADE,
+        timestamp_ms INTEGER NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('click', 'double-click', 'type', 'hotkey', 'scroll', 'window-change')),
+        summary TEXT NOT NULL,
+        redaction_level TEXT NOT NULL CHECK (redaction_level IN ('summary', 'detailed')),
+        raw_payload_json TEXT,
+        window_title TEXT,
+        process_name TEXT,
+        status TEXT NOT NULL CHECK (status IN ('active', 'excluded', 'deleted')),
+        deleted_at TEXT
+      );
+      CREATE INDEX IF NOT EXISTS idx_recording_events_session_timestamp
+        ON recording_events(session_id, timestamp_ms);
+
+      CREATE TABLE IF NOT EXISTS recording_keyframes (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL REFERENCES recording_sessions(id) ON DELETE CASCADE,
+        timestamp_ms INTEGER NOT NULL,
+        image_path TEXT NOT NULL,
+        reason TEXT NOT NULL,
+        event_id TEXT REFERENCES recording_events(id) ON DELETE SET NULL,
+        redacted INTEGER NOT NULL CHECK (redacted IN (0, 1)),
+        status TEXT NOT NULL CHECK (status IN ('active', 'excluded', 'deleted')),
+        deleted_at TEXT,
+        hash TEXT NOT NULL,
+        file_size INTEGER NOT NULL,
+        mime_type TEXT NOT NULL,
+        included_in_provider INTEGER NOT NULL CHECK (included_in_provider IN (0, 1))
+      );
+      CREATE INDEX IF NOT EXISTS idx_recording_keyframes_session_timestamp
+        ON recording_keyframes(session_id, timestamp_ms);
+
+      CREATE TABLE IF NOT EXISTS recording_context_snapshots (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL REFERENCES recording_sessions(id) ON DELETE CASCADE,
+        timestamp_ms INTEGER NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('window', 'uia', 'screenshot', 'note')),
+        summary_json TEXT NOT NULL,
+        source TEXT NOT NULL,
+        warning TEXT,
+        status TEXT NOT NULL CHECK (status IN ('active', 'excluded', 'deleted'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_recording_context_session_timestamp
+        ON recording_context_snapshots(session_id, timestamp_ms);
+    `,
+  },
 ];
 
 export function runMigrations(db: DatabaseLike): void {

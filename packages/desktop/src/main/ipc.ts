@@ -14,6 +14,7 @@ import {
   type ToolResult,
   type AgentService,
   type MemoryStore,
+  type RecordingStore,
 } from '@agivar/core';
 import { SettingsStore } from './settings-store.js';
 import {
@@ -26,9 +27,15 @@ import {
   handleMemoryUpdate,
   handleMemoryValidateDraft,
 } from './workflow-ipc.js';
+import {
+  handleRecordingTeachGetTimeline,
+  handleRecordingTeachStart,
+  handleRecordingTeachStatus,
+} from './recording-teach-ipc.js';
 
 let agentService: AgentService | null = null;
 let memoryStore: MemoryStore | null = null;
+let recordingStore: RecordingStore | null = null;
 let settingsStore: SettingsStore | null = null;
 
 const fallbackTeachingProvider = createFallbackTeachingProvider();
@@ -39,6 +46,10 @@ export function setAgentService(agent: AgentService): void {
 
 export function setMemoryStore(store: MemoryStore): void {
   memoryStore = store;
+}
+
+export function setRecordingStore(store: RecordingStore): void {
+  recordingStore = store;
 }
 
 export function setSettingsStore(store: SettingsStore): void {
@@ -201,6 +212,19 @@ export function registerAgentIpcHandlers(): void {
   ipcMain.handle('memory:delete', async (_event, id: string) => {
     if (!memoryStore) return;
     await memoryStore.delete(id);
+  });
+
+  // Recording teaching
+  ipcMain.handle('recordingTeach:start', async (_event, request) => {
+    return handleRecordingTeachStart(recordingStore, request);
+  });
+
+  ipcMain.handle('recordingTeach:status', async (_event, sessionId: string) => {
+    return handleRecordingTeachStatus(recordingStore, sessionId);
+  });
+
+  ipcMain.handle('recordingTeach:getTimeline', async (_event, sessionId: string) => {
+    return handleRecordingTeachGetTimeline(recordingStore, sessionId);
   });
 
   // Session

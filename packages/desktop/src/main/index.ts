@@ -3,13 +3,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as net from 'node:net';
 import { createMainWindow, getMainWindow } from './windows.js';
-import { registerIpcHandlers, setAgentService, setMemoryStore, setSettingsStore } from './ipc.js';
+import { registerIpcHandlers, setAgentService, setMemoryStore, setRecordingStore, setSettingsStore } from './ipc.js';
 import { GlobalHotkeyAdapter } from './global-hotkey.js';
 import { CredentialStore } from './credential-store.js';
 import { SettingsStore } from './settings-store.js';
 import {
   AgentService,
   MemoryStore,
+  RecordingStore,
   AbortManager,
   getDatabase,
   OpenAIClient,
@@ -35,6 +36,7 @@ app.whenReady().then(async () => {
   ensureDataDir(dataDir);
   const db = getDatabase(path.join(dataDir, 'agivar.db'));
   const memoryStore = new MemoryStore(db);
+  const recordingStore = new RecordingStore(db);
   const abortManager = new AbortManager();
 
   const settingsStore = new SettingsStore(dataDir);
@@ -98,6 +100,7 @@ app.whenReady().then(async () => {
   registerIpcHandlers();
   setAgentService(agentService);
   setMemoryStore(memoryStore);
+  setRecordingStore(recordingStore);
   setSettingsStore(settingsStore);
 
   wireAgentEvents(agentService, settingsStore, credentialStore, globalHotkey);

@@ -13,6 +13,15 @@ type WorkflowMemoryDto = Record<string, unknown>;
 type WorkflowDraftDto = Record<string, unknown>;
 type WorkflowMemoryVersionDto = Record<string, unknown>;
 type TextTeachingResultDto = Record<string, unknown>;
+type RecordingTeachStartRequestDto = {
+  scope: 'fullscreen' | 'active-window';
+  privacyMode: 'summary' | 'detailed';
+  goal?: string;
+  notes?: string;
+  activeSessionId?: string;
+};
+type RecordingSessionDto = Record<string, unknown>;
+type RecordingTimelineDto = Record<string, unknown>;
 
 contextBridge.exposeInMainWorld('agivar', {
   platform: process.platform,
@@ -42,6 +51,14 @@ contextBridge.exposeInMainWorld('agivar', {
     start: (config: any) => ipcRenderer.invoke('recorder:start', config),
     stop: (sid: string) => ipcRenderer.invoke('recorder:stop', sid),
     forceStopAll: () => ipcRenderer.invoke('recorder:forceStopAll'),
+  },
+  recordingTeach: {
+    start: (request: RecordingTeachStartRequestDto): Promise<IpcResult<RecordingSessionDto>> =>
+      ipcRenderer.invoke('recordingTeach:start', request),
+    status: (sessionId: string): Promise<IpcResult<RecordingSessionDto>> =>
+      ipcRenderer.invoke('recordingTeach:status', sessionId),
+    getTimeline: (sessionId: string): Promise<IpcResult<RecordingTimelineDto>> =>
+      ipcRenderer.invoke('recordingTeach:getTimeline', sessionId),
   },
   dpi: {
     getScaleFactor: (idx?: number) => ipcRenderer.invoke('dpi:getScaleFactor', idx),
