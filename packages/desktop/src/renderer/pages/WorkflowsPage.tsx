@@ -16,9 +16,14 @@ import {
   type WorkflowInput,
   type WorkflowMemoryVersion,
 } from './workflow-editor-model.js';
+import {
+  canImportWorkflow,
+  importedWorkflowMessage,
+  normalizeImportPath,
+} from './workflow-import-model.js';
 import { RecordingTeachPanel } from './RecordingTeachPanel.js';
 
-type BusyAction = 'teach' | 'save' | 'update' | 'rollback' | null;
+type BusyAction = 'teach' | 'save' | 'update' | 'rollback' | 'import' | null;
 
 export function WorkflowsPage() {
   const [memories, setMemories] = useState<WorkflowDraft[]>([]);
@@ -32,6 +37,7 @@ export function WorkflowsPage() {
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [validationWarnings, setValidationWarnings] = useState<string[]>([]);
   const [busyAction, setBusyAction] = useState<BusyAction>(null);
+  const [importPath, setImportPath] = useState('');
 
   useEffect(() => {
     void reload();
@@ -170,6 +176,34 @@ export function WorkflowsPage() {
     }
   }
 
+  async function importWorkflow() {
+    const validation = canImportWorkflow(importPath);
+    if (!validation.ok) {
+      setMessage(validation.message);
+      return;
+    }
+
+    setMessage('');
+    setBusyAction('import');
+    try {
+      const result = await window.agivar.memory.import(normalizeImportPath(importPath)) as IpcResult<WorkflowDraft>;
+      if (!result.ok) {
+        setMessage(getIpcErrorMessage(result));
+        return;
+      }
+      setSelected(result.data);
+      setDraft({ ...createEmptyDraft(), ...result.data, inputs: result.data.inputs ?? [] });
+      setValidationErrors([]);
+      setValidationWarnings([]);
+      setImportPath('');
+      setMessage(importedWorkflowMessage(result.data));
+      await reload();
+      await loadVersions(result.data.id ?? '');
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   function applyRecordingDraft(recordingDraft: WorkflowDraft, note: string) {
     setDraft({ ...createEmptyDraft(), ...recordingDraft, sourceType: 'recording', inputs: recordingDraft.inputs ?? [] });
     setSelected(null);
@@ -248,6 +282,21 @@ export function WorkflowsPage() {
         <button disabled={isBusy} onClick={startNewWorkflow} className="w-full bg-accent hover:bg-accent-hover disabled:opacity-50 text-white text-sm py-2 px-3 rounded">
           New workflow
         </button>
+        <div className="mt-3 space-y-2 border border-border rounded p-2">
+          <input
+            value={importPath}
+            onChange={(e) => setImportPath(e.target.value)}
+            className="w-full bg-bg-secondary border border-border rounded px-2 py-1 text-xs"
+            placeholder="YAML/JSON file path"
+          />
+          <button
+            disabled={isBusy}
+            onClick={importWorkflow}
+            className="w-full text-xs border border-border rounded px-2 py-1 disabled:opacity-50 hover:bg-bg-secondary"
+          >
+            {busyAction === 'import' ? 'Importing...' : 'Import workflow'}
+          </button>
+        </div>
         <div className="mt-3 space-y-2">
           {memories.map((memory) => (
             <button key={memory.id} onClick={() => selectMemory(memory)} className="w-full text-left border border-border rounded p-2 hover:bg-bg-secondary">

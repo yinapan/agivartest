@@ -7,6 +7,7 @@ import { registerIpcHandlers, setAgentService, setMemoryStore, setRecordingStore
 import { GlobalHotkeyAdapter } from './global-hotkey.js';
 import { CredentialStore } from './credential-store.js';
 import { SettingsStore } from './settings-store.js';
+import { migrateLegacyDataDir, resolveDataDir, resolveLegacyAppPathDataDir } from './data-dir.js';
 import {
   AgentService,
   MemoryStore,
@@ -22,10 +23,6 @@ import { scanRecordingKeyframeFiles } from './recording-teach-ipc.js';
 let agentService: AgentService | null = null;
 let globalHotkey: GlobalHotkeyAdapter | null = null;
 
-function getDataDir(): string {
-  return process.env.AGIVAR_DATA_DIR ?? path.join(app.getAppPath(), '.agivar-dev');
-}
-
 function ensureDataDir(dataDir: string): void {
   if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
@@ -33,7 +30,20 @@ function ensureDataDir(dataDir: string): void {
 }
 
 app.whenReady().then(async () => {
-  const dataDir = getDataDir();
+  const appPath = app.getAppPath();
+  const dataDir = resolveDataDir({
+    envDataDir: process.env.AGIVAR_DATA_DIR,
+    appPath,
+    userDataDir: app.getPath('userData'),
+    isPackaged: app.isPackaged,
+  });
+  const migration = await migrateLegacyDataDir({
+    legacyDir: resolveLegacyAppPathDataDir(appPath),
+    targetDir: dataDir,
+  });
+  if (migration.migrated) {
+    console.info(`[main] Migrated legacy data dir from ${migration.from} to ${migration.to}`);
+  }
   ensureDataDir(dataDir);
   const db = getDatabase(path.join(dataDir, 'agivar.db'));
   const memoryStore = new MemoryStore(db);
