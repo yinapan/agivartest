@@ -1,5 +1,11 @@
 # Phase 4D Agivar-like Chat Recording UX Design
 
+> **相关设计文档**：
+> - [phase4d-recording-attachment-data-model.md](../../phase4d-recording-attachment-data-model.md) — Agivar `attach_bar` / `selectable` 数据模型逆向与 Phase 4D 对齐
+> - [recording-storage-lifecycle-design.md](../../recording-storage-lifecycle-design.md) — 录制存储、.rz 归档格式、孤儿清理
+> - [agivar-reverse-engineering-insights.md](../../agivar-reverse-engineering-insights.md) — 反编译架构完整洞察
+> - [ipc-and-multi-window-architecture.md](../../ipc-and-multi-window-architecture.md) — IPC 通道规范与多窗口模板
+
 ## 背景
 
 Phase 4A 到 Phase 4C 已经把录屏教学链路打通：真实录制、keyframe 采样、事件和上下文、provider payload manifest、生成草稿、历史管理、discard、preflight、orphan cleanup、真实 Electron smoke 都已经具备。
@@ -29,6 +35,10 @@ Phase 4D 覆盖：
 6. 左侧最近对话信息增强。
 7. 保留 Phase 4A/4B/4C 的工程面板能力作为开发入口或降级路径。
 
+Phase 4D 的实施边界限定为 **renderer 体验层 + 录屏链路编排层**。本阶段不重构主进程 IPC 架构，不全量常量化通道，不重命名 `recordingTeach:*`，不引入 service 注册重构。Agivar 反编译中关于 IPC 常量化、多窗口、单实例锁、归档和云处理的建议保留为后续 Phase 4E / hardening 输入。
+
+执行路径采用路径 A：先完成 Phase 4D 聊天录屏 UX，再单独进入 Phase 4E hardening。Phase 4D 不以 `docs/superpowers/specs/2026-06-25-agivar-key-findings-implementation-design.md` 中的 IPC 常量化、状态事件推送、service 注册重构、单实例锁或环境变量治理为前置条件。
+
 ## 非目标
 
 - 不实现云同步。
@@ -38,6 +48,9 @@ Phase 4D 覆盖：
 - 不绕过 Phase 4B 的 manifest 确认边界。
 - 不静默上传本地 artifact。
 - 不在 Phase 4D 内实现完整任务自动执行器重写。
+- 不新增主进程 IPC handler，不重命名现有 `recordingTeach:*` 通道。
+- 不做 IPC 全量常量化、单实例锁、`EnvConfig` 全覆盖、service 注册重构或多窗口 recording bar。
+- 不实现持久化聊天历史；最近对话在 Phase 4D 先作为 renderer 本地内存体验。
 
 ## 产品原则
 
@@ -47,7 +60,7 @@ Phase 4D 覆盖：
 
 - 文本：用户输入的任务目标，或默认「我录制了一段操作」。
 - 附件：录屏卡片，包含缩略图、名称、时长、scope、隐私模式。
-- 状态：`recording`、`stopped`、`draft_ready`、`failed`。
+- 状态：使用 Phase 4D 的 canonical renderer 状态，覆盖录制、manifest、生成、成功、失败和删除。
 
 ### Agent 回复是教学解释
 
@@ -96,6 +109,9 @@ Phase 4D 覆盖：
 - `packages/desktop/src/renderer/stores/chat-store.ts`
   - 扩展 `ChatMessage.metadata` 的结构化附件类型。
   - 增加录屏附件、assistant 解析状态、tool capsule 数据。
+  - 增加按 session 保存消息的内存隔离能力，或在文档和 UI 中明确最近对话为本地 mock。
+  - 增加 `addOrUpdateRecordingAttachment(sessionId, patch)`，让 start / stop / generate / retry / discard 幂等更新同一条用户消息。
+  - `addOrUpdateRecordingAttachment` 必须保证同一 recording session 在 start、stop、manifest、generate、retry、discard 全生命周期内只更新同一条用户消息里的同一张附件卡片。
 
 - `packages/desktop/src/renderer/components/InputBar.tsx`
   - 增加任务模式、模型、录屏、图片、语音、发送按钮布局。
@@ -128,8 +144,9 @@ Phase 4D 覆盖：
   - 负责 start/stop/preflight/buildManifest/generateDraft。
   - 把结果写入 `chat-store`。
 
-- `packages/desktop/src/renderer/pages/chat-recording-model.ts`
+- `packages/desktop/src/renderer/features/chat-recording/chat-recording-model.ts`
   - 提供纯函数：附件摘要、draft 到 assistant 消息的映射、工具胶囊归一化、错误文案。
+  - 作为 Phase 4D 录屏附件和解释消息的唯一模型来源。
 
 ## 数据模型
 
@@ -144,11 +161,21 @@ export type ChatRecordingAttachment = {
   thumbnailPath?: string;
   scope: 'fullscreen' | 'active-window';
   privacyMode: 'summary' | 'detailed';
-  status: 'recording' | 'stopped' | 'generating' | 'draft_ready' | 'failed' | 'discarded';
+  status:
+    | 'recording'
+    | 'stopped'
+    | 'manifesting'
+    | 'manifest_ready'
+    | 'generating'
+    | 'draft_ready'
+    | 'failed'
+    | 'discarded';
   keyframeCount?: number;
   warningCount?: number;
 };
 ```
+
+`queued`、`processing` 和 `processingPct` 是 Agivar 云处理管线里的有效模型，但 Phase 4D 仍是本地 `buildManifest` + `generateDraft`，暂不把这些状态列入必选实现。后续接云处理或远程录屏分析时再扩展。
 
 ### Assistant recording explanation
 
@@ -184,11 +211,16 @@ export type ChatRecordingExplanation = {
 4. UI 调用 `recordingTeach.start()`，输入栏进入录制状态。
 5. 用户点击停止。
 6. UI 调用 `recordingTeach.stop()` 和 `getTimeline()`。
-7. `chat-store` 新增一条用户消息，包含录屏附件。
-8. UI 调用 `buildManifest()`，使用默认 provider 生成 confirmed manifest。
-9. UI 调用 `generateDraft()`。
-10. 生成成功后，`chat-store` 新增一条 assistant 消息，包含自然语言步骤和 tool pills。
-11. 生成失败时，用户消息附件显示失败状态，并提供重试。
+7. `chat-store` 新增或更新一条用户消息，包含录屏附件。
+8. UI 调用 `buildManifest()`。
+9. `summary` 模式且 manifest 不含 raw text / precise coordinates 时，可以由聊天入口自动确认；`detailed` 模式或 manifest 含敏感标记时，必须展示轻量确认。
+10. 用户确认或自动确认后，UI 调用 `generateDraft()`。
+11. 生成成功后，`chat-store` 新增一条 assistant 消息，包含自然语言步骤和 tool pills。
+12. 生成失败时，同一条用户消息附件更新为 `failed`，并提供重试。
+
+`preflight` 失败时不创建用户消息和录屏附件，只在输入栏显示短错误。典型原因包括权限不足、屏幕录制不可用、磁盘空间不足或 artifact 目录不可写。
+
+当 manifest 需要用户确认时，录屏附件进入 `manifest_ready` 状态，卡片显示「待确认」状态文案或 badge。输入栏主操作变为「确认并生成」，用户可以查看 manifest 摘要、warning 数量和隐私提示后继续。Phase 4D 不在主聊天区直接展示 raw text、precise coordinates 或 artifact path。
 
 ### 历史录屏继续解析
 
@@ -197,6 +229,8 @@ export type ChatRecordingExplanation = {
 3. 用户点击附件上的「重新解析」。
 4. UI 调用 `reprocessDraft()`。
 5. assistant 消息更新为新的解析结果。
+
+Phase 4D 的最近对话先只保证 renderer 内存态体验，不承诺应用重启后的聊天恢复。持久化聊天历史和跨启动恢复是后续阶段范围。
 
 ### 删除录屏附件
 
@@ -240,12 +274,15 @@ export type ChatRecordingExplanation = {
 - 右下控制组：语音、发送。
 - 录屏中状态：录屏按钮变为停止，显示计时。
 - 生成中状态：发送禁用，附件显示 `generating`。
+- `manifesting` 和 `generating` 阶段禁用录屏按钮，避免同一 draft 生成过程中再次 start。
+- `manifest_ready` 阶段发送禁用、录屏按钮禁用，主操作显示「确认并生成」，附件状态显示「待确认」。
+- `InputBar` 只展示状态并触发 action，不承载录屏流程细节。录屏流程由 `useChatRecordingStore` 暴露 `phase`、`primaryAction`、`error`、`elapsedSeconds` 等状态。
 
 ## 隐私与安全
 
 - 默认使用 `summary` 隐私模式。
 - `detailed` 模式仍需显式确认；Phase 4D 可以把确认做成录屏按钮弹出的轻量确认。
-- 生成 draft 前仍必须基于 `buildManifest()` 结果确认。
+- 生成 draft 前仍必须基于 `buildManifest()` 结果确认；`summary` 模式只有在 manifest 不含 raw text 和 precise coordinates 时才允许自动确认。
 - 主聊天默认不展示 raw text、precise coordinates、artifact path。
 - 缩略图只展示本地安全可访问的 keyframe；如果路径不可用，显示占位缩略图。
 - discard 后不再尝试读取已删除 artifact。
@@ -261,6 +298,8 @@ export type ChatRecordingExplanation = {
 - provider warnings 映射为用户可读提示；
 - discard 后附件状态变为 `discarded`；
 - tool pill label 归一化。
+- `queued` / `processing` 不进入 Phase 4D 必选状态；
+- manifest 敏感标记决定是否需要用户确认。
 
 ### Component smoke tests
 
@@ -270,6 +309,10 @@ export type ChatRecordingExplanation = {
 - 输入栏显示任务模式、模型、录屏、图片、发送。
 - 用户消息可以渲染录屏附件卡片。
 - assistant 消息可以渲染步骤列表和 tool pills。
+- 旧消息没有 `attachments` 时正常渲染。
+- 未知 attachment type 被忽略或降级展示。
+- draft JSON 解析失败时展示 warning，不让页面崩溃。
+- discard 后不读取 thumbnail。
 
 ### IPC 复用测试
 
@@ -297,4 +340,7 @@ git diff --check
 - provider、manifest、history、discard 等 Phase 4B/4C 能力仍可通过底层 IPC 复用。
 - `RecordingTeachPanel` 保留为开发和调试入口。
 - 不引入云同步、向量检索或静默上传。
+- 不新增主进程 IPC，不重命名现有 `recordingTeach:*`。
+- 录屏附件状态更新具备幂等性，失败、重试和 discard 不重复插入用户消息。
+- 最近对话明确为 Phase 4D renderer 内存态体验，不承诺跨启动恢复。
 - 相关 renderer tests、desktop build 和真实录屏 smoke 均可通过。

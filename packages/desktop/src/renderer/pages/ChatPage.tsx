@@ -5,11 +5,11 @@ import { InputBar } from '../components/InputBar.js';
 
 export function ChatPage() {
   return (
-    <div className="flex h-screen bg-bg-primary text-text-primary">
+    <div className="flex h-screen bg-white text-slate-900">
       <Sidebar />
       <div className="flex-1 flex flex-col">
-        <div className="h-10 border-b border-border flex items-center px-4 text-sm text-text-secondary">
-          Agivar — 可教学桌面流程 Agent
+        <div className="flex h-12 items-center border-b border-slate-100 px-6 text-sm font-medium text-slate-500">
+          Agivar-like Chat Recording
         </div>
         <ChatView />
         <InputBar />

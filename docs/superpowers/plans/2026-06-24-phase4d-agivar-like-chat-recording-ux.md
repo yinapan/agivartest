@@ -4,7 +4,7 @@
 
 **目标：** 把 Phase 4A/4B/4C 的录屏教学能力迁移到主聊天体验中，使录屏成为聊天输入素材，并以 Agivar-like 的「对话 + 录屏证据 + 步骤解析 + 工具状态胶囊」形态呈现。
 
-**架构：** 不新增核心录屏服务，不新增 IPC。Phase 4D 在 renderer 层新增聊天录屏状态、附件卡片、步骤解析展示和输入栏录屏控制，复用现有 `recordingTeach.*` IPC 和 Phase 4B/4C provider / history / discard 能力。
+**架构：** 不新增核心录屏服务，不新增主进程 IPC。Phase 4D 限定为 renderer 体验层和录屏链路编排层：新增聊天录屏状态、附件卡片、步骤解析展示和输入栏录屏控制，复用现有 `recordingTeach.*` IPC 和 Phase 4B/4C provider / history / discard 能力。本阶段不做 IPC 全量常量化、不重命名 `recordingTeach:*`、不做 service 注册重构、单实例锁或多窗口 recording bar。
 
 **技术栈：** React、Zustand、TypeScript、Electron preload IPC、Tailwind-style utility classes、Vitest、现有 `@agivar/core` draft 类型。
 
@@ -12,7 +12,7 @@
 
 ## 文件结构
 
-- 新建 `packages/desktop/src/renderer/pages/chat-recording-model.ts`
+- 新建 `packages/desktop/src/renderer/features/chat-recording/chat-recording-model.ts`
   - 定义聊天录屏附件、assistant 解析、tool pill 类型。
   - 提供 timeline / draft link 到聊天 metadata 的纯函数。
 
@@ -22,6 +22,8 @@
 - 修改 `packages/desktop/src/renderer/stores/chat-store.ts`
   - 为 `ChatMessage.metadata` 增加窄类型 helper，不强制迁移所有旧消息。
   - 增加附件消息和 assistant 解析消息的写入方法。
+  - 增加按 session 保存消息的内存隔离，或明确最近对话为本地内存 mock。
+  - 增加附件级幂等更新 helper。
 
 - 新建 `packages/desktop/src/renderer/stores/chat-recording-store.ts`
   - 封装主聊天录屏 start/stop/generate/retry/discard 状态。
@@ -58,11 +60,42 @@
 
 ---
 
+## Phase 4D 明确不做
+
+以下内容来自 Agivar 反编译和架构 review，方向有价值，但不进入 Phase 4D 实施任务：
+
+- IPC 全量常量化。
+- `recordingTeach:*` 到 `recording:*` 的通道重命名。
+- `recordingTeach:stateChanged` 或其它新增主进程 IPC 事件。
+- service 注册重构。
+- 单实例锁。
+- `EnvConfig` 全覆盖。
+- 多窗口 recording bar。
+- 录屏选择器。
+- 云端 `queued` / `processing` 管线。
+- `.rz` 归档或加密格式。
+- 真实账号、积分系统。
+- 持久化聊天历史完整实现。
+
+Phase 4D 只证明一件事：Phase 4C 已跑通的真实录屏链路可以作为聊天附件被自然消费，并生成 assistant 解析消息。
+
+---
+
+## 执行路径决策
+
+采用路径 A：先合 Phase 4D，再做 Phase 4E hardening。
+
+- Phase 4D 只实施聊天录屏 UX、附件模型、renderer store、输入栏和 smoke 验证。
+- IPC 常量化、`recordingTeach:*` 重命名、新增主进程事件、service 注册重构、单实例锁和 `EnvConfig` 全覆盖全部后置。
+- `docs/superpowers/specs/2026-06-25-agivar-key-findings-implementation-design.md` 只能作为 Phase 4E / hardening 候选输入，不作为本计划的前置任务。
+
+---
+
 ### 任务 1：聊天录屏模型和 TDD 基础
 
 **文件：**
 
-- 新建：`packages/desktop/src/renderer/pages/chat-recording-model.ts`
+- 新建：`packages/desktop/src/renderer/features/chat-recording/chat-recording-model.ts`
 - 新建：`packages/desktop/tests/chat-recording-model.test.ts`
 
 - [ ] **步骤 1：编写失败测试**
@@ -76,7 +109,7 @@ import {
   createRecordingExplanationFromDraftLink,
   normalizeToolPill,
   markRecordingAttachmentDiscarded,
-} from '../src/renderer/pages/chat-recording-model.js';
+} from '../src/renderer/features/chat-recording/chat-recording-model.js';
 
 describe('chat recording model', () => {
   it('summarizes a stopped timeline as a recording attachment', () => {
@@ -153,6 +186,14 @@ describe('chat recording model', () => {
 });
 ```
 
+同时补充以下模型测试：
+
+- `requiresManifestConfirmation(manifest)`：`summary` 且不含 raw text / precise coordinates 时返回 `false`。
+- `requiresManifestConfirmation(manifest)`：`detailed` 或含 raw text / precise coordinates 时返回 `true`。
+- `parseDraftLinkExplanation`：draft JSON 解析失败时返回 warning，不抛异常。
+- `mergeRecordingAttachments`：按 `sessionId` 合并，同一个录屏只保留一份，discard 不读取 thumbnail。
+- `toChatRecordingStatus`：把 session / generation 状态映射到 canonical renderer 状态，不输出 `queued` / `processing`。
+
 运行：
 
 ```powershell
@@ -163,7 +204,7 @@ pnpm vitest run packages/desktop/tests/chat-recording-model.test.ts
 
 - [ ] **步骤 2：实现模型类型和纯函数**
 
-在 `chat-recording-model.ts` 中实现：
+在 `packages/desktop/src/renderer/features/chat-recording/chat-recording-model.ts` 中实现：
 
 ```ts
 export type ChatRecordingAttachment = {
@@ -174,7 +215,15 @@ export type ChatRecordingAttachment = {
   thumbnailPath?: string;
   scope: 'fullscreen' | 'active-window';
   privacyMode: 'summary' | 'detailed';
-  status: 'recording' | 'stopped' | 'generating' | 'draft_ready' | 'failed' | 'discarded';
+  status:
+    | 'recording'
+    | 'stopped'
+    | 'manifesting'
+    | 'manifest_ready'
+    | 'generating'
+    | 'draft_ready'
+    | 'failed'
+    | 'discarded';
   keyframeCount?: number;
   warningCount?: number;
 };
@@ -200,7 +249,40 @@ export type ChatRecordingExplanation = {
 };
 ```
 
-并补齐测试中调用的函数。draft JSON 解析失败时返回 1 条 warning，不抛异常。
+并补齐测试中调用的函数。draft JSON 解析失败时返回 1 条 warning，不抛异常。`queued`、`processing`、`processingPct` 只作为后续云处理扩展记录在文档中，不进入 Phase 4D 必选类型。
+
+额外实现：
+
+```ts
+export function requiresManifestConfirmation(input: {
+  privacyMode: 'summary' | 'detailed';
+  includesRawText?: boolean;
+  includesPreciseCoordinates?: boolean;
+}): boolean {
+  return input.privacyMode === 'detailed' || Boolean(input.includesRawText) || Boolean(input.includesPreciseCoordinates);
+}
+
+export const MAX_CHAT_ATTACHMENTS = 5;
+
+export function mergeRecordingAttachments(
+  existing: Map<string, ChatRecordingAttachment>,
+  incoming: ChatRecordingAttachment[],
+): Map<string, ChatRecordingAttachment> {
+  const next = new Map(existing);
+
+  for (const attachment of incoming) {
+    const previous = next.get(attachment.sessionId);
+    next.set(attachment.sessionId, { ...previous, ...attachment });
+  }
+
+  const entries = Array.from(next.entries()).slice(-MAX_CHAT_ATTACHMENTS);
+  return new Map(entries);
+}
+```
+
+这个 helper 必须被 `chat-recording-store` 使用，避免聊天入口绕过 Phase 4B 的 manifest 确认边界。
+
+`mergeRecordingAttachments` 必须按 `sessionId` 合并同一条录屏附件，并保留最多 `MAX_CHAT_ATTACHMENTS` 条，供 `chat-recording-store` 控制当前消息附件上限。它要避免 start / stop / manifest / generate / retry / discard 在同一个 recording session 上重复插入多张卡片。`discarded` 状态下不得强制读取或恢复 thumbnail。
 
 - [ ] **步骤 3：验证模型测试通过**
 
@@ -217,7 +299,7 @@ pnpm vitest run packages/desktop/tests/chat-recording-model.test.ts
 运行：
 
 ```powershell
-git add packages/desktop/src/renderer/pages/chat-recording-model.ts packages/desktop/tests/chat-recording-model.test.ts
+git add packages/desktop/src/renderer/features/chat-recording/chat-recording-model.ts packages/desktop/tests/chat-recording-model.test.ts
 git commit -m "feat(phase4d): 添加聊天录屏模型"
 ```
 
@@ -263,6 +345,10 @@ const userMessage = {
 - 页面存在 `14s`；
 - 页面存在 `wait` 胶囊；
 - 页面存在步骤标题。
+- 旧消息没有 `metadata.attachments` 时仍能正常渲染。
+- 未知 attachment type 被忽略或降级展示。
+- assistant explanation 的 warning 能渲染为低干扰提示。
+- `discarded` 附件不渲染 thumbnail。
 
 运行：
 
@@ -289,6 +375,7 @@ pnpm vitest run packages/desktop/tests/phase4d-chat-recording-ui-smoke.test.ts
 - 右侧标题、时长、状态；
 - 支持 `onRetry`、`onDiscard` 可选回调；
 - `discarded` 状态不显示缩略图内容。
+- `manifest_ready` 状态显示「待确认」状态文案或 badge，并提供 `onConfirmManifest` 可选回调入口。
 
 - [ ] **步骤 4：实现 `RecordingStepList`**
 
@@ -306,6 +393,7 @@ pnpm vitest run packages/desktop/tests/phase4d-chat-recording-ui-smoke.test.ts
 - assistant 消息读取 `metadata.recordingExplanation`，渲染步骤列表；
 - 保留旧的 `metadata.toolCalls` 渲染逻辑；
 - 消息最大宽度放宽到适合阅读步骤，但用户短消息仍靠右。
+- 对未知 metadata 做防御式处理，不让坏数据导致整条消息崩溃。
 
 - [ ] **步骤 6：验证组件 smoke 测试**
 
@@ -337,7 +425,17 @@ git commit -m "feat(phase4d): 渲染聊天录屏附件和步骤解析"
 
 - [ ] **步骤 1：扩展 `chat-store` 写入方法**
 
-增加方法：
+先把聊天消息从全局数组调整为 session 内存隔离。Phase 4D 不承诺跨启动恢复，但同一次运行内切换最近对话时必须保留各 session 的消息。
+
+建议状态结构：
+
+```ts
+messagesBySessionId: Record<string, ChatMessage[]>;
+```
+
+`messages` selector 可以继续保留为当前 `activeSessionId` 的派生结果，避免一次性改动所有组件。
+
+再增加方法：
 
 ```ts
 addRecordingUserMessage(input: {
@@ -351,22 +449,45 @@ addRecordingAssistantMessage(input: {
   content: string;
   explanation: ChatRecordingExplanation;
 }): string;
+
+addOrUpdateRecordingAttachment(
+  sessionId: string,
+  patch: Partial<ChatRecordingAttachment>,
+): string;
 ```
 
+`addOrUpdateRecordingAttachment` 必须用 `recording sessionId` 找到已有用户消息并更新附件；找不到时才创建新用户消息。start / stop / generate / retry / discard 都通过这个 helper 幂等更新同一条消息。
+
 保留现有 `addMessage`，避免影响旧路径。
+
+还需要新增或调整测试覆盖：
+
+- 创建两个 chat session 后，各自消息互不覆盖。
+- `switchSession` 后当前 `messages` 指向 active session。
+- 对同一个 recording session 连续调用 `addOrUpdateRecordingAttachment` 不会新增第二条用户消息。
+- discard 后附件状态为 `discarded`，thumbnail path 被清空或不再被 UI 使用。
 
 - [ ] **步骤 2：实现 `chat-recording-store`**
 
 状态：
 
 ```ts
-type ChatRecordingPhase = 'idle' | 'preflight' | 'recording' | 'stopping' | 'generating' | 'failed';
+type ChatRecordingPhase =
+  | 'idle'
+  | 'preflight'
+  | 'recording'
+  | 'stopping'
+  | 'manifesting'
+  | 'manifest_ready'
+  | 'generating'
+  | 'failed';
 ```
 
 动作：
 
 - `startRecording({ scope, privacyMode, goal })`
 - `stopAndGenerate({ activeSessionId, content })`
+- `confirmManifestAndGenerate(sessionId)`
 - `retryGeneration(sessionId)`
 - `discardAttachment(sessionId)`
 
@@ -376,10 +497,25 @@ type ChatRecordingPhase = 'idle' | 'preflight' | 'recording' | 'stopping' | 'gen
 2. `start`
 3. `stop`
 4. `getTimeline`
-5. 写入用户消息附件
+5. 调用 `addOrUpdateRecordingAttachment` 写入或更新用户消息附件
 6. `buildManifest`
-7. `generateDraft`
-8. 写入 assistant 解析
+7. 如果是 `summary` 且 manifest 不含 raw text / precise coordinates，可以自动确认；否则把状态置为 `manifest_ready`，等待用户确认
+8. `generateDraft`
+9. 写入 assistant 解析
+
+本任务不新增 `recordingTeach:stateChanged` 或其它主进程 IPC。状态来自现有 invoke 链路和本地 store。
+
+当状态进入 `manifest_ready` 时：
+
+- `InputBar` 的主操作显示「确认并生成」。
+- 当前录屏附件状态显示为「待确认」。
+- 用户可以在附件卡片或输入栏的轻量确认入口查看 manifest 摘要、warning 数量和隐私提示；Phase 4D 不在主聊天区直接展开 raw text、precise coordinates 或 artifact path。
+- 用户确认后调用 `confirmManifestAndGenerate(sessionId)`，并把 phase 更新为 `generating`。
+
+`retryGeneration` 和 `discardAttachment` 必须复用同一条 recording attachment：
+
+- retry：附件状态从 `failed` 或 `manifest_ready` 更新为 `generating`，成功后更新为 `draft_ready`。
+- discard：调用 `recordingTeach.discard(sessionId)`，附件状态更新为 `discarded`，已有 assistant explanation 保留并显示本地证据已删除提示。
 
 - [ ] **步骤 3：改造 `InputBar` 布局**
 
@@ -389,17 +525,23 @@ type ChatRecordingPhase = 'idle' | 'preflight' | 'recording' | 'stopping' | 'gen
 - 下层左侧：任务模式、模型、录屏、图片；
 - 下层右侧：语音、发送；
 - 录屏中：录屏按钮变成停止按钮；
-- 生成中：发送禁用。
+- `manifesting` / `generating`：发送禁用，录屏按钮禁用，避免同一条录屏 draft 生成过程中再次 start。
+- `manifest_ready`：发送禁用，录屏按钮禁用，主操作显示「确认并生成」。
 
 先使用文字按钮，若项目已有 icon 依赖再替换为 icon。不要新增无必要依赖。
 
+`InputBar` 不直接实现录屏业务流程，只消费 `useChatRecordingStore` 暴露的 `phase`、`primaryAction`、`error`、`elapsedSeconds`，并触发对应 action。
+
 - [ ] **步骤 4：录屏错误回写聊天**
 
-当 start/stop/generate 失败时：
+当 preflight/start/stop/generate 失败时：
 
 - 输入栏显示短错误；
 - 可选写入 system 消息；
 - attachment 若已创建，则状态更新为 `failed`。
+- 不重复插入新的录屏附件消息。
+- 如果失败发生在用户消息创建前，只显示输入栏错误和可重试状态。
+- `preflight` 失败不创建用户消息和录屏附件，只在 `InputBar` 显示短错误，例如权限不足、屏幕录制不可用或磁盘空间不足。
 
 - [ ] **步骤 5：验证输入栏和模型测试**
 
@@ -497,6 +639,8 @@ pnpm desktop:smoke-recording-real
 
 预期：active-window 和 fullscreen 仍能生成 keyframes，且 ABI 自动恢复。
 
+这个 smoke 是 Phase 4D 的回归门禁。若本命令失败，不继续提交聊天录屏 smoke。
+
 - [ ] **步骤 2：新增 Phase 4D 聊天录屏 smoke**
 
 脚本应：
@@ -511,6 +655,8 @@ pnpm desktop:smoke-recording-real
 8. 断言页面存在录屏卡片和至少 1 个步骤。
 
 若真实录屏在 CI 或无桌面环境不可用，脚本应输出清晰 skip 原因，不伪造成功。
+
+脚本不得新增或依赖 `recordingTeach:stateChanged`。它只能通过现有 UI、preload invoke 结果和 DOM 状态观察完成验证。
 
 - [ ] **步骤 3：注册脚本**
 
@@ -570,6 +716,7 @@ git commit -m "test(phase4d): 添加聊天录屏真实 smoke"
 - 未做事项；
 - 测试命令和结果；
 - 真实 smoke 结果。
+- 明确列出未纳入 Phase 4D 的 Agivar 借鉴项：IPC 常量化、多窗口、单实例锁、云处理、归档、账号积分、持久化聊天历史。
 
 - [ ] **步骤 2：运行最终状态检查**
 
@@ -612,3 +759,9 @@ git push origin master
 - [ ] Phase 4C 的真实录屏 smoke 仍通过。
 - [ ] Phase 4D 的聊天录屏 smoke 通过或显式 skip。
 - [ ] 不引入云同步、向量检索、静默上传或真实账号后端。
+- [ ] 不新增主进程 IPC handler，不重命名 `recordingTeach:*`。
+- [ ] `chat-store` 支持同一次运行内的 session 消息隔离。
+- [ ] `addOrUpdateRecordingAttachment` 保证同一 recording session 的附件幂等更新。
+- [ ] `summary` 且 manifest 无敏感标记才允许自动确认；`detailed` 或含 raw text / precise coordinates 必须等待确认。
+- [ ] `queued`、`processing`、`processingPct` 不作为 Phase 4D 必选实现。
+- [ ] `InputBar` 不承载录屏业务流程，只消费 `useChatRecordingStore` 状态和 action。

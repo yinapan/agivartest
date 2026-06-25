@@ -106,6 +106,13 @@ async function installAgivarMock(page) {
         delete: async () => undefined,
       },
       recordingTeach: {
+        listProviders: async () => ({ ok: true, data: {
+          selectedProviderName: 'recording-teaching-provider',
+          providers: [{ name: 'recording-teaching-provider', label: 'Deterministic regression provider', available: true }],
+        } }),
+        listSessions: async () => ({ ok: true, data: [] }),
+        updateSessionMetadata: async () => ({ ok: true, data: { id: 'rec-smoke', status: 'ready' } }),
+        preflight: async () => ({ ok: true, data: { canRecord: true, warnings: [], artifactBytes: 0 } }),
         start: async () => ({ ok: true, data: { id: 'rec-smoke', status: 'recording' } }),
         stop: async () => ({ ok: true, data: { id: 'rec-smoke', status: 'stopped' } }),
         status: async () => ({ ok: true, data: { id: 'rec-smoke', status: 'recording' } }),
@@ -151,6 +158,23 @@ async function installAgivarMock(page) {
           updatedAt: '2026-06-24T00:00:05.000Z',
         } }),
         resumeDraft: async () => ({ ok: false, error: { code: 'UNUSED', message: 'unused in smoke' } }),
+        generationStatus: async () => ({ ok: true, data: {
+          sessionId: 'rec-smoke',
+          status: 'idle',
+          providerName: 'recording-teaching-provider',
+          canRetry: false,
+          attempts: 0,
+        } }),
+        cancelDraftGeneration: async () => ({ ok: true, data: {
+          sessionId: 'rec-smoke',
+          status: 'cancelled',
+          providerName: 'recording-teaching-provider',
+          canRetry: true,
+          attempts: 1,
+        } }),
+        retryDraftGeneration: async () => ({ ok: false, error: { code: 'UNUSED', message: 'unused in smoke' } }),
+        reprocessDraft: async () => ({ ok: false, error: { code: 'UNUSED', message: 'unused in smoke' } }),
+        discard: async () => ({ ok: true, data: { session: null, warnings: [] } }),
       },
     };
   });

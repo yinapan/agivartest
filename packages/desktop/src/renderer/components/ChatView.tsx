@@ -22,35 +22,37 @@ export function ChatView() {
   }, [messages, taskEvents]);
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-3">
-      {messages.map((msg) => (
-        <MessageBubble key={msg.id} message={msg} />
-      ))}
+    <div className="flex-1 overflow-y-auto bg-white px-8 py-8">
+      <div className="mx-auto max-w-[920px] space-y-5">
+        {messages.map((msg) => (
+          <MessageBubble key={msg.id} message={msg} />
+        ))}
 
-      {taskEvents.map((event, i) => {
-        const key = `${(event as any).taskRunId}-${i}`;
-        switch (event.type) {
-          case 'step-start':
-          case 'step-result':
-          case 'step-failed':
-            return <StepProgressCard key={key} event={event} />;
-          case 'takeover-required':
-            return <TakeoverCard key={key} event={event} />;
-          case 'memory-candidates':
-            return <MemoryCandidateCard key={key} event={event} />;
-          case 'task-complete':
-          case 'task-failed':
-            return <TaskSummaryCard key={key} event={event} />;
-          default:
-            return null;
-        }
-      })}
+        {taskEvents.map((event, i) => {
+          const key = `${(event as any).taskRunId}-${i}`;
+          switch (event.type) {
+            case 'step-start':
+            case 'step-result':
+            case 'step-failed':
+              return <StepProgressCard key={key} event={event} />;
+            case 'takeover-required':
+              return <TakeoverCard key={key} event={event} />;
+            case 'memory-candidates':
+              return <MemoryCandidateCard key={key} event={event} />;
+            case 'task-complete':
+            case 'task-failed':
+              return <TaskSummaryCard key={key} event={event} />;
+            default:
+              return null;
+          }
+        })}
 
-      {isLoading && (
-        <div className="text-text-secondary text-sm animate-pulse">思考中...</div>
-      )}
+        {isLoading && (
+          <div className="animate-pulse text-sm text-slate-400">思考中...</div>
+        )}
 
-      <div ref={bottomRef} />
+        <div ref={bottomRef} />
+      </div>
     </div>
   );
 }

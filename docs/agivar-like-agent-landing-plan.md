@@ -1,5 +1,12 @@
 # 类 Agivar 桌面版 Agent 落地方案
 
+> **相关文档链**：
+> - 反编译架构洞察：[agivar-reverse-engineering-insights.md](./agivar-reverse-engineering-insights.md) — 从 Agivar v1.2.0 反编译中提取的架构级参考
+> - IPC 与多窗口设计手册：[ipc-and-multi-window-architecture.md](./ipc-and-multi-window-architecture.md) — 131 IPC 通道分析 + 5 窗口架构模板
+> - 落地方案：[../落地方案.md](../落地方案.md) — 完整技术架构与 MVP 规划
+> - 阶段 0 设计：[specs/2026-06-21-phase0-desktop-poc-design.md](./specs/2026-06-21-phase0-desktop-poc-design.md)
+> - 项目理解：[PROJECT_UNDERSTANDING.md](./PROJECT_UNDERSTANDING.md) — CoAct-1 论文实现分析
+
 ## 1. 背景与目标
 
 目标产品参考 Agivar 的公开文档与产品形态，核心能力是让用户通过对话、文字教学和录屏演示，把重复的桌面或浏览器业务流程教给 Agent。Agent 在后续任务中检索这些流程记忆，并自动操作电脑完成任务。
